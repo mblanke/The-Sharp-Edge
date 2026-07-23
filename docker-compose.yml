@@ -24,7 +24,6 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./library:/library
       - ./seed:/seed:ro
     ports:
       - "8010:8000"
@@ -41,21 +40,6 @@ services:
       - api
     ports:
       - "3010:3000"
-
-  # Phase 3 will run the folder watcher here; no-op until then.
-  ingest:
-    build: ./api
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sharpedge}:${POSTGRES_PASSWORD:-sharpedge}@db:5432/${POSTGRES_DB:-sharpedge}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./library:/library
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command: sh -c "echo 'ingest watcher arrives in Phase 3'; sleep infinity"
 
 volumes:
   pgdata:

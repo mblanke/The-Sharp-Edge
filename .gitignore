@@ -14,11 +14,6 @@ node_modules/
 web/build/
 web/.svelte-kit/
 
-# library drop folder — books are content, not code
-library/public/*
-library/private/*
-!library/public/.gitkeep
-!library/private/.gitkeep
 
 # db volumes / local data
 pgdata/

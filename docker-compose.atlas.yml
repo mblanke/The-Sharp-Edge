@@ -1,0 +1,24 @@
+# Override for deployment ON Atlas, next to the existing ai-stack:
+#   docker compose -f docker-compose.yml -f docker-compose.atlas.yml up -d --build
+# Joins the ai-stack network so rag-api / llm-router resolve by service name,
+# and mounts the NAS Cooking corpus read-only for the /library book list.
+services:
+  api:
+    environment:
+      RAG_API_URL: http://rag-api:8099
+      LLM_ROUTER_URL: http://llm-router:4000/v1
+      LIBRARY_DIR: /library
+    volumes:
+      - ./seed:/seed:ro
+      - /mnt/media/References/Cooking:/library:ro
+    networks:
+      - default
+      - ai-stack_ai
+
+  web:
+    networks:
+      - default
+
+networks:
+  ai-stack_ai:
+    external: true

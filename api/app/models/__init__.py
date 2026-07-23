@@ -1,3 +1,4 @@
+from app.models.chat import Conversation, Message
 from app.models.recipe import (
     NotebookPage,
     Recipe,
@@ -7,4 +8,13 @@ from app.models.recipe import (
     Tag,
 )
 
-__all__ = ["Recipe", "RecipeVersion", "Tag", "RecipeTag", "NotebookPage", "Redirect"]
+__all__ = [
+    "Recipe",
+    "RecipeVersion",
+    "Tag",
+    "RecipeTag",
+    "NotebookPage",
+    "Redirect",
+    "Conversation",
+    "Message",
+]
