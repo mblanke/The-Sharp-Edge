@@ -1,0 +1,61 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sharpedge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sharpedge}
+      POSTGRES_DB: ${POSTGRES_DB:-sharpedge}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sharpedge} -d ${POSTGRES_DB:-sharpedge}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sharpedge}:${POSTGRES_PASSWORD:-sharpedge}@db:5432/${POSTGRES_DB:-sharpedge}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./library:/library
+      - ./seed:/seed:ro
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  web:
+    build: ./web
+    environment:
+      API_URL: http://api:8000
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+  # Phase 3 will run the folder watcher here; no-op until then.
+  ingest:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sharpedge}:${POSTGRES_PASSWORD:-sharpedge}@db:5432/${POSTGRES_DB:-sharpedge}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./library:/library
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: sh -c "echo 'ingest watcher arrives in Phase 3'; sleep infinity"
+
+volumes:
+  pgdata:
