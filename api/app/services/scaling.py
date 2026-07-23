@@ -34,7 +34,12 @@ def format_amount(value: float, unit: str) -> str:
     if value == 0:
         return EM_DASH
     if unit in METRIC_UNITS:
-        rounded = round(value / 5) * 5 if value >= 200 else round(value)
+        # half-up rounding, explicitly — Python's round() is banker's and would
+        # diverge from the JS mirror on exact halves (562.5 → 560 vs 565)
+        if value >= 200:
+            rounded = math.floor(value / 5 + 0.5) * 5
+        else:
+            rounded = math.floor(value + 0.5)
         return f"{rounded} {unit}"
 
     whole = math.floor(value)

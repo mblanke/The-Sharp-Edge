@@ -17,7 +17,7 @@ FRACTION_TABLE = [
     (252, "g", "250 g"),
     (253, "g", "255 g"),
     (375, "g", "375 g"),
-    (562.5, "ml", "560 ml"),
+    (562.5, "ml", "565 ml"),  # exact half rounds up (matches the JS mirror)
     (900 * 14 / 6, "g", "2100 g"),
     # kitchen fractions, unicode glyphs, never raw decimals
     (0.125, "tsp", "⅛ tsp"),
