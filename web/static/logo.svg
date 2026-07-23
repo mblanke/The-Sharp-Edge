@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- minimal fallback mark: blade with copper edge on bottle-green tile -->
+  <rect width="64" height="64" rx="14" fill="#2C4F36"/>
+  <g transform="rotate(-38 32 32)">
+    <path d="M10 36 L44 36 Q54 36 58 30 Q50 26 44 26 L10 26 Z" fill="#F2F1EC"/>
+    <path d="M10 36 L44 36 Q54 36 58 30 L58 31.5 Q53 37.5 44 37.5 L10 37.5 Z" fill="#C87A2E"/>
+    <rect x="2" y="25" width="9" height="12" rx="2.5" fill="#20241E"/>
+  </g>
+</svg>

@@ -1,0 +1,66 @@
+/* Design tokens — "washi & bottle green" (CLAUDE.md §7). Used everywhere. */
+:root {
+  --paper: #f2f1ec;
+  --ink: #20241e;
+  --faint: #6b6f63;
+  --green: #3e6b4a;
+  --green-deep: #2c4f36;
+  --copper: #c87a2e;
+  --line: #d9d7cc;
+  --card: #fafaf6;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Work Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.font-display {
+  font-family: 'Fraunces', serif;
+  font-weight: 650;
+}
+
+.font-mono-label {
+  font-family: 'Spline Sans Mono', monospace;
+}
+
+/* Quantities are always mono — the app's signature. */
+.qty {
+  font-family: 'Spline Sans Mono', monospace;
+  font-weight: 500;
+  color: var(--green-deep);
+  transition: color 0.45s ease;
+}
+
+.qty.flash {
+  color: var(--copper);
+  transition: none;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
