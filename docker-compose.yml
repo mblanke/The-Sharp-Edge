@@ -13,7 +13,7 @@ services:
       timeout: 3s
       retries: 10
     ports:
-      - "5432:5432"
+      - "5442:5432"
 
   api:
     build: ./api
@@ -27,7 +27,7 @@ services:
       - ./library:/library
       - ./seed:/seed:ro
     ports:
-      - "8000:8000"
+      - "8010:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -40,7 +40,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3000:3000"
+      - "3010:3000"
 
   # Phase 3 will run the folder watcher here; no-op until then.
   ingest:
