@@ -7,7 +7,14 @@
     title: string | null;
     heading: string | null;
     page: number | null;
+    score?: number | null;
     rerank_score: number | null;
+  }
+
+  interface BookGroup {
+    book: string;
+    best: number;
+    hits: Chunk[];
   }
 
   let query = $state('');
@@ -22,7 +29,8 @@
     searching = true;
     errorMsg = '';
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=10`);
+      // over-fetch so more references make the cut, then group client-side
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=20`);
       if (!res.ok) throw new Error(`search failed (${res.status})`);
       results = await res.json();
       searched = true;
@@ -32,6 +40,42 @@
       searching = false;
     }
   }
+
+  function bookName(c: Chunk): string {
+    if (c.title) return c.title;
+    if (c.source_path) return c.source_path.split('/').pop() || c.source_path;
+    return 'Unknown source';
+  }
+
+  const scoreOf = (c: Chunk): number => c.rerank_score ?? c.score ?? 0;
+
+  /** Group flat hits by reference: collapse repeated pages, sort books by best
+   *  relevance, and order each book's hits by page. */
+  const grouped = $derived.by<BookGroup[]>(() => {
+    // one hit per (book, page) — keeps the strongest, kills index/TOC duplicates
+    const byKey = new Map<string, Chunk>();
+    for (const c of results) {
+      const key = `${bookName(c)}|${c.page ?? 'x' + c.text.slice(0, 40)}`;
+      const prev = byKey.get(key);
+      if (!prev || scoreOf(c) > scoreOf(prev)) byKey.set(key, c);
+    }
+    const books = new Map<string, Chunk[]>();
+    for (const c of byKey.values()) {
+      const b = bookName(c);
+      if (!books.has(b)) books.set(b, []);
+      books.get(b)!.push(c);
+    }
+    const out: BookGroup[] = [];
+    for (const [book, hits] of books) {
+      hits.sort((a, b) => {
+        const pa = a.page ?? Infinity;
+        const pb = b.page ?? Infinity;
+        return pa !== pb ? pa - pb : scoreOf(b) - scoreOf(a);
+      });
+      out.push({ book, hits, best: Math.max(...hits.map(scoreOf)) });
+    }
+    return out.sort((a, b) => b.best - a.best);
+  });
 
   function fmtSize(bytes: number | null): string {
     if (bytes == null) return '';
@@ -104,13 +148,31 @@
         Nothing from the Cooking shelf matched — the books may still be waiting for the next index sweep.
       </p>
     {/if}
-    {#each results as r, i (i)}
-      <article class="mt-3 rounded-xl border p-4" style="background: var(--card); border-color: var(--line)">
-        <div class="font-mono-label text-[10.5px] uppercase tracking-widest" style="color: var(--copper)">
-          {r.title ?? r.source_path}{r.heading ? ` — ${r.heading}` : ''}{r.page != null ? ` · p.${r.page}` : ''}
+    {#each grouped as g (g.book)}
+      <section class="mt-5">
+        <div class="flex items-baseline justify-between border-b pb-1" style="border-color: var(--line)">
+          <h4 class="font-display text-[17px] leading-tight" style="color: var(--ink)">{g.book}</h4>
+          <span class="font-mono-label shrink-0 text-[10.5px] uppercase tracking-widest" style="color: var(--faint)">
+            {g.hits.length}
+            {g.hits.length === 1 ? 'passage' : 'passages'}
+          </span>
         </div>
-        <p class="mt-1.5 text-[14px]" style="color: var(--ink)">{r.text.slice(0, 500)}{r.text.length > 500 ? '…' : ''}</p>
-      </article>
+        {#each g.hits as r, i (i)}
+          <article class="mt-2 rounded-xl border p-3.5" style="background: var(--card); border-color: var(--line)">
+            <div class="font-mono-label flex items-baseline gap-2 text-[10.5px] uppercase tracking-widest">
+              {#if r.page != null}
+                <span class="qty shrink-0 text-[12px]">p.{r.page}</span>
+              {/if}
+              {#if r.heading}
+                <span style="color: var(--copper)">{r.heading}</span>
+              {/if}
+            </div>
+            <p class="mt-1.5 text-[14px]" style="color: var(--ink)">
+              {r.text.slice(0, 500)}{r.text.length > 500 ? '…' : ''}
+            </p>
+          </article>
+        {/each}
+      </section>
     {/each}
   {/if}
 
