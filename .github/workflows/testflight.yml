@@ -1,0 +1,59 @@
+name: TestFlight upload
+
+# Builds the iPad app on an Apple-silicon GitHub runner and uploads to TestFlight
+# via the App Store Connect API key. Trigger manually from the Actions tab, or push
+# a change under ios/. Mirrors the Family-Hub pipeline.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/testflight.yml"]
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode 16
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: Write App Store Connect API key
+        run: |
+          mkdir -p ~/private_keys
+          echo "${{ secrets.ASC_KEY_P8 }}" | base64 -d > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Archive
+        working-directory: ios
+        run: |
+          xcodebuild -project TheSharpEdge.xcodeproj -scheme TheSharpEdge \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/TheSharpEdge.xcarchive \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
+            archive
+
+      - name: Upload to TestFlight
+        working-directory: ios
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/TheSharpEdge.xcarchive \
+            -exportOptionsPlist exportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}

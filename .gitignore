@@ -20,3 +20,12 @@ pgdata/
 
 # archives & scratch
 *.zip
+
+# ios / xcode
+ios/build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+ios/build-device/
+ios/build/
+*.xcarchive

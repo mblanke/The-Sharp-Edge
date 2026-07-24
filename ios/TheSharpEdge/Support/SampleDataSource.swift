@@ -1,0 +1,89 @@
+import Foundation
+
+/// Serves bundled fixtures so the app is fully explorable offline.
+final class SampleDataSource: DataSource {
+    func listRecipes() async throws -> [RecipeCard] {
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        return SampleData.cards
+    }
+
+    func recipe(_ slug: String) async throws -> RecipeFull {
+        guard let r = SampleData.full(slug) else { throw APIError.notFound }
+        return r
+    }
+
+    func versions(_ slug: String) async throws -> [VersionSummary] {
+        guard let r = SampleData.full(slug) else { throw APIError.notFound }
+        let v = r.currentVersion
+        return [VersionSummary(id: v.id, version: v.version, label: v.label, isCurrent: true, createdAt: v.createdAt)]
+    }
+
+    func scale(_ slug: String, target: Int) async throws -> ScaleResponse {
+        let r = try await recipe(slug)
+        let rows = ScalingEngine.scale(r.currentVersion.ingredients, baseYield: r.baseYield, targetYield: target)
+        let ingredients = try rows.map { row -> ScaledIngredient in
+            let data = try JSONCoding.encoder.encode(ScaledIngredientDTO(
+                amount: row.ingredient.amount, unit: row.ingredient.unit, name: row.name,
+                note: row.note, section: row.section, scaledAmount: row.scaledAmount, display: row.display))
+            return try JSONCoding.decoder.decode(ScaledIngredient.self, from: data)
+        }
+        return ScaleResponse(slug: slug, baseYield: r.baseYield, targetYield: target, yieldWord: r.yieldWord, ingredients: ingredients)
+    }
+
+    func updateRecipe(_ slug: String, _ body: RecipeUpdate) async throws -> RecipeFull {
+        // Offline: echo an updated recipe with a bumped version so the editor flow is verifiable.
+        let existing = try await recipe(slug)
+        let newVersion = VersionOut(id: UUID(), version: existing.currentVersion.version + 1, label: body.label,
+                                    ingredients: body.ingredients, steps: body.steps, notes: body.notes,
+                                    isCurrent: true, createdAt: Date())
+        return RecipeFull(slug: slug, title: body.title ?? existing.title, category: body.category ?? existing.category,
+                          meta: body.meta ?? existing.meta, baseYield: body.baseYield ?? existing.baseYield,
+                          yieldWord: body.yieldWord ?? existing.yieldWord, gf: body.gf ?? existing.gf,
+                          noscale: body.noscale ?? existing.noscale, status: body.status ?? existing.status,
+                          source: body.source ?? existing.source, currentVersion: newVersion)
+    }
+
+    func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        return SampleData.searchHits(q)
+    }
+
+    func libraryStatus() async throws -> LibraryStatus { SampleData.libraryStatus }
+
+    func conversations() async throws -> [ConversationSummary] {
+        [ConversationSummary(id: UUID(), title: "How does Escoffier build an espagnole?", createdAt: Date(timeIntervalSince1970: 1_690_500_000))]
+    }
+
+    func conversation(_ id: UUID) async throws -> ConversationFull {
+        ConversationFull(id: id, title: "How does Escoffier build an espagnole?", createdAt: Date(),
+                         messages: [
+                            MessageOut(id: UUID(), role: "user", content: "How does Escoffier build an espagnole?", citations: [], createdAt: Date()),
+                            MessageOut(id: UUID(), role: "assistant", content: "A brown roux, brown stock and tomato, simmered and skimmed for hours [1].", citations: [Citation(n: 1, title: "Escoffier — Le Guide Culinaire", sourcePath: "Cooking/Escoffier.pdf", heading: "The Mother Sauces", page: 12)], createdAt: Date()),
+                         ])
+    }
+
+    func ask(_ req: AskRequest) -> AsyncThrowingStream<SSEEvent, Error> {
+        SampleData.askStream(req)
+    }
+
+    func health() async throws -> Bool { true }
+
+    func qrURL(_ slug: String) -> URL? { nil }
+}
+
+/// Encodable helper mirroring ScaledIngredient's wire shape (that type is decode-only).
+private struct ScaledIngredientDTO: Encodable {
+    var amount: Double
+    var unit: String
+    var name: String
+    var note: String?
+    var section: String?
+    var scaledAmount: Double
+    var display: String
+
+    enum CodingKeys: String, CodingKey {
+        case amount, unit, name, note, section
+        case scaledAmount = "scaled_amount"
+        case display
+    }
+}
