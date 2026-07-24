@@ -178,7 +178,14 @@
     </ul>
   {/if}
 
-  <div class="mt-6">
+  <div class="mt-6 flex flex-wrap gap-2">
+    <a
+      href="/ask?recipe={recipe.slug}"
+      class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+      style="background: var(--green-deep); color: #F4F3EC"
+    >
+      Ask about this recipe
+    </a>
     <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"

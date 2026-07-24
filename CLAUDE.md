@@ -63,16 +63,11 @@ sharp-edge/
 │   │   ├── models/            # SQLAlchemy models (below)
 │   │   ├── schemas/           # Pydantic request/response models
 │   │   ├── routers/           # recipes, search, ask, library, admin, qr
-│   │   ├── services/
-│   │   │   ├── scaling.py     # quantity math (port rules in §8)
-│   │   │   ├── retrieval.py   # hybrid search + RRF
-│   │   │   ├── llm.py         # provider abstraction
-│   │   │   └── citations.py
-│   │   └── ingest/
-│   │       ├── watcher.py     # watches /library drop folder
-│   │       ├── extract.py     # pymupdf4llm / ebooklib / plain text
-│   │       ├── chunker.py     # recipe-aware chunking (§9)
-│   │       └── embed.py
+│   │   └── services/
+│   │       ├── scaling.py     # quantity math (port rules in §8)
+│   │       ├── atlas_rag.py   # client for Atlas rag-api (§9 — retrieval delegated)
+│   │       ├── llm.py         # provider abstraction + tier firewall
+│   │       └── citations.py
 │   ├── alembic/
 │   └── tests/
 ├── web/
@@ -90,12 +85,11 @@ sharp-edge/
 │   │   │   └── admin/                 # ingestion status, settings
 │   │   └── lib/ (api client, stores, components, tokens.css)
 │   └── static/ (manifest, icons — logo.jpg, logo.svg)
-├── seed/
-│   ├── recipes-master.md      # canonical import source
-│   └── import_master.py       # parses master → DB
-└── library/                   # book drop folder (gitignored)
-    ├── public/                # public-domain / owner content
-    └── private/               # owner's copyrighted shelf (never exported)
+└── seed/
+    ├── recipes-master.md      # canonical import source
+    └── import_master.py       # parses master → DB
+
+# Book drop folder is NOT in this repo: \\Olympus_NAS\Media\References\Cooking (§9)
 ```
 
 ## 5. Database schema (Postgres)
@@ -123,23 +117,8 @@ tag(id, name unique); recipe_tag(recipe_id, tag_id)
 -- notebook mapping
 notebook_page(recipe_id fk, page_number int, section text)
 
--- RAG library
-book(id uuid pk, title text, author text, year int,
-     tier text check (tier in ('public','private')),
-     source_file text, license text, status text,     -- pending|chunking|embedded|error
-     added_at)
-
-chunk(id uuid pk, book_id fk,
-      kind text check (kind in ('recipe','technique','essay','reference')),
-      chapter text, heading text,
-      content text not null,
-      page_start int, page_end int,
-      tokens int,
-      embedding vector(768),
-      embed_model text,
-      tsv tsvector generated always as (to_tsvector('english', content)) stored)
-create index on chunk using gin(tsv);
-create index on chunk using hnsw (embedding vector_cosine_ops);
+-- RAG library: NO book/chunk tables — vectors live in Atlas's Qdrant
+-- (collection references_v2); see §9. Local Postgres holds only app state.
 
 -- planning
 meal_plan(id, date date, recipe_id fk, meal text, scaled_yield int)
@@ -217,29 +196,26 @@ Port these exactly; they exist so scaled output reads like a cook wrote it:
 - amount 0 → em dash, unscaled.
 - Server implements the math (`services/scaling.py`); client mirrors for instant UI but server response is canonical (used by shopping list + cards export).
 
-## 9. RAG pipeline
+## 9. RAG — delegated to the Atlas stack (implemented 2026-07-23)
 
-**Ingestion (watcher on /library):**
-1. New file detected (`pdf`, `epub`, `txt`, `md`) → `book` row `status=pending`, tier from subfolder (`public/` or `private/`).
-2. Extract: PDFs via **pymupdf4llm** (handles two-column cookbook layouts); EPUB via ebooklib → markdown.
-3. **Chunk by structure, not tokens** (`chunker.py`):
-   - Detect recipe boundaries (title / yield / ingredient-list / method patterns; heading heuristics per era — Escoffier numbered sections, Farmer's small-caps titles). One recipe = one chunk, always atomic.
-   - Technique/essay prose between recipes → separate chunks (~800–1200 tokens, 150 overlap), `kind=technique|essay`.
-   - Tag every chunk: {book, chapter, heading, kind, page range}.
-4. Embed via Ollama; write `embedding` + `embed_model`. Status → `embedded`.
-5. Idempotent: re-dropping a file re-chunks only if content hash changed.
+The in-app ingestion/embedding pipeline originally specced here was **replaced by
+the existing home-lab RAG infrastructure** (see D:\Projects\Home Setup). The app
+is a consumer, not an indexer.
 
-**Retrieval (`retrieval.py`):**
-- Run FTS and vector queries in parallel (top 25 each) → Reciprocal Rank Fusion → top 8 chunks.
-- Filters: kind, book, tier. Private tier requires auth — enforced at query level, not just UI.
+**Ingestion (owned by Atlas — zero code in this repo):**
+- Corpus drop folder: **`\\Olympus_NAS\Media\References\Cooking`** (= `/mnt/media/References/Cooking/` on Atlas, `/mnt/references/Cooking/` inside rag-api). Drop pdf/epub/txt/md there; done.
+- `rag-ingest.timer` on Atlas sweeps every 6 h → docling extraction → chunking → `mxbai-embed-large` embeddings on the GB10 nodes (Wile `100.110.190.12`, RoadRunner `100.110.190.11`) → Qdrant collection `references_v2`.
+- Force an immediate sweep: `ssh soadmin@100.110.190.10 sudo systemctl start rag-ingest.service`.
 
-**Ask (`/ask`):**
-- Prompt = system (culinary assistant, cite sources, admit gaps) + retrieved chunks with ids + user question (+ current recipe JSON when scoped).
-- Answer streams; citations returned as structured `[{chunk_id, book, heading, pages}]` — the model is instructed to reference chunk ids, the service maps them.
-- **Anthropic provider only ever receives public-tier chunks.** Private-tier questions route to Ollama exclusively. Hard rule, enforced in `llm.py`.
+**Retrieval (`services/atlas_rag.py`):**
+- POST `{RAG_API_URL}/retrieve` (`http://100.110.190.10:8099`, or `http://rag-api:8099` on Atlas) with over-fetch `top_k=24`, then **client-side filter to `RAG_SOURCE_FOLDER=Cooking`** (rag-api has no server-side filter), keep top 8.
+- Chunks carry `text, source_path, page, heading, title, score, rerank_score`.
 
-**Starting five for the public shelf** (Gutenberg / Internet Archive):
-Escoffier *A Guide to Modern Cookery* (1907 EN) · Artusi *Science in the Kitchen* (early EN ed.) · Fannie Farmer 1896 · Jerry Thomas *Bar-Tender's Guide* · USDA canning bulletins. Then Ranhofer *The Epicurean*, Mrs. Beeton technique chapters, Brillat-Savarin, Francatelli, Bullock *The Ideal Bartender*.
+**Ask (`routers/ask.py` → SSE):**
+- Prompt = system (culinary assistant, cite `[n]`, admit gaps) + retrieved numbered chunks + conversation history + user question (+ current recipe JSON when scoped via `scope.recipe_slug`).
+- Streams via the **LiteLLM router** (`LLM_ROUTER_URL=http://100.110.190.10:4000/v1`, scoped key `LLM_ROUTER_KEY`, model alias **`cluster`** which load-balances both GB10s). Citations parsed from `[n]` references → `[{n, title, source_path, heading, page}]`.
+- **Tier firewall:** the Cooking shelf is copyrighted/private — corpus chunks go to **local models only**. `AnthropicProvider` in `services/llm.py` raises `TierViolation` on any corpus-bearing request. Hard rule; unit-tested.
+- **GPU contention:** no batch embedding from this app, ever; interactive asks use `cluster` so the router balances load off Wile's assistants.
 
 ## 10. Print & QR pipeline
 

@@ -13,6 +13,11 @@
     <p class="mx-auto mt-2 max-w-[44ch] text-sm" style="color: var(--faint)">
       Scan a card, land on its recipe, rescale the servings.
     </p>
+    <nav class="font-mono-label mt-3 flex justify-center gap-2 text-[11px] uppercase tracking-widest">
+      <a href="/" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Recipes</a>
+      <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Library</a>
+      <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Ask</a>
+    </nav>
   </header>
 
   {@render children()}
