@@ -39,6 +39,27 @@ export interface RecipeFull extends RecipeCard {
   current_version: RecipeVersion;
 }
 
+/** PUT body — appends a new version. Slug never changes. Mirrors the API's
+ *  RecipeUpdate schema: metadata optional, ingredients+steps required. */
+export interface RecipeUpdate {
+  title?: string;
+  category?: string;
+  meta?: string | null;
+  base_yield?: number;
+  yield_word?: string;
+  gf?: boolean;
+  noscale?: boolean;
+  source?: string | null;
+  status?: string;
+  label?: string | null;
+  ingredients: Ingredient[];
+  steps: Step[];
+  notes: string[];
+}
+
+/** Units the API accepts (empty = countable; counting noun lives in name). */
+export const ALLOWED_UNITS = ['', 'g', 'ml', 'cup', 'tbsp', 'tsp', 'lb', 'oz'] as const;
+
 /** Card / glue-in order — CLAUDE.md §10. */
 export const CATEGORY_ORDER = [
   'Sauces & Salsas',

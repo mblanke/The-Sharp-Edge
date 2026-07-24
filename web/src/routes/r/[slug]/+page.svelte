@@ -187,6 +187,13 @@
       Ask about this recipe
     </a>
     <a
+      href="/r/{recipe.slug}/edit"
+      class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+      style="border-color: var(--copper); color: var(--copper)"
+    >
+      Edit
+    </a>
+    <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
       style="border-color: var(--green-deep); color: var(--green-deep)"
