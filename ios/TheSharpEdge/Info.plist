@@ -54,11 +54,22 @@
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- The recipe backend is reached over Tailscale by plain HTTP (no TLS on the
-		     private tailnet). Allow cleartext for this private, self-hosted app. -->
+		     private tailnet). NSAllowsArbitraryLoads must stand ALONE: adding any granular
+		     key (e.g. NSAllowsLocalNetworking) makes iOS 10+ ignore it, and a Tailscale
+		     100.x address is not "local networking". We also allow the tailnet domain
+		     explicitly so a MagicDNS hostname works too. -->
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>tail8d54ec.ts.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
 	</dict>
 </dict>
 </plist>
