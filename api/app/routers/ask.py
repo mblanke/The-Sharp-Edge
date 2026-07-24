@@ -77,7 +77,10 @@ async def ask(payload: AskRequest, session: AsyncSession = Depends(get_session))
 
     user_content = payload.question
     if chunks:
-        user_content += "\n\nSource excerpts:\n" + chunks_block(chunks)
+        user_content += (
+            "\n\nSource excerpts (cite these — put the bracket number, e.g. [2], "
+            "immediately after every claim you take from one):\n" + chunks_block(chunks)
+        )
     messages = (
         [{"role": "system", "content": SYSTEM_PROMPT + recipe_ctx}]
         + history
@@ -98,6 +101,18 @@ async def ask(payload: AskRequest, session: AsyncSession = Depends(get_session))
             return
         answer = "".join(answer_parts)
         citations = extract_citations(answer, chunks)
+        if not citations and chunks:
+            # local models don't always emit [n] markers — fall back to the top sources used
+            citations = [
+                {
+                    "n": i + 1,
+                    "title": c.get("title"),
+                    "source_path": c.get("source_path"),
+                    "heading": c.get("heading"),
+                    "page": c.get("page"),
+                }
+                for i, c in enumerate(chunks[:3])
+            ]
         session.add(
             Message(
                 conversation_id=uuid.UUID(conversation_id),

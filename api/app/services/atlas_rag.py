@@ -37,7 +37,8 @@ class AtlasRag:
 
     def _http(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
+            # generous timeout — retrieval degrades to ~30s while Atlas runs a bulk ingest
+            self._client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
         return self._client
 
     async def retrieve(self, question: str, top_k: int | None = None) -> list[dict]:
