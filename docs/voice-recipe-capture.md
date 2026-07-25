@@ -1,12 +1,22 @@
-# Add a recipe by voice
+# Add a recipe — typed, then by voice
 
 Status: **designed, not built.** Decisions locked; implementation not started.
 
 ## Why
 
 Adding a recipe today means either `POST /api/v1/recipes` by hand or editing `seed/import_master.py`.
-The goal is to dictate a recipe while standing in the kitchen — "what's it called", "ingredients",
-"method" — and land on an editable draft, because dictation is never 100% right.
+There is no way to add one from either app.
+
+Two things are wanted, and they are one feature:
+
+1. **Add a recipe** — a plain form, reachable from the nav.
+2. **Add a recipe by voice** — dictate it standing in the kitchen ("what's it called",
+   "ingredients", "method") and land on an editable draft, because dictation is never 100% right.
+
+They share a screen. The "editable draft" that voice needs *is* the add-recipe form, so building
+them separately would mean two forms to keep in sync. Build the form once; make voice a way to fill
+it. That also means the degraded path when speech recognition is unavailable is simply stage 2a,
+with no fallback UI to write.
 
 ## The headline finding
 
@@ -19,13 +29,14 @@ authoring surface is the *edit* screen for a recipe that already exists.
   `Networking/Endpoints.swift:30` defines `func createRecipe() -> URL?` and **nothing calls it** —
   there's no `RecipeCreate` Swift struct and no `createRecipe` on the `DataSource` protocol.
 
-So this is "build add-a-recipe, with voice as the input method", not "bolt a mic onto a form".
+So this is "build add-a-recipe, with voice as one way to fill it", not "bolt a mic onto a form".
 `POST /api/v1/recipes` itself already exists and is covered by `api/tests/test_recipes_api.py`.
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
+| Scope | **Typed form first (2a), voice on top of it (2b)** — one shared form, not two |
 | Platform | **Both** web and iOS |
 | Transcription | **Browser / OS speech-to-text**, guided prompts, on-device |
 | LLM involvement | **None.** Deterministic parser, not a model |
@@ -34,18 +45,40 @@ So this is "build add-a-recipe, with voice as the input method", not "bolt a mic
 Speech never leaves the device, and there is no new backend dependency. That also sidesteps the
 tier firewall in `api/app/services/llm.py` entirely.
 
-## Flow
+## Stage 2a — Add recipe, typed
 
-Four prompts, each dictated, each landing in an editable field:
+Ships on its own, and is the prerequisite for voice.
+
+**Extract the form first.** `web/src/routes/r/[slug]/edit/+page.svelte` is 351 lines of inline form
+— metadata fields, ingredient rows (amount / unit `<select>` / name with ↑/↓/✕ reorder), step rows
+with timer-seconds, note rows. Lift it into `web/src/lib/components/RecipeForm.svelte` taking an
+optional initial recipe and a mode flag:
+
+- `/r/[slug]/edit` renders it populated — **behaviour must be unchanged**
+- `/new` renders it empty, plus the slug field that edit doesn't need
+
+`web/src/routes/new/+page.server.ts` mirrors the existing edit action: hidden JSON input,
+`use:enhance`, server-side `createRecipe()` via `lib/api.ts`, `redirect(303, '/r/{slug}')`.
+Add an "Add recipe" entry to `+layout.svelte`, which currently has exactly three links.
+
+This extraction is the riskiest change in the feature — the edit screen is the only working
+authoring surface in the product, and it must come out the other side identical.
+
+**iOS:** give `RecipeEditorView` a create mode, add the missing `RecipeCreate` Codable and a
+`createRecipe` method on the `DataSource` protocol, and wire the already-defined
+`Endpoints.createRecipe()`.
+
+## Stage 2b — Voice as an input mode
+
+Reached from a mic button on `/new`. Four prompts, each dictated, each landing in an editable field:
 
 1. **"What's the recipe called?"** → title. Slug is derived live and shown underneath.
 2. **"What category?"** → matched against `CATEGORY_ORDER` (`web/src/lib/types.ts:64`), picker as fallback.
 3. **"What are the ingredients?"** → one utterance per line, or a continuous take split on pauses.
 4. **"What are the instructions?"** → one utterance per step.
 
-Then a **review screen** — the existing editor form, prefilled — where everything is editable
-before saving. This is the important screen: dictation *will* get things wrong, and the review step
-is the whole answer to that.
+These prefill the **same `RecipeForm`** from 2a, where everything stays editable before saving.
+One create path, two ways to fill it — no parallel flow to keep in sync.
 
 ## Reuse — do not write a new parser
 
@@ -100,10 +133,11 @@ next to the parser so web and iOS get identical behaviour via the API, and:
 `content-type` — no `Authorization`. A client-side `fetch('/api/recipes', {method: 'POST'})` reaches
 the API unauthenticated and gets a 401.
 
-So: the parse endpoint can go through the proxy (it needs no auth, like `/ask`), but **the final
-save must be a SvelteKit form action**, where `env.API_TOKEN` is injected server-side by
-`web/src/lib/api.ts:44`. Clone the pattern in `web/src/routes/r/[slug]/edit/+page.server.ts` —
-hidden JSON input, `use:enhance`, `redirect(303, '/r/{slug}')`.
+So: the parse endpoint can go through the proxy (it needs no auth, like `/ask`), but **every save
+must be a SvelteKit form action**, where `env.API_TOKEN` is injected server-side by
+`web/src/lib/api.ts:44`. This applies to the typed form in 2a as much as to voice. Clone the
+pattern in `web/src/routes/r/[slug]/edit/+page.server.ts` — hidden JSON input, `use:enhance`,
+`redirect(303, '/r/{slug}')`.
 
 Capture uses the Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`). It must degrade
 to plain typing when unavailable — that's not a fallback, it's the same form.
@@ -129,6 +163,11 @@ currently permanent; drafts soften that.
   (accents, collisions, the `^[a-z0-9][a-z0-9-]*$` contract), and the parse endpoint. Per CLAUDE.md
   §13 every endpoint gets a pytest. Mock pattern to copy: `api/tests/test_ask.py:18-51`.
 - `cd web && npm test` — vitest for the client-side slug preview and utterance splitting.
+- **Regression check after the form extraction (2a):** `/r/{slug}/edit` must behave exactly as
+  before — same fields, reorder buttons, unit whitelist, append-a-version save. It is the only
+  working authoring surface in the product; this is the riskiest change in the feature.
+- Type a recipe end to end at `/new`, including a deliberate slug collision, and confirm the 409
+  surfaces inline as a fixable error rather than a dead end.
 - Manual, on a phone: dictate a short real recipe end to end, deliberately mis-say one quantity,
   confirm the review screen catches it and the saved recipe scales correctly.
 - Confirm `to taste` dictation lands as `amount: 0` and renders as an em dash, not `0 g`.

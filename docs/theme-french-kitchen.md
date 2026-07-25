@@ -1,6 +1,7 @@
 # Re-theme: "professional French kitchen"
 
-Status: **awaiting palette choice**. Everything below is decided except which of A/B/C ships.
+Status: **palette chosen — C · Faïence.** Ready to build. A and B are kept below as the rejected
+alternatives, for the record.
 
 ## Why
 
@@ -32,7 +33,7 @@ tokens are plain CSS custom properties applied through inline `style=` attribute
 All three are contrast-checked against their own ground; every value below meets WCAG AA (≥4.5:1)
 for small text, which matters because the app uses 10–11px uppercase mono labels.
 
-### A · Brasserie
+### A · Brasserie — not chosen
 Oxblood banquette leather, aged brass, menu on bone stock. Warmest, closest to the current app.
 
 ```
@@ -42,7 +43,7 @@ Oxblood banquette leather, aged brass, menu on bone stock. Warmest, closest to t
 ```
 accent 5.1:1 · primary 8.6:1 · faint 5.1:1 · off-white on deep 12.5:1
 
-### B · Batterie
+### B · Batterie — not chosen
 The working line, not the dining room: zinc counter, white enamel, copper as the only warm thing.
 
 ```
@@ -52,7 +53,7 @@ The working line, not the dining room: zinc counter, white enamel, copper as the
 ```
 accent 5.1:1 · primary 7.8:1 · faint 4.9:1 · off-white on deep 11.8:1
 
-### C · Faïence
+### C · Faïence — **CHOSEN**
 Blue-and-white kitchen tile, ochre mustard accent. Boldest, furthest from today.
 
 ```
