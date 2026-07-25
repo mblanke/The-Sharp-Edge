@@ -8,6 +8,7 @@ Design notes for work that is planned but not yet built. Each doc states its own
 | [`palette-preview.html`](palette-preview.html) | The three candidate palettes on a real recipe screen — open in a browser | Reference; C was chosen |
 | [`voice-recipe-capture.md`](voice-recipe-capture.md) | Add a recipe — typed form first, voice on top | Designed, not built |
 | [`implementation-plan.md`](implementation-plan.md) | Approved execution plan across both | Approved, not started |
+| [`units-and-languages.md`](units-and-languages.md) | Imperial ↔ metric conversion; multi-language ingest | Investigated, not scheduled |
 
 ## Decisions already made
 
