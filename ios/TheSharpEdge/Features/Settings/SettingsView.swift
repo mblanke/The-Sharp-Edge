@@ -6,6 +6,9 @@ struct SettingsView: View {
 
     @State private var urlField: String = ""
     @State private var tokenField: String = ""
+    @State private var tokenState: TokenState = .unknown
+
+    enum TokenState { case unknown, missing, valid, rejected }
     @State private var health: HealthState = .unknown
     @State private var checking = false
 
@@ -30,6 +33,18 @@ struct SettingsView: View {
                     .font(Typography.mono(15))
                 Text("Only needed to save recipe edits. Reads, scaling, Ask and search need no token.")
                     .font(Typography.body(12)).foregroundStyle(Theme.faint)
+                HStack {
+                    Text("Stored").font(Typography.body(13)).foregroundStyle(Theme.faint)
+                    Spacer()
+                    if config.token.isEmpty {
+                        Label("nothing saved", systemImage: "xmark.circle")
+                            .font(Typography.mono(12)).foregroundStyle(Theme.accent)
+                    } else {
+                        Label("\(config.token.count) chars, ends \(String(config.token.suffix(4)))",
+                              systemImage: "checkmark.circle.fill")
+                            .font(Typography.mono(12)).foregroundStyle(Theme.primary)
+                    }
+                }
             }
 
             Section("Connection") {
@@ -41,6 +56,18 @@ struct SettingsView: View {
                         Spacer()
                         if checking { ProgressView() } else { healthBadge }
                     }
+                }
+                switch tokenState {
+                case .unknown: EmptyView()
+                case .missing:
+                    Label("No token saved — reads work, saving will fail", systemImage: "xmark.circle.fill")
+                        .font(Typography.mono(12)).foregroundStyle(Theme.accent)
+                case .rejected:
+                    Label("Token rejected by the server", systemImage: "xmark.circle.fill")
+                        .font(Typography.mono(12)).foregroundStyle(Theme.accent)
+                case .valid:
+                    Label("Token accepted — saving will work", systemImage: "checkmark.circle.fill")
+                        .font(Typography.mono(12)).foregroundStyle(Theme.primary)
                 }
             }
 
@@ -79,28 +106,48 @@ struct SettingsView: View {
     }
 
     private func commit() {
-        config.baseURLString = urlField.trimmingCharacters(in: .whitespaces)
-        config.token = tokenField.trimmingCharacters(in: .whitespaces)
+        config.baseURLString = urlField.trimmingCharacters(in: .whitespacesAndNewlines)
+        config.token = tokenField.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Tests what actually matters. /healthz needs no token, so a green tick from it
+    /// says nothing about whether saving will work — which is exactly the failure
+    /// people hit. This exercises an authenticated route too and reports the token
+    /// separately from reachability.
     private func checkHealth() async {
         commit()
         checking = true
         health = .unknown
+        tokenState = .unknown
         let source = env.dataSource
         do {
             let ok = try await source.health()
-            if ok {
-                if let status = try? await source.libraryStatus(), status.ragHealth.ok {
-                    health = .ragOk
-                } else {
-                    health = .ok
-                }
+            guard ok else { health = .down("no response"); checking = false; return }
+            if let status = try? await source.libraryStatus(), status.ragHealth.ok {
+                health = .ragOk
             } else {
-                health = .down("no response")
+                health = .ok
             }
         } catch {
             health = .down((error as? APIError)?.errorDescription ?? "unreachable")
+            checking = false
+            return
+        }
+
+        // An authenticated no-op: adding nothing to the shopping list round-trips the
+        // bearer token without changing any data.
+        if config.token.isEmpty {
+            tokenState = .missing
+        } else {
+            do {
+                _ = try await source.shoppingList()          // unauthenticated read, warms the path
+                _ = try await source.clearShopping(checkedOnly: true)  // authenticated, no-op when nothing is ticked
+                tokenState = .valid
+            } catch let e as APIError {
+                tokenState = (e == .unauthorized) ? .rejected : .valid
+            } catch {
+                tokenState = .rejected
+            }
         }
         checking = false
     }
