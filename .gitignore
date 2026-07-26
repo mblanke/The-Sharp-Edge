@@ -27,5 +27,5 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 ios/build-device/
-ios/build/
+ios/build-release/
 *.xcarchive
