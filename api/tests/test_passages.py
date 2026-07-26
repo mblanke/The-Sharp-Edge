@@ -162,3 +162,21 @@ def test_a_merged_run_spans_the_marked_pages():
 def test_real_page_metadata_is_left_alone_when_there_are_no_markers():
     chunks = [{"doc_id": "epub", "chunk_index": 5, "page": 53, "score": 3.0, "text": PROSE}]
     assert to_passages(chunks)[0]["page"] == 53
+
+
+def test_an_unmarked_placeholder_page_one_reports_no_page():
+    """Better no citation than "p.1" for something on page 266."""
+    chunks = [{"doc_id": "cia", "chunk_index": 9, "page": 1, "score": 3.0, "text": PROSE}]
+    p = to_passages(chunks)[0]
+    assert p["page"] is None and p["page_end"] is None
+
+
+def test_a_marked_page_one_is_still_page_one():
+    chunks = [{"doc_id": "cia", "chunk_index": 1, "page": 1, "score": 3.0,
+               "text": "[page 1]\n" + PROSE}]
+    assert to_passages(chunks)[0]["page"] == 1
+
+
+def test_a_genuine_page_two_is_untouched():
+    chunks = [{"doc_id": "epub", "chunk_index": 9, "page": 2, "score": 3.0, "text": PROSE}]
+    assert to_passages(chunks)[0]["page"] == 2

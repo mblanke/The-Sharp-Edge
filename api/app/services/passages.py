@@ -164,14 +164,24 @@ def _merge(run: list[dict[str, Any]]) -> Passage:
     marked = marked_pages(raw)
     if marked:
         pages = sorted(set(marked))
+        page_start, page_last = pages[0], pages[-1]
+    elif pages == [1]:
+        # No marker, and the only page claimed is 1. For an extracted text layer that
+        # is the placeholder, not a fact — a chunk from page 266 would say the same.
+        # A citation of "p.1" sends someone to the title page; no page number at all
+        # is honest. Real page-1 content loses its number, which is the cheaper error.
+        page_start = page_last = None
+    else:
+        page_start = pages[0] if pages else head.get("page")
+        page_last = pages[-1] if pages else head.get("page")
     text = strip_page_markers(raw)
     return Passage(
         text=text,
         source_path=head.get("source_path"),
         title=head.get("title"),
         heading=head.get("heading") or next((c.get("heading") for c in run if c.get("heading")), None),
-        page=pages[0] if pages else head.get("page"),
-        page_end=pages[-1] if pages else head.get("page"),
+        page=page_start,
+        page_end=page_last,
         score=_score(head),
         rerank_score=head.get("rerank_score"),
         chunk_count=len(run),
