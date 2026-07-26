@@ -75,6 +75,14 @@ struct SidebarView: View {
             switch ProcessInfo.processInfo.environment["UITEST_SHEET"] {
             case "capture": showCapture = true
             case "create": draft = RecipeCreate()
+            case "create-filled":
+                draft = RecipeCreate(
+                    slug: "screenshot-probe", title: "Screenshot Probe", category: "Pasta",
+                    ingredients: [Ingredient(amount: 2, unit: "tbsp", name: "olive oil"),
+                                  Ingredient(amount: 500, unit: "g", name: "San Marzano tomatoes"),
+                                  Ingredient(amount: 0, unit: "", name: "salt")],
+                    steps: [Step(text: "Sweat the aromatics."), Step(text: "Simmer 40 minutes.")],
+                    notes: ["Better the next day."])
             default: break
             }
             #endif

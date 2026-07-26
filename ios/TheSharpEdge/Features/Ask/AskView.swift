@@ -60,8 +60,16 @@ struct AskView: View {
                 .frame(maxWidth: 820, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
+            // Follow the answer as it streams, but do NOT animate: this fires on every
+            // flush, and animating a scroll over a growing text block repeatedly is what
+            // made long answers freeze. Animate only when a new turn appears.
             .onChange(of: store.turns.last?.text) { _, _ in
-                if let last = store.turns.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                guard let last = store.turns.last else { return }
+                proxy.scrollTo(last.id, anchor: .bottom)
+            }
+            .onChange(of: store.turns.count) { _, _ in
+                guard let last = store.turns.last else { return }
+                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
             }
         }
     }

@@ -111,7 +111,10 @@ struct RecipeEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-            ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
+            // Deliberately no EditButton here. On a screen titled "Edit recipe" a
+            // toolbar button labelled "Edit" reads as "edit the recipe", but it puts
+            // the Form into list-edit mode — which makes every TextField read-only.
+            // Reordering is done with the per-row arrows instead, as the web form does.
             ToolbarItem(placement: .confirmationAction) {
                 if saving {
                     ProgressView()
@@ -194,10 +197,10 @@ struct RecipeEditorView: View {
                             get: { row.value.note ?? "" },
                             set: { row.value.note = $0.isEmpty ? nil : $0 }))
                             .font(Typography.body(13))
+                        reorderButtons(id: row.id, in: $ingredients)
                     }
                 }
             }
-            .onMove { ingredients.move(fromOffsets: $0, toOffset: $1) }
             .onDelete { ingredients.remove(atOffsets: $0) }
 
             Button { ingredients.append(IngredientRow(value: Ingredient(name: ""))) } label: {
@@ -222,10 +225,11 @@ struct RecipeEditorView: View {
                             get: { row.value.timerSeconds ?? 0 },
                             set: { row.value.timerSeconds = $0 == 0 ? nil : $0 }), format: .number)
                             .keyboardType(.numberPad).frame(width: 80)
+                        Spacer()
+                        reorderButtons(id: row.id, in: $steps)
                     }
                 }
             }
-            .onMove { steps.move(fromOffsets: $0, toOffset: $1) }
             .onDelete { steps.remove(atOffsets: $0) }
 
             Button { steps.append(StepRow(value: Step(text: ""))) } label: {
@@ -237,12 +241,43 @@ struct RecipeEditorView: View {
     private var notesSection: some View {
         Section("Notes") {
             ForEach($notes) { $row in
-                TextField("Note", text: $row.value, axis: .vertical)
+                HStack {
+                    TextField("Note", text: $row.value, axis: .vertical)
+                    reorderButtons(id: row.id, in: $notes)
+                }
             }
-            .onMove { notes.move(fromOffsets: $0, toOffset: $1) }
             .onDelete { notes.remove(atOffsets: $0) }
             Button { notes.append(NoteRow(value: "")) } label: { Label("Add note", systemImage: "plus") }
         }
+    }
+
+    /// Move a row up or down. This is deliberately per-row rather than SwiftUI's
+    /// drag-to-reorder, which needs list-edit mode — and edit mode makes every
+    /// TextField on the screen read-only. Mirrors the ↑/↓ buttons on the web form.
+    private func reorderButtons<T: Identifiable>(id: T.ID, in rows: Binding<[T]>) -> some View {
+        HStack(spacing: 2) {
+            Button {
+                guard let i = rows.wrappedValue.firstIndex(where: { $0.id == id }), i > 0 else { return }
+                rows.wrappedValue.swapAt(i, i - 1)
+            } label: {
+                Image(systemName: "chevron.up").font(.system(size: 12, weight: .semibold))
+            }
+            .disabled(rows.wrappedValue.firstIndex(where: { $0.id == id }) == 0)
+            .accessibilityLabel("Move up")
+
+            Button {
+                guard let i = rows.wrappedValue.firstIndex(where: { $0.id == id }),
+                      i < rows.wrappedValue.count - 1 else { return }
+                rows.wrappedValue.swapAt(i, i + 1)
+            } label: {
+                Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+            }
+            .disabled(rows.wrappedValue.firstIndex(where: { $0.id == id }) == rows.wrappedValue.count - 1)
+            .accessibilityLabel("Move down")
+        }
+        .buttonStyle(.bordered)
+        .tint(Theme.primary)
+        .labelsHidden()
     }
 
     // MARK: - Slug
