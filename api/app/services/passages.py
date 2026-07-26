@@ -25,6 +25,12 @@ from typing import Any
 __all__ = ["Passage", "looks_like_index", "to_passages"]
 
 _SEGMENT_SPLIT = re.compile(r"\n\s*\n")
+
+# Books whose text layer we extracted ourselves carry explicit "[page N]" markers,
+# because a plain .txt has no page structure and every chunk would otherwise cite
+# page 1 — useless for finding the recipe in the physical book. The marker is read
+# back into the page number here and stripped from the displayed text.
+_PAGE_MARKER = re.compile(r"\[page\s+(\d+)\]\s*")
 # Deliberately no ':' in this class. Cookbook indexes are full of "Soups:",
 # "Mousse:", "Mushrooms:" — counting a colon as a sentence ending makes every index
 # page look like prose, which is the exact bug this module exists to fix.
@@ -139,10 +145,26 @@ def to_passages(
     return passages[:keep]
 
 
+def marked_pages(text: str) -> list[int]:
+    """Page numbers written into the text by our own PDF text extraction."""
+    return [int(n) for n in _PAGE_MARKER.findall(text or "")]
+
+
+def strip_page_markers(text: str) -> str:
+    return _PAGE_MARKER.sub("", text or "").strip()
+
+
 def _merge(run: list[dict[str, Any]]) -> Passage:
     head = max(run, key=_score)
     pages = sorted({int(c["page"]) for c in run if isinstance(c.get("page"), (int, float))})
-    text = "\n\n".join((c.get("text") or "").strip() for c in run if (c.get("text") or "").strip())
+    raw = "\n\n".join((c.get("text") or "").strip() for c in run if (c.get("text") or "").strip())
+
+    # An extracted .txt has no page structure, so every chunk reports page 1. When the
+    # text carries our own markers, believe those instead — they are the real page.
+    marked = marked_pages(raw)
+    if marked:
+        pages = sorted(set(marked))
+    text = strip_page_markers(raw)
     return Passage(
         text=text,
         source_path=head.get("source_path"),

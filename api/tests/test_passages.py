@@ -129,3 +129,36 @@ def test_chunks_without_an_index_still_appear():
     passages = to_passages([{"doc_id": "a", "page": 3, "text": PROSE, "score": 1.0}])
     assert len(passages) == 1
     assert passages[0]["chunk_count"] == 1
+
+
+# ---------------------------------------------------------------- page markers
+
+def test_page_markers_override_a_placeholder_page():
+    """A .txt we extracted ourselves has no page structure, so every chunk claims
+    page 1. Our own [page N] markers are the real page number."""
+    chunks = [{"doc_id": "cia", "chunk_index": 5, "page": 1, "score": 3.0,
+               "text": "[page 447]\n" + PROSE}]
+    p = to_passages(chunks)[0]
+    assert p["page"] == 447
+    assert p["page_end"] == 447
+
+
+def test_page_markers_are_stripped_from_the_displayed_text():
+    chunks = [{"doc_id": "cia", "chunk_index": 5, "page": 1, "score": 3.0,
+               "text": "[page 447]\n" + PROSE}]
+    assert "[page" not in to_passages(chunks)[0]["text"]
+    assert PROSE in to_passages(chunks)[0]["text"]
+
+
+def test_a_merged_run_spans_the_marked_pages():
+    chunks = [
+        {"doc_id": "cia", "chunk_index": 5, "page": 1, "score": 3.0, "text": "[page 447]\n" + PROSE},
+        {"doc_id": "cia", "chunk_index": 6, "page": 1, "score": 2.0, "text": "[page 448]\n" + PROSE},
+    ]
+    p = to_passages(chunks)[0]
+    assert (p["page"], p["page_end"]) == (447, 448)
+
+
+def test_real_page_metadata_is_left_alone_when_there_are_no_markers():
+    chunks = [{"doc_id": "epub", "chunk_index": 5, "page": 53, "score": 3.0, "text": PROSE}]
+    assert to_passages(chunks)[0]["page"] == 53
