@@ -47,8 +47,24 @@ final class AppConfig: ObservableObject {
         captureLanguage = CaptureLanguage(rawValue: d.string(forKey: Keys.captureLanguage) ?? "") ?? .en
         token = Keychain.get() ?? ""
         #if DEBUG
-        // Default ON in DEBUG so the app is fully explorable without the Tailscale backend.
-        if d.object(forKey: Keys.useSampleData) == nil {
+        // QA hook: the write token lives in the Keychain, which no simctl command can
+        // seed. Without this there is no way to exercise a real save in the simulator —
+        // every PUT comes back 401 and it looks like the editor is broken.
+        if let t = ProcessInfo.processInfo.environment["UITEST_TOKEN"], !t.isEmpty {
+            Keychain.set(t)
+            token = t
+        }
+        #endif
+        #if DEBUG
+        // UITEST_LIVE=1 forces the real backend in a debug build. `simctl spawn defaults
+        // write` does NOT reach an app's sandboxed UserDefaults, so this env hook is the
+        // only reliable way to evaluate real search results in the simulator — without
+        // it you are quietly looking at fixtures.
+        if ProcessInfo.processInfo.environment["UITEST_LIVE"] == "1" {
+            useSampleData = false
+            d.set(false, forKey: Keys.useSampleData)
+        } else if d.object(forKey: Keys.useSampleData) == nil {
+            // Default ON in DEBUG so the app is explorable without the Tailscale backend.
             useSampleData = true
             d.set(true, forKey: Keys.useSampleData)
         } else {

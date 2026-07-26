@@ -38,6 +38,7 @@ struct RecipeEditorView: View {
 
     @State private var saving = false
     @State private var errorText: String?
+    @State private var showSaveError = false
     @State private var slugEdited = false
     @State private var slugWarning: String?
     @State private var slugTask: Task<Void, Never>?
@@ -96,16 +97,29 @@ struct RecipeEditorView: View {
 
     var body: some View {
         Form {
+            // Errors go FIRST. A failed save used to render below the notes section,
+            // which on a real recipe is several screens down — so a 401 looked like
+            // "Save does nothing" rather than "you have no API token".
+            if let errorText {
+                Section {
+                    Label {
+                        Text(errorText).font(Typography.body(14))
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+            }
             if isCreating { slugSection }
             metadataSection
             ingredientsSection
             stepsSection
             notesSection
-            if let errorText {
-                Section {
-                    Text(errorText).foregroundStyle(Theme.accent).font(Typography.body(14))
-                }
-            }
+        }
+        .alert("Couldn't save", isPresented: $showSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorText ?? "The server rejected the change.")
         }
         .navigationTitle(isCreating ? "New recipe" : "Edit recipe")
         .navigationBarTitleDisplayMode(.inline)

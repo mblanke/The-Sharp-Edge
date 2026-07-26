@@ -19,7 +19,17 @@ struct LibraryView: View {
         .background(Theme.paper.ignoresSafeArea())
         .navigationTitle("Library")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: config.useSampleData) { await store.loadStatus(env.dataSource) }
+        .task(id: config.useSampleData) {
+            await store.loadStatus(env.dataSource)
+            #if DEBUG
+            // Screenshot/QA hook: run a query on launch so search results can be
+            // inspected without driving the keyboard.
+            if let q = ProcessInfo.processInfo.environment["UITEST_SEARCH"], !q.isEmpty {
+                store.query = q
+                await store.search(env.dataSource)
+            }
+            #endif
+        }
     }
 
     private var header: some View {
