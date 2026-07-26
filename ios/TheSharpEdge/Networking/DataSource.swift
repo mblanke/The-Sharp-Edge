@@ -16,6 +16,15 @@ protocol DataSource: AnyObject {
     func slug(for title: String) async throws -> SlugResponse
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String?
 
+    // Shopping list. Reads need no token so it opens on a phone in a shop;
+    // writes need one, like every other write route.
+    func shoppingList() async throws -> [ShoppingItem]
+    func shoppingText() async throws -> String
+    func addToShopping(_ slug: String, targetYield: Int?) async throws -> [ShoppingItem]
+    func setShoppingChecked(_ id: UUID, _ checked: Bool) async throws -> ShoppingItem
+    func removeShoppingItem(_ id: UUID) async throws
+    func clearShopping(checkedOnly: Bool) async throws
+
     func search(_ q: String, topK: Int) async throws -> [ChunkOut]
     func libraryStatus() async throws -> LibraryStatus
     func conversations() async throws -> [ConversationSummary]

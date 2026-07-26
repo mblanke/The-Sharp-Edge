@@ -33,6 +33,14 @@ struct Endpoints {
     func parseSlug() -> URL? { url("/parse/slug") }
     func parseCategory() -> URL? { url("/parse/category") }
 
+    func shopping() -> URL? { url("/shopping") }
+    func shoppingText() -> URL? { url("/shopping/text") }
+    func shoppingAdd() -> URL? { url("/shopping/add") }
+    func shoppingItem(_ id: UUID) -> URL? { url("/shopping/\(id.uuidString.lowercased())") }
+    func shoppingClear(checkedOnly: Bool) -> URL? {
+        url("/shopping", query: ["checked_only": checkedOnly ? "true" : "false"])
+    }
+
     func search(q: String, topK: Int) -> URL? {
         url("/search", query: ["q": q, "top_k": String(topK)])
     }

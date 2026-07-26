@@ -68,6 +68,70 @@ final class SampleDataSource: DataSource {
         return full
     }
 
+    // MARK: - Shopping list (offline)
+    // Merging is the server's job (services/shopping.py). Offline we keep a simple
+    // same-name/same-unit sum so the flow is explorable, and the real arithmetic —
+    // unit families, kitchen fractions — is exercised against the live backend.
+    private static var basket: [ShoppingItem] = []
+
+    func shoppingList() async throws -> [ShoppingItem] { Self.basket }
+
+    func shoppingText() async throws -> String {
+        let lines = Self.basket.filter { !$0.checked }.map { item -> String in
+            let flag = item.checkGluten ? "  (check GF)" : ""
+            return "\(item.display) \(item.name)\(flag)"
+        }
+        return (["Shopping list", ""] + lines).joined(separator: "\n")
+    }
+
+    func addToShopping(_ slug: String, targetYield: Int?) async throws -> [ShoppingItem] {
+        let recipe = try await self.recipe(slug)
+        let target = targetYield ?? recipe.baseYield
+        for row in ScalingEngine.scale(recipe.currentVersion.ingredients,
+                                       baseYield: recipe.baseYield, targetYield: target) {
+            let name = row.name
+            if let i = Self.basket.firstIndex(where: {
+                $0.name == name && $0.unit == row.ingredient.unit && !$0.toTaste
+            }), row.scaledAmount > 0 {
+                Self.basket[i].amount += row.scaledAmount
+                Self.basket[i].display = ScalingEngine.formatAmount(Self.basket[i].amount,
+                                                                    unit: Self.basket[i].unit)
+                if !Self.basket[i].recipes.contains(slug) { Self.basket[i].recipes.append(slug) }
+            } else if !Self.basket.contains(where: { $0.name == name }) {
+                Self.basket.append(ShoppingItem(
+                    id: UUID(), name: name, amount: row.scaledAmount,
+                    unit: row.ingredient.unit, display: row.display,
+                    toTaste: row.scaledAmount == 0, checked: false, recipes: [slug],
+                    checkGluten: Self.hidesGluten(name)))
+            }
+        }
+        return Self.basket
+    }
+
+    func setShoppingChecked(_ id: UUID, _ checked: Bool) async throws -> ShoppingItem {
+        guard let i = Self.basket.firstIndex(where: { $0.id == id }) else { throw APIError.notFound }
+        Self.basket[i].checked = checked
+        return Self.basket[i]
+    }
+
+    func removeShoppingItem(_ id: UUID) async throws {
+        Self.basket.removeAll { $0.id == id }
+    }
+
+    func clearShopping(checkedOnly: Bool) async throws {
+        Self.basket.removeAll { checkedOnly ? $0.checked : true }
+    }
+
+    private static let glutenWatch = [
+        "paprika", "broth", "stock", "bouillon", "tomato paste", "soy sauce", "tamari",
+        "worcestershire", "hoisin", "oyster sauce", "miso", "malt", "vinegar", "mustard",
+    ]
+
+    private static func hidesGluten(_ name: String) -> Bool {
+        let probe = name.lowercased()
+        return glutenWatch.contains { probe.contains($0) }
+    }
+
     // Offline approximation of /parse/* — see OfflineParse. The server is canonical.
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
         lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map(OfflineParse.ingredient)

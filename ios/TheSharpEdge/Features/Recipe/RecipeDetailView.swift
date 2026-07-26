@@ -4,10 +4,14 @@ struct RecipeDetailView: View {
     let slug: String
     @EnvironmentObject var env: AppEnvironment
     @EnvironmentObject var config: AppConfig
+    @EnvironmentObject var listStore: RecipeListStore
     @StateObject private var store = RecipeDetailStore()
 
     @State private var showCook = false
     @State private var showEdit = false
+    @State private var addedToList = false
+    @State private var addError: String?
+    @StateObject private var shopping = ShoppingStore()
     @State private var checked: Set<String> = []
 
     var body: some View {
@@ -35,11 +39,26 @@ struct RecipeDetailView: View {
                 CookModeView(recipe: recipe, target: store.target)
             }
         }
+        .alert("Added to the shopping list", isPresented: $addedToList) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Quantities were added to any lines already there, not replaced.")
+        }
+        .alert("Couldn't add to the list", isPresented: Binding(
+            get: { addError != nil }, set: { if !$0 { addError = nil } })
+        ) {
+            Button("OK", role: .cancel) { addError = nil }
+        } message: {
+            Text(addError ?? "")
+        }
         .sheet(isPresented: $showEdit) {
             if let recipe = store.recipe {
                 NavigationStack {
                     RecipeEditorView(recipe: recipe) { updated in
                         store.recipe = updated
+                        // The sidebar keeps its own copy — refresh it, or a renamed
+                        // recipe keeps showing its old title in the list.
+                        Task { await listStore.load(env.dataSource, gfOnly: config.gfOnly) }
                         store.target = min(store.maxYield, max(1, store.target))
                     }
                 }
@@ -193,6 +212,22 @@ struct RecipeDetailView: View {
                 Button { showEdit = true } label: { Label("Edit", systemImage: "square.and.pencil") }
                     .buttonStyle(SecondaryButtonStyle())
             }
+
+            // Adds the CURRENT scaled quantities, so what lands on the list matches
+            // what you're actually cooking. A second recipe adds to existing lines.
+            Button {
+                Task {
+                    if await shopping.add(env.dataSource, slug: recipe.slug, targetYield: store.target) {
+                        addedToList = true
+                    } else {
+                        addError = shopping.error
+                    }
+                }
+            } label: {
+                Label("Add to shopping list (\(store.target) \(recipe.yieldWord))",
+                      systemImage: "cart.badge.plus")
+            }
+            .buttonStyle(SecondaryButtonStyle())
 
             if let url = store.askClaudeURL() {
                 Link(destination: url) {

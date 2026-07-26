@@ -3,6 +3,7 @@ import SwiftUI
 enum SidebarRoute: Hashable {
     case recipe(String)   // slug
     case library
+    case shopping
     case ask(String?)     // optional recipe scope slug
     case glutenGuide
     case settings
@@ -24,6 +25,7 @@ struct RootView: View {
             NavigationStack {
                 detailView
             }
+            .environmentObject(store)
         }
         .navigationSplitViewStyle(.balanced)
         .task(id: config.useSampleData) { await store.load(env.dataSource, gfOnly: config.gfOnly) }
@@ -38,6 +40,7 @@ struct RootView: View {
               let route = ProcessInfo.processInfo.environment["UITEST_ROUTE"] else { return }
         switch route {
         case "library": selection = .library
+        case "shopping": selection = .shopping
         case "ask": selection = .ask(nil)
         case "gluten": selection = .glutenGuide
         case "settings": selection = .settings
@@ -54,6 +57,8 @@ struct RootView: View {
                 .id(slug)
         case .library:
             LibraryView()
+        case .shopping:
+            ShoppingView()
         case let .ask(scope):
             AskView(scopeSlug: scope)
                 .id(scope ?? "all")

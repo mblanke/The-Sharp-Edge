@@ -99,6 +99,42 @@ final class APIClient: DataSource {
         return try await run(request(endpoints.createRecipe(), method: "POST", authed: true, body: body), as: RecipeFull.self)
     }
 
+    // MARK: - Shopping list
+
+    func shoppingList() async throws -> [ShoppingItem] {
+        try await run(request(endpoints.shopping()), as: ShoppingList.self).items
+    }
+
+    /// Plain text for the share sheet — AnyList, Notes and Reminders all accept it.
+    func shoppingText() async throws -> String {
+        guard let url = endpoints.shoppingText() else { throw APIError.badURL }
+        var req = URLRequest(url: url)
+        req.setValue("text/plain", forHTTPHeaderField: "Accept")
+        let (data, _) = try await perform(req)
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    func addToShopping(_ slug: String, targetYield: Int?) async throws -> [ShoppingItem] {
+        let body = try JSONCoding.encoder.encode(ShoppingAdd(slug: slug, targetYield: targetYield))
+        return try await run(request(endpoints.shoppingAdd(), method: "POST", authed: true, body: body),
+                             as: ShoppingList.self).items
+    }
+
+    func setShoppingChecked(_ id: UUID, _ checked: Bool) async throws -> ShoppingItem {
+        let body = try JSONCoding.encoder.encode(ShoppingToggle(checked: checked))
+        return try await run(request(endpoints.shoppingItem(id), method: "PATCH", authed: true, body: body),
+                             as: ShoppingItem.self)
+    }
+
+    func removeShoppingItem(_ id: UUID) async throws {
+        _ = try await perform(request(endpoints.shoppingItem(id), method: "DELETE", authed: true))
+    }
+
+    func clearShopping(checkedOnly: Bool) async throws {
+        _ = try await perform(request(endpoints.shoppingClear(checkedOnly: checkedOnly),
+                                      method: "DELETE", authed: true))
+    }
+
     // MARK: - Parse helpers (unauthenticated)
 
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
