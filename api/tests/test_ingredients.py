@@ -9,6 +9,8 @@ import pytest
 
 from app.services.ingredients import (
     is_valid_slug,
+    parse_lines,
+    split_run_on,
     match_category,
     normalise_spoken,
     parse_ingredient,
@@ -221,3 +223,59 @@ def test_entree_is_a_false_friend():
 
 def test_match_category_unknown():
     assert match_category("zzz nonsense", "en") is None
+
+
+# ---------------------------------------------------------------- unpunctuated runs
+# Speech recognition only inserts full stops if you say "period", so a dictated
+# ingredient list arrives as one long string. Quantities are the boundary.
+
+@pytest.mark.parametrize(
+    "line,lang,expected",
+    [
+        ("two pounds beef chuck three onions four cloves of garlic", "en",
+         ["two pounds beef chuck", "three onions", "four cloves of garlic"]),
+        ("200 grammes de farine 3 oeufs 500 ml de lait", "fr",
+         ["200 grammes de farine", "3 oeufs", "500 ml de lait"]),
+        ("zweieinhalb Esslöffel Paprika 200 Gramm Mehl", "de",
+         ["zweieinhalb Esslöffel Paprika", "200 Gramm Mehl"]),
+        ("200 g de făină două linguri de ulei", "ro",
+         ["200 g de făină", "două linguri de ulei"]),
+    ],
+)
+def test_a_run_splits_into_one_ingredient_each(line, lang, expected):
+    assert split_run_on(line, lang) == expected
+
+
+def test_a_mixed_fraction_is_not_cut_in_half():
+    assert split_run_on("1 1/2 cups flour 2 eggs", "en") == ["1 1/2 cups flour", "2 eggs"]
+
+
+def test_a_range_stays_whole():
+    assert split_run_on("2 to 3 cloves garlic 1 onion", "en") == ["2 to 3 cloves garlic", "1 onion"]
+
+
+def test_a_measurement_inside_a_name_is_not_a_boundary():
+    assert split_run_on("2 lb beef chuck cut into 1 inch cubes", "en") == [
+        "2 lb beef chuck cut into 1 inch cubes"
+    ]
+
+
+def test_a_single_ingredient_is_left_alone():
+    assert split_run_on("two pounds of beef chuck", "en") == ["two pounds of beef chuck"]
+    assert split_run_on("", "en") == []
+
+
+def test_the_whole_run_parses_into_separate_ingredients():
+    """The bug: a dictated recipe landed as one ingredient named after the sentence."""
+    rows = parse_lines(["two pounds beef chuck three onions four cloves of garlic"], lang="en")
+    assert len(rows) == 3
+    assert (rows[0]["amount"], rows[0]["unit"]) == (2.0, "lb")
+    assert "beef chuck" in rows[0]["name"]
+    assert (rows[1]["amount"], rows[1]["name"]) == (3.0, "onions")
+    assert rows[2]["amount"] == 4.0
+
+
+def test_printed_input_is_never_split():
+    """The seed importer passes real bullet lines; they must stay one ingredient."""
+    rows = parse_lines(["1.5–2 lb block feta in brine"], lang="en", spoken=False)
+    assert len(rows) == 1

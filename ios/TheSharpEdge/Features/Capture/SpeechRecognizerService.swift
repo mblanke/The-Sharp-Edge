@@ -20,6 +20,10 @@ final class SpeechRecognizerService: ObservableObject {
 
     @Published private(set) var status: Status = .idle
     @Published private(set) var transcript = ""
+    /// The same speech, but with a line break wherever the speaker paused. Dictation
+    /// inserts no punctuation unless you say "period", so pauses are the only
+    /// reliable boundary between one ingredient and the next.
+    @Published private(set) var pausedTranscript = ""
     @Published private(set) var isOnDevice = false
 
     private let audioEngine = AVAudioEngine()
@@ -82,6 +86,7 @@ final class SpeechRecognizerService: ObservableObject {
             Task { @MainActor in
                 if let result {
                     self.transcript = result.bestTranscription.formattedString
+                    self.pausedTranscript = Self.breakOnPauses(result.bestTranscription)
                 }
                 if error != nil || result?.isFinal == true {
                     self.stop()
@@ -106,6 +111,33 @@ final class SpeechRecognizerService: ObservableObject {
     /// Test seam — lets the simulator drive the flow without a microphone.
     func setTranscript(_ text: String) {
         transcript = text
+        pausedTranscript = text
+    }
+
+    /// A gap between spoken segments means "next item". 0.45s is comfortably longer
+    /// than the gap between words in a phrase and shorter than the beat someone
+    /// leaves between list items.
+    static let pauseThreshold: TimeInterval = 0.45
+
+    static func breakOnPauses(_ transcription: SFTranscription) -> String {
+        var lines: [String] = []
+        var current = ""
+        var previousEnd: TimeInterval?
+
+        for segment in transcription.segments {
+            if let end = previousEnd, segment.timestamp - end >= pauseThreshold, !current.isEmpty {
+                lines.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+            }
+            current += (current.isEmpty ? "" : " ") + segment.substring
+            previousEnd = segment.timestamp + segment.duration
+        }
+        if !current.trimmingCharacters(in: .whitespaces).isEmpty {
+            lines.append(current.trimmingCharacters(in: .whitespaces))
+        }
+        // Some recognisers report all-zero timings; then this yields one line and the
+        // server-side quantity splitter takes over.
+        return lines.joined(separator: "\n")
     }
 
     private func requestPermissions() async -> Bool {

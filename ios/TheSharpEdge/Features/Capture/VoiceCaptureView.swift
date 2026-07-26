@@ -92,7 +92,10 @@ struct VoiceCaptureView: View {
             .onDisappear { speech.stop() }
             .onChange(of: speech.transcript) { _, text in
                 guard !text.isEmpty else { return }
-                write(text)
+                // Prefer the pause-segmented version for the list stages: dictation
+                // produces no punctuation, so pauses are the real item boundary.
+                write(stage.multiline && !speech.pausedTranscript.isEmpty
+                      ? speech.pausedTranscript : text)
             }
         }
     }
@@ -278,7 +281,11 @@ struct VoiceCaptureView: View {
     /// dictation renders as sentence punctuation, one utterance per line.
     private func write(_ text: String) {
         if stage.multiline {
-            binding(for: stage).wrappedValue = Utterances.split(text).joined(separator: "\n")
+            // Keep existing line breaks (from pause detection) and split further on any
+            // punctuation the recogniser did manage to insert.
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
+                .flatMap { Utterances.split(String($0)) }
+            binding(for: stage).wrappedValue = lines.joined(separator: "\n")
         } else {
             binding(for: stage).wrappedValue = text
         }

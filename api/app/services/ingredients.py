@@ -545,9 +545,76 @@ def parse_ingredient(
     return row
 
 
+def split_run_on(line: str, lang: str = "en") -> list[str]:
+    """Break a punctuation-free dictated run into one ingredient per entry.
+
+    Speech recognition only inserts full stops if the speaker says "period", so a
+    dictated ingredient list usually arrives as one long string:
+
+        "two pounds beef chuck three onions four cloves of garlic"
+
+    Splitting on punctuation yields one ingredient. Quantities are the reliable
+    boundary instead — an ingredient nearly always starts with a number — so this
+    cuts before each quantity after the first, in whichever language.
+
+    Guards against cutting inside a quantity: mixed fractions ("1 1/2 cups"),
+    ranges ("2 to 3 cloves"), and a number that is part of the name ("1-inch
+    cubes", "2 cm dice") all stay whole.
+    """
+    text = re.sub(r"\s+", " ", (line or "").strip())
+    if not text:
+        return []
+
+    lex = _lex(lang)
+    number_words = {w.split()[0] for w in lex.numbers}          # first token of each phrase
+    connectors = {c.rstrip(" '") for c in lex.connectors} | {"to", "or", "and"}
+    units = set(UNIT_MAP) | {u for u in lex.units}
+
+    tokens = text.split(" ")
+    starts = [0]
+    for i in range(1, len(tokens)):
+        tok = tokens[i].lower().strip(",;")
+        prev = tokens[i - 1].lower().strip(",;")
+
+        is_number = bool(re.fullmatch(r"~?\d+(?:[.,]\d+)?(?:/\d+)?", tok)) or tok in number_words
+        if not is_number:
+            continue
+        # Second half of a mixed fraction, a range, or a hyphenated measurement.
+        if re.fullmatch(r"~?\d+(?:[.,]\d+)?", prev) or prev in connectors or prev in number_words:
+            continue
+        # A number gluing onto the previous word ("1-inch", "2 cm") is part of a name.
+        if i + 1 < len(tokens) and re.match(r"^(inch|cm|mm|inches|centimet)", tokens[i + 1].lower()):
+            continue
+        # Do not cut so soon that the previous piece has no name in it.
+        if i - starts[-1] < 2:
+            continue
+        starts.append(i)
+
+    if len(starts) < 2:
+        return [text]
+
+    pieces = []
+    for a, b in zip(starts, starts[1:] + [len(tokens)]):
+        piece = " ".join(tokens[a:b]).strip(" ,;")
+        if piece:
+            pieces.append(piece)
+    return pieces
+
+
 def parse_lines(lines: list[str], lang: str = "en", spoken: bool = True) -> list[dict]:
-    """Parse a dictated block, skipping blank lines."""
-    return [parse_ingredient(line, lang=lang, spoken=spoken) for line in lines if line.strip()]
+    """Parse a dictated block, skipping blank lines.
+
+    When spoken, a line carrying several quantities is a run of ingredients the
+    speech recogniser never punctuated — split it rather than storing the lot as
+    one ingredient named after the whole sentence.
+    """
+    out: list[dict] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        parts = split_run_on(line, lang) if spoken else [line]
+        out.extend(parse_ingredient(p, lang=lang, spoken=spoken) for p in parts)
+    return out
 
 
 # ---------------------------------------------------------------- slug
