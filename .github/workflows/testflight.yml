@@ -33,6 +33,63 @@ jobs:
           mkdir -p ~/private_keys
           echo "${{ secrets.ASC_KEY_P8 }}" | base64 -d > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
 
+      - name: Prune stale CI certificates
+        # Automatic signing on a fresh runner mints a new DEVELOPMENT certificate
+        # every run, and Apple caps how many an account may hold. Once the cap is
+        # hit, archiving fails with "Choose a certificate to revoke" and no build
+        # ships. Keep the two newest API-created ones and revoke the rest; anything
+        # with a human display name (a real developer's Mac) is never touched.
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          python3 - <<'PRUNE'
+          import base64, json, os, subprocess, time, urllib.request
+
+          key_id, issuer = os.environ["ASC_KEY_ID"], os.environ["ASC_ISSUER_ID"]
+          key_path = os.path.expanduser(f"~/private_keys/AuthKey_{key_id}.p8")
+
+          def b64(d): return base64.urlsafe_b64encode(d).rstrip(b"=")
+
+          header = b64(json.dumps({"alg": "ES256", "kid": key_id, "typ": "JWT"}).encode())
+          payload = b64(json.dumps({"iss": issuer, "iat": int(time.time()),
+                                    "exp": int(time.time()) + 600,
+                                    "aud": "appstoreconnect-v1"}).encode())
+          signing_input = header + b"." + payload
+          der = subprocess.run(["openssl", "dgst", "-sha256", "-sign", key_path],
+                               input=signing_input, capture_output=True, check=True).stdout
+          # DER (r,s) -> raw 64-byte signature
+          def unpack(d):
+              assert d[0] == 0x30
+              i = 2 if d[1] < 0x80 else 3 + (d[1] & 0x7F) - 1
+              out = []
+              for _ in range(2):
+                  assert d[i] == 0x02
+                  ln = d[i + 1]; v = d[i + 2:i + 2 + ln].lstrip(b"\x00")
+                  out.append(v.rjust(32, b"\x00")); i += 2 + ln
+              return b"".join(out)
+          token = (signing_input + b"." + b64(unpack(der))).decode()
+
+          def api(method, path):
+              req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path, method=method)
+              req.add_header("Authorization", "Bearer " + token)
+              try:
+                  with urllib.request.urlopen(req) as r:
+                      return r.status, json.loads(r.read().decode() or "{}")
+              except urllib.error.HTTPError as e:
+                  return e.code, {}
+
+          _, body = api("GET", "/v1/certificates?limit=200")
+          ci = [c for c in body.get("data", [])
+                if c["attributes"].get("certificateType") == "DEVELOPMENT"
+                and c["attributes"].get("displayName") == "Created via API"]
+          ci.sort(key=lambda c: c["attributes"].get("expirationDate") or "", reverse=True)
+          print(f"{len(body.get('data', []))} certificates, {len(ci)} created by CI")
+          for c in ci[2:]:
+              st, _ = api("DELETE", f"/v1/certificates/{c['id']}")
+              print(f"  revoked {c['id']}: {st}")
+          PRUNE
+
       - name: Archive
         working-directory: ios
         run: |
