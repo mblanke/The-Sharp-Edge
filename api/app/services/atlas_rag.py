@@ -11,6 +11,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.config import settings
+from app.services.passages import to_passages
 
 
 class RagChunk(dict):
@@ -41,8 +42,17 @@ class AtlasRag:
             self._client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
         return self._client
 
-    async def retrieve(self, question: str, top_k: int | None = None) -> list[dict]:
-        """Vector + rerank retrieval, client-side filtered to the Cooking corpus."""
+    async def retrieve(
+        self, question: str, top_k: int | None = None, as_passages: bool = True
+    ) -> list[dict]:
+        """Vector + rerank retrieval, client-side filtered to the Cooking corpus.
+
+        `as_passages` post-processes the raw chunks: index and table-of-contents pages
+        are dropped and adjacent chunks are merged into continuous text (see
+        services/passages.py). Without it, a query like "french onion soup" is topped
+        by the *index entry* for that recipe rather than the recipe, because the index
+        contains the phrase verbatim. Pass False to see the unprocessed ranking.
+        """
         keep = top_k or settings.rag_top_k
         try:
             res = await self._http().post(
@@ -54,6 +64,8 @@ class AtlasRag:
             raise HTTPException(502, f"Atlas rag-api unreachable: {exc}") from exc
         chunks = res.json().get("chunks", [])
         scoped = [c for c in chunks if _in_scope(c, settings.rag_source_folder)]
+        if as_passages:
+            return list(to_passages(scoped, keep=keep))
         return scoped[:keep]
 
     async def health(self) -> dict:
