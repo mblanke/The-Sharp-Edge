@@ -33,7 +33,7 @@ struct CookTimerView: View {
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.primaryDeep)
+                    .foregroundStyle(Theme.inkAccent)
                     .frame(width: 40, height: 40)
                     .background(Theme.card, in: Circle())
                     .overlay(Circle().stroke(Theme.line, lineWidth: 1))

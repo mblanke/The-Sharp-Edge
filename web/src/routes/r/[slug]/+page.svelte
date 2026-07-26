@@ -196,7 +196,7 @@
     <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--primary-deep); color: var(--primary-deep)"
+      style="border-color: var(--ink-accent); color: var(--ink-accent)"
     >
       ← all recipes
     </a>

@@ -137,7 +137,7 @@ struct AskView: View {
                 CardSurface {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text(src.title ?? "Source").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.primaryDeep)
+                            Text(src.title ?? "Source").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.inkAccent)
                             if let p = src.page { Text("p. \(p)").font(Typography.mono(12)).foregroundStyle(Theme.faint) }
                         }
                         if let heading = src.heading { Text(heading).font(Typography.mono(12)).foregroundStyle(Theme.accent) }

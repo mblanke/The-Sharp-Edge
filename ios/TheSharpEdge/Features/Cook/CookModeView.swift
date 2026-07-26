@@ -116,7 +116,7 @@ struct CookModeView: View {
                         ForEach(section.rows) { row in
                             HStack {
                                 Text(row.display).font(Typography.mono(15, weight: .semibold))
-                                    .foregroundStyle(Theme.primaryDeep).frame(minWidth: 70, alignment: .leading)
+                                    .foregroundStyle(Theme.inkAccent).frame(minWidth: 70, alignment: .leading)
                                 Text(row.name).font(Typography.body(15))
                             }
                         }

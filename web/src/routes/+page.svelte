@@ -25,11 +25,11 @@
 
 <nav aria-label="Filters" class="flex items-center gap-3 pt-5">
   <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">Show</span>
-  <div class="flex overflow-hidden rounded-full border" style="border-color: var(--primary-deep)">
+  <div class="flex overflow-hidden rounded-full border" style="border-color: var(--ink-accent)">
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
       style:background={gfOnly ? 'transparent' : 'var(--primary-deep)'}
-      style:color={gfOnly ? 'var(--primary-deep)' : 'var(--off-white)'}
+      style:color={gfOnly ? 'var(--ink-accent)' : 'var(--off-white)'}
       onclick={() => (gfOnly = false)}
     >
       All
@@ -37,7 +37,7 @@
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
       style:background={gfOnly ? 'var(--primary-deep)' : 'transparent'}
-      style:color={gfOnly ? 'var(--off-white)' : 'var(--primary-deep)'}
+      style:color={gfOnly ? 'var(--off-white)' : 'var(--ink-accent)'}
       onclick={() => (gfOnly = true)}
     >
       GF only
@@ -50,7 +50,7 @@
     <a
       href="#cat-{cat}"
       class="font-mono-label rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--line); color: var(--primary-deep); background: var(--card)"
+      style="border-color: var(--line); color: var(--ink-accent); background: var(--card)"
     >
       {cat}
     </a>

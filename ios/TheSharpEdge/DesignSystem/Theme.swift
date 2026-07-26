@@ -1,19 +1,30 @@
 import SwiftUI
+import UIKit
 
 /// "C · Faïence" design tokens — ported from web/src/lib/tokens.css.
-/// Blue-and-white kitchen tile with an ochre mustard accent.
+/// Blue-and-white kitchen tile with an ochre mustard accent, in a light and a dark
+/// scheme. Every token resolves against the system appearance, so the app follows
+/// the iPad rather than fighting it — which also keeps SwiftUI's own controls
+/// (Form, List, TextField) in step with our hand-painted surfaces. Before this,
+/// an iPad in dark mode drew white system text on our hardcoded light fills.
+///
+/// Note the split between `primaryDeep` and `inkAccent`: `primaryDeep` is a *fill*
+/// that carries `offWhite` text, `inkAccent` is the same blue used *as* text. They
+/// are identical in light and necessarily diverge in dark.
+///
 /// Quantities are always mono; scale changes flash accent.
 enum Theme {
-    // Core tokens
-    static let paper = Color(hex: 0xF2F3F5)       // background
-    static let ink = Color(hex: 0x14161C)         // primary text
-    static let faint = Color(hex: 0x5F6570)       // secondary text
-    static let primary = Color(hex: 0x1F4A8F)     // accent / section rules
-    static let primaryDeep = Color(hex: 0x14315F) // primary buttons, nav, quantities
-    static let accent = Color(hex: 0x8A5E17)      // eyebrow, flash, focus ring
-    static let line = Color(hex: 0xDCDEE3)        // borders / dashed rules
-    static let card = Color(hex: 0xFBFCFD)        // card fill
-    static let offWhite = Color(hex: 0xF7F8FA)    // text on primary
+    // Core tokens — (light, dark)
+    static let paper = Color(light: 0xF2F3F5, dark: 0x101319)       // background
+    static let ink = Color(light: 0x14161C, dark: 0xE6E9EE)         // primary text
+    static let faint = Color(light: 0x5F6570, dark: 0x98A0AD)       // secondary text
+    static let primary = Color(light: 0x1F4A8F, dark: 0x7BA6E2)     // section rules, labels
+    static let primaryDeep = Color(light: 0x14315F, dark: 0x2F5F9E) // button / nav fills
+    static let inkAccent = Color(light: 0x14315F, dark: 0x8FB6EE)   // that blue, as text
+    static let accent = Color(light: 0x8A5E17, dark: 0xD9A441)      // eyebrow, flash, focus
+    static let line = Color(light: 0xDCDEE3, dark: 0x2A2F39)        // borders / dashed rules
+    static let card = Color(light: 0xFBFCFD, dark: 0x171B22)        // card fill
+    static let offWhite = Color(light: 0xF7F8FA, dark: 0xF7F8FA)    // text on primaryDeep
 
     // Radii
     enum Radius {
@@ -42,5 +53,24 @@ extension Color {
         let g = Double((hex >> 8) & 0xFF) / 255.0
         let b = Double(hex & 0xFF) / 255.0
         self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
+    }
+
+    /// Resolves per appearance. Backed by UIColor so it re-resolves live when the
+    /// system flips, rather than being baked in at view-init time.
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { traits in
+            UIColor(rgb: traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+}
+
+private extension UIColor {
+    convenience init(rgb: UInt32) {
+        self.init(
+            red: CGFloat((rgb >> 16) & 0xFF) / 255.0,
+            green: CGFloat((rgb >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(rgb & 0xFF) / 255.0,
+            alpha: 1.0
+        )
     }
 }

@@ -1,12 +1,20 @@
 /* Design tokens — "C · Faïence" (CLAUDE.md §7). Used everywhere.
-   Blue-and-white kitchen tile with an ochre mustard accent. Light theme only;
-   the accent is deliberately dark so it clears WCAG AA at the 10–11px label sizes. */
+   Blue-and-white kitchen tile with an ochre mustard accent, in a light and a dark
+   scheme. Follows the OS; there is no in-app toggle.
+
+   Note the split between --primary-deep and --ink-accent. --primary-deep is a *fill*
+   that carries --off-white text; --ink-accent is the blue used *as* text. They are
+   the same colour in light and necessarily diverge in dark, which is why every
+   `color:` that used to say --primary-deep now says --ink-accent. */
 :root {
+  color-scheme: light dark;
+
   --paper: #f2f3f5;
   --ink: #14161c;
   --faint: #5f6570;
   --primary: #1f4a8f;
   --primary-deep: #14315f;
+  --ink-accent: #14315f;
   --accent: #8a5e17;
   --line: #dcdee3;
   --card: #fbfcfd;
@@ -16,6 +24,28 @@
   --btn-ghost: rgba(255, 255, 255, 0.14);
   --btn-outline: rgba(255, 255, 255, 0.4);
   --accent-wash: #f4efe6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Same tile, fired dark: a deep slate ground, the blue and ochre lifted so they
+       still read. Measured on --paper: ink 15.3:1 · faint 7.1:1 · primary 7.4:1 ·
+       ink-accent 8.9:1 · accent 8.3:1; off-white on --primary-deep 6.1:1. */
+    --paper: #101319;
+    --ink: #e6e9ee;
+    --faint: #98a0ad;
+    --primary: #7ba6e2;
+    --primary-deep: #2f5f9e;
+    --ink-accent: #8fb6ee;
+    --accent: #d9a441;
+    --line: #2a2f39;
+    --card: #171b22;
+
+    --off-white: #f7f8fa;
+    --btn-ghost: rgba(255, 255, 255, 0.14);
+    --btn-outline: rgba(255, 255, 255, 0.4);
+    --accent-wash: #2a2113;
+  }
 }
 
 html {
@@ -43,7 +73,7 @@ body {
 .qty {
   font-family: 'Spline Sans Mono', monospace;
   font-weight: 500;
-  color: var(--primary-deep);
+  color: var(--ink-accent);
   transition: color 0.45s ease;
 }
 

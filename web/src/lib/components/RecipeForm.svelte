@@ -452,7 +452,7 @@
     <a
       href={cancelHref}
       class="font-mono-label flex min-h-[48px] items-center rounded-full border px-5 text-[12px] uppercase tracking-widest no-underline"
-      style="border-color: var(--primary-deep); color: var(--primary-deep)"
+      style="border-color: var(--ink-accent); color: var(--ink-accent)"
     >
       Cancel
     </a>

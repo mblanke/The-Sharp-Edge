@@ -96,12 +96,12 @@
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">The shelf</h2>
   <p class="mt-1 text-[13.5px]" style="color: var(--faint)">
     Books dropped in the Cooking folder are indexed automatically. Search the shelf, or
-    <a href="/ask" style="color: var(--primary-deep)">ask the library</a> a question.
+    <a href="/ask" style="color: var(--ink-accent)">ask the library</a> a question.
   </p>
 
   <div
     class="font-mono-label mt-3 inline-block rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--primary-deep)' : 'var(--accent)'}; background: var(--card)"
+    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--ink-accent)' : 'var(--accent)'}; background: var(--card)"
   >
     index: {data.library.rag_health.ok ? 'online' : 'unreachable'}
     {#if data.library.rag_health.qdrant_points}

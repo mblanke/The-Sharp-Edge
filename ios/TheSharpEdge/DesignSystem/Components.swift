@@ -8,7 +8,7 @@ struct GFBadge: View {
         if gf {
             Text("GF")
                 .font(Typography.mono(12, weight: .semibold))
-                .foregroundStyle(Theme.primaryDeep)
+                .foregroundStyle(Theme.inkAccent)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Theme.primary.opacity(0.16), in: Capsule())
@@ -93,7 +93,7 @@ struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Typography.body(16, weight: .semibold))
-            .foregroundStyle(Theme.primaryDeep)
+            .foregroundStyle(Theme.inkAccent)
             .padding(.horizontal, 18)
             .frame(minHeight: Theme.minTouch)
             .frame(maxWidth: .infinity)

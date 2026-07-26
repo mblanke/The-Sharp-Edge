@@ -105,7 +105,7 @@
   {#if data.recipeSlug}
     <div
       class="font-mono-label mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-      style="border-color: var(--primary); color: var(--primary-deep); background: var(--card)"
+      style="border-color: var(--primary); color: var(--ink-accent); background: var(--card)"
     >
       scoped to: {data.recipeTitle ?? data.recipeSlug}
       <a href="/ask" class="no-underline" style="color: var(--accent)" title="Clear scope">✕</a>
@@ -136,7 +136,7 @@
               {#each msg.citations as c (c.n)}
                 <button
                   class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
-                  style="border-color: var(--primary); color: var(--primary-deep)"
+                  style="border-color: var(--primary); color: var(--ink-accent)"
                   onclick={() => (openSource = openSource === c.n ? null : c.n)}
                 >
                   [{c.n}] {c.title ?? bookName(c.source_path)}{c.page != null ? ` · p.${c.page}` : ''}
@@ -210,7 +210,7 @@
         <li class="border-b border-dashed" style="border-color: var(--line)">
           <button
             class="min-h-[44px] w-full py-2 text-left text-[14px]"
-            style="color: var(--primary-deep)"
+            style="color: var(--ink-accent)"
             onclick={() => loadConversation(conv.id)}
           >
             {conv.title ?? 'untitled'}

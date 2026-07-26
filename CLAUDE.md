@@ -175,7 +175,7 @@ Conventions: Pydantic schemas for every request/response; errors as RFC-7807 pro
 --off-white #F7F8FA  --btn-ghost rgba(255,255,255,.14)
 --btn-outline rgba(255,255,255,.4)  --accent-wash #F4EFE6
 ```
-Light theme only; dark mode is deliberately out of scope. The ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses. `Theme.swift` mirrors these names exactly.
+Both schemes ship and follow the OS; there is no in-app toggle. `--primary-deep` is a *fill* carrying `--off-white` text, `--ink-accent` is that same blue used *as* text — they are identical in light and diverge in dark, so a `color:` must never use `--primary-deep`. Dark: `--paper #101319 --card #171B22 --line #2A2F39 --ink #E6E9EE --faint #98A0AD --primary #7BA6E2 --primary-deep #2F5F9E --ink-accent #8FB6EE --accent #D9A441 --accent-wash #2A2113`. The light ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses. `Theme.swift` mirrors these names exactly.
 
 Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities accent (~450 ms).
 

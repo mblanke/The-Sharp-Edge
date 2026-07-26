@@ -15,7 +15,7 @@ struct GlutenGuideView: View {
                 ForEach(SampleData.glutenGuide) { section in
                     CardSurface {
                         VStack(alignment: .leading, spacing: Theme.Space.m) {
-                            Text(section.h).font(Typography.display(20)).foregroundStyle(Theme.primaryDeep)
+                            Text(section.h).font(Typography.display(20)).foregroundStyle(Theme.inkAccent)
                             ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
                                 HStack(alignment: .top, spacing: 10) {
                                     Image(systemName: "checkmark.shield")

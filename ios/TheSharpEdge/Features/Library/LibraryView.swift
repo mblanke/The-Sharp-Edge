@@ -83,7 +83,7 @@ struct LibraryView: View {
             ForEach(store.groups) { group in
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        Text(group.book).font(Typography.display(18)).foregroundStyle(Theme.primaryDeep)
+                        Text(group.book).font(Typography.display(18)).foregroundStyle(Theme.inkAccent)
                         ForEach(group.hits) { hit in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 8) {

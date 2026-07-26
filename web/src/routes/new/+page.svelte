@@ -137,7 +137,7 @@
               ? 'var(--primary-deep)'
               : 'transparent'}; color: {lang === l.code
               ? 'var(--off-white)'
-              : 'var(--primary-deep)'}"
+              : 'var(--ink-accent)'}"
             onclick={() => (lang = l.code)}
           >
             {l.flag} {l.name}
@@ -158,7 +158,7 @@
                 ? 'var(--accent)'
                 : 'var(--line)'}; color: {listening === p.field
                 ? 'var(--accent)'
-                : 'var(--primary-deep)'}"
+                : 'var(--ink-accent)'}"
               disabled={!supported}
               onclick={() => toggle(p.field)}
             >

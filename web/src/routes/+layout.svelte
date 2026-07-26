@@ -14,10 +14,10 @@
       Scan a card, land on its recipe, rescale the servings.
     </p>
     <nav class="font-mono-label mt-3 flex justify-center gap-2 text-[11px] uppercase tracking-widest">
-      <a href="/" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--primary-deep)">Recipes</a>
-      <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--primary-deep)">Library</a>
-      <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--primary-deep)">Ask</a>
-      <a href="/new" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--primary-deep)">Add</a>
+      <a href="/" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Recipes</a>
+      <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Library</a>
+      <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Ask</a>
+      <a href="/new" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Add</a>
     </nav>
   </header>
 
@@ -26,7 +26,7 @@
   <footer class="mt-16 border-t-2 pt-4 text-[12.5px]" style="border-color: var(--ink); color: var(--faint)">
     Quantities scale from each recipe's base yield · dashes mark to-taste amounts
     <br />
-    <a href="#top" class="font-mono-label mt-2 inline-block text-[11px] uppercase tracking-widest" style="color: var(--primary-deep)">
+    <a href="#top" class="font-mono-label mt-2 inline-block text-[11px] uppercase tracking-widest" style="color: var(--ink-accent)">
       ↑ back to top
     </a>
   </footer>
