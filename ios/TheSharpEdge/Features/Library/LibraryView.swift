@@ -36,7 +36,7 @@ struct LibraryView: View {
     private var indexPill: some View {
         let ok = store.status?.ragHealth.ok ?? false
         return HStack(spacing: 6) {
-            Circle().fill(ok ? Theme.green : Theme.copper).frame(width: 8, height: 8)
+            Circle().fill(ok ? Theme.primary : Theme.accent).frame(width: 8, height: 8)
             Text(ok ? "index online" : "index unreachable")
                 .font(Typography.mono(12)).foregroundStyle(Theme.faint)
             if let count = store.status?.ragHealth.count {
@@ -73,7 +73,7 @@ struct LibraryView: View {
     @ViewBuilder
     private var results: some View {
         if store.isSearching {
-            ProgressView().tint(Theme.green).frame(maxWidth: .infinity).padding(.top, 40)
+            ProgressView().tint(Theme.primary).frame(maxWidth: .infinity).padding(.top, 40)
         } else if let error = store.searchError {
             ErrorStateView(message: error) { Task { await store.search(env.dataSource) } }
                 .frame(minHeight: 220)
@@ -83,12 +83,12 @@ struct LibraryView: View {
             ForEach(store.groups) { group in
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        Text(group.book).font(Typography.display(18)).foregroundStyle(Theme.greenDeep)
+                        Text(group.book).font(Typography.display(18)).foregroundStyle(Theme.primaryDeep)
                         ForEach(group.hits) { hit in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 8) {
                                     if let heading = hit.heading {
-                                        Text(heading).font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.copper)
+                                        Text(heading).font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.accent)
                                     }
                                     if let page = hit.page {
                                         Text("p. \(page)").font(Typography.mono(12)).foregroundStyle(Theme.faint)

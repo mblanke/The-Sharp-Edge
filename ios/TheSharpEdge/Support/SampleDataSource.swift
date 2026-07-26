@@ -2,12 +2,22 @@ import Foundation
 
 /// Serves bundled fixtures so the app is fully explorable offline.
 final class SampleDataSource: DataSource {
+    /// Recipes created during this session, so the add-recipe flow completes end to end
+    /// in the simulator. Process-lifetime only — nothing is persisted.
+    private static var created: [String: RecipeFull] = [:]
+
     func listRecipes() async throws -> [RecipeCard] {
         try? await Task.sleep(nanoseconds: 120_000_000)
-        return SampleData.cards
+        let extras = Self.created.values
+            .filter { $0.status == "active" }
+            .map { RecipeCard(slug: $0.slug, title: $0.title, category: $0.category, meta: $0.meta,
+                              baseYield: $0.baseYield, yieldWord: $0.yieldWord, gf: $0.gf,
+                              noscale: $0.noscale, status: $0.status) }
+        return SampleData.cards + extras
     }
 
     func recipe(_ slug: String) async throws -> RecipeFull {
+        if let created = Self.created[slug] { return created }
         guard let r = SampleData.full(slug) else { throw APIError.notFound }
         return r
     }
@@ -41,6 +51,36 @@ final class SampleDataSource: DataSource {
                           yieldWord: body.yieldWord ?? existing.yieldWord, gf: body.gf ?? existing.gf,
                           noscale: body.noscale ?? existing.noscale, status: body.status ?? existing.status,
                           source: body.source ?? existing.source, currentVersion: newVersion)
+    }
+
+    func createRecipe(_ body: RecipeCreate) async throws -> RecipeFull {
+        if SampleData.full(body.slug) != nil || Self.created[body.slug] != nil {
+            throw APIError.slugTaken("Slug '\(body.slug)' already exists")
+        }
+        let version = VersionOut(id: UUID(), version: 1, label: body.label,
+                                 ingredients: body.ingredients, steps: body.steps, notes: body.notes,
+                                 isCurrent: true, createdAt: Date())
+        let full = RecipeFull(slug: body.slug, title: body.title, category: body.category,
+                              meta: body.meta, baseYield: body.baseYield, yieldWord: body.yieldWord,
+                              gf: body.gf, noscale: body.noscale, status: body.status,
+                              source: body.source, currentVersion: version)
+        Self.created[body.slug] = full
+        return full
+    }
+
+    // Offline approximation of /parse/* — see OfflineParse. The server is canonical.
+    func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
+        lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map(OfflineParse.ingredient)
+    }
+
+    func slug(for title: String) async throws -> SlugResponse {
+        let slug = OfflineParse.slug(title)
+        let taken = SampleData.full(slug) != nil || Self.created[slug] != nil
+        return SlugResponse(slug: slug, available: !slug.isEmpty && !taken, valid: !slug.isEmpty)
+    }
+
+    func category(for spoken: String, lang: CaptureLanguage) async throws -> String? {
+        Category.match(spoken)
     }
 
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] {

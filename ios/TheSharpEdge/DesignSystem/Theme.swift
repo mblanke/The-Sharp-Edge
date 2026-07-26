@@ -1,18 +1,19 @@
 import SwiftUI
 
-/// "Washi & bottle green" design tokens — ported from web/src/lib/tokens.css.
-/// Quantities are always mono; scale changes flash copper.
+/// "C · Faïence" design tokens — ported from web/src/lib/tokens.css.
+/// Blue-and-white kitchen tile with an ochre mustard accent.
+/// Quantities are always mono; scale changes flash accent.
 enum Theme {
     // Core tokens
-    static let paper = Color(hex: 0xF2F1EC)     // background
-    static let ink = Color(hex: 0x20241E)       // primary text
-    static let faint = Color(hex: 0x6B6F63)     // secondary text
-    static let green = Color(hex: 0x3E6B4A)     // accent / section rules
-    static let greenDeep = Color(hex: 0x2C4F36) // primary buttons, nav, quantities
-    static let copper = Color(hex: 0xC87A2E)    // eyebrow, flash, focus ring
-    static let line = Color(hex: 0xD9D7CC)      // borders / dashed rules
-    static let card = Color(hex: 0xFAFAF6)      // card fill
-    static let offWhite = Color(hex: 0xF4F3EC)  // text on green
+    static let paper = Color(hex: 0xF2F3F5)       // background
+    static let ink = Color(hex: 0x14161C)         // primary text
+    static let faint = Color(hex: 0x5F6570)       // secondary text
+    static let primary = Color(hex: 0x1F4A8F)     // accent / section rules
+    static let primaryDeep = Color(hex: 0x14315F) // primary buttons, nav, quantities
+    static let accent = Color(hex: 0x8A5E17)      // eyebrow, flash, focus ring
+    static let line = Color(hex: 0xDCDEE3)        // borders / dashed rules
+    static let card = Color(hex: 0xFBFCFD)        // card fill
+    static let offWhite = Color(hex: 0xF7F8FA)    // text on primary
 
     // Radii
     enum Radius {

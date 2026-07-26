@@ -6,6 +6,7 @@ enum APIError: Error, LocalizedError, Equatable {
     case notFound
     case unauthorized
     case atlasDown              // 502 — Atlas/rag-api/LLM router unreachable
+    case slugTaken(String)      // 409 — create only; fixable inline
     case server(status: Int, detail: String?)
     case decoding(String)
     case transport(String)
@@ -16,6 +17,7 @@ enum APIError: Error, LocalizedError, Equatable {
         case .notFound: return "Not found."
         case .unauthorized: return "Not authorized — set your API token in Settings."
         case .atlasDown: return "The library/assistant service is unreachable right now."
+        case let .slugTaken(detail): return detail
         case let .server(status, detail): return detail ?? "Server error (\(status))."
         case let .decoding(msg): return "Couldn't read the server response. \(msg)"
         case let .transport(msg): return msg

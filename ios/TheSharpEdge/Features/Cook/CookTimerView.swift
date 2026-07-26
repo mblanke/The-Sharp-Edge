@@ -14,10 +14,10 @@ struct CookTimerView: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            Image(systemName: "timer").foregroundStyle(Theme.copper)
+            Image(systemName: "timer").foregroundStyle(Theme.accent)
             Text(timeString(remaining))
                 .font(Typography.mono(26, weight: .semibold))
-                .foregroundStyle(remaining == 0 ? Theme.copper : Theme.ink)
+                .foregroundStyle(remaining == 0 ? Theme.accent : Theme.ink)
                 .monospacedDigit()
             Button {
                 running ? stop() : start()
@@ -26,14 +26,14 @@ struct CookTimerView: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Theme.offWhite)
                     .frame(width: 40, height: 40)
-                    .background(Theme.greenDeep, in: Circle())
+                    .background(Theme.primaryDeep, in: Circle())
             }
             Button {
                 stop(); remaining = seconds
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.greenDeep)
+                    .foregroundStyle(Theme.primaryDeep)
                     .frame(width: 40, height: 40)
                     .background(Theme.card, in: Circle())
                     .overlay(Circle().stroke(Theme.line, lineWidth: 1))

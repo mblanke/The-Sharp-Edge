@@ -52,7 +52,7 @@
 </svelte:head>
 
 <article class="pt-7">
-  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--copper)">
+  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--accent)">
     {recipe.category}
   </div>
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">
@@ -60,7 +60,7 @@
     {#if recipe.gf}
       <span
         class="font-mono-label ml-2 inline-block translate-y-[-3px] rounded-full px-2.5 py-1 align-middle text-[10.5px] uppercase tracking-widest"
-        style="background: var(--green); color: #F4F3EC"
+        style="background: var(--primary); color: var(--off-white)"
       >
         GF
       </span>
@@ -76,13 +76,13 @@
   {#if !recipe.noscale}
     <div
       class="mt-4 flex items-center gap-3 rounded-2xl px-4 py-3"
-      style="background: var(--green-deep); color: #F4F3EC"
+      style="background: var(--primary-deep); color: var(--off-white)"
     >
       <span class="font-mono-label text-[11px] uppercase tracking-widest opacity-80">Scale</span>
       <button
         aria-label="Fewer {recipe.yield_word}"
         class="h-11 w-11 rounded-xl text-xl"
-        style="background: rgba(255,255,255,.14); color: #F4F3EC"
+        style="background: var(--btn-ghost); color: var(--off-white)"
         onclick={() => setTarget(target - 1)}
       >
         −
@@ -91,7 +91,7 @@
       <button
         aria-label="More {recipe.yield_word}"
         class="h-11 w-11 rounded-xl text-xl"
-        style="background: rgba(255,255,255,.14); color: #F4F3EC"
+        style="background: var(--btn-ghost); color: var(--off-white)"
         onclick={() => setTarget(target + 1)}
       >
         +
@@ -99,7 +99,7 @@
       <span class="text-[13px] opacity-80">{recipe.yield_word}</span>
       <button
         class="font-mono-label ml-auto min-h-[44px] rounded-full border px-3 text-[11px] uppercase tracking-widest"
-        style="border-color: rgba(255,255,255,.4); color: #F4F3EC"
+        style="border-color: var(--btn-outline); color: var(--off-white)"
         onclick={() => setTarget(recipe.base_yield)}
       >
         base {recipe.base_yield}
@@ -110,7 +110,7 @@
   {#if recipe.current_version.ingredients.length}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
+      style="border-color: var(--line); color: var(--primary)"
     >
       Ingredients
     </h3>
@@ -119,7 +119,7 @@
         {#if sectionChanged(recipe.current_version.ingredients, i)}
           <li
             class="font-mono-label pt-3 pb-1 text-[10.5px] uppercase tracking-widest"
-            style="color: var(--copper)"
+            style="color: var(--accent)"
           >
             {ing.section}
           </li>
@@ -139,7 +139,7 @@
 
   <h3
     class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-    style="border-color: var(--line); color: var(--green)"
+    style="border-color: var(--line); color: var(--primary)"
   >
     {recipe.current_version.ingredients.length ? 'Method' : 'The list'}
   </h3>
@@ -148,7 +148,7 @@
       <li class="relative py-2 pl-10 text-[15px]">
         <span
           class="font-mono-label absolute top-2 left-0 flex h-[26px] w-[26px] items-center justify-center rounded-full border text-[12px]"
-          style="border-color: var(--green); color: var(--green)"
+          style="border-color: var(--primary); color: var(--primary)"
         >
           {i + 1}
         </span>
@@ -162,7 +162,7 @@
   {#if recipe.current_version.notes.length}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
+      style="border-color: var(--line); color: var(--primary)"
     >
       Notes
     </h3>
@@ -182,21 +182,21 @@
     <a
       href="/ask?recipe={recipe.slug}"
       class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-      style="background: var(--green-deep); color: #F4F3EC"
+      style="background: var(--primary-deep); color: var(--off-white)"
     >
       Ask about this recipe
     </a>
     <a
       href="/r/{recipe.slug}/edit"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--copper); color: var(--copper)"
+      style="border-color: var(--accent); color: var(--accent)"
     >
       Edit
     </a>
     <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--green-deep); color: var(--green-deep)"
+      style="border-color: var(--primary-deep); color: var(--primary-deep)"
     >
       ← all recipes
     </a>

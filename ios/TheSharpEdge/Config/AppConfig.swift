@@ -8,6 +8,7 @@ final class AppConfig: ObservableObject {
         static let baseURL = "sharpedge.baseURL"
         static let gfOnly = "sharpedge.gfOnly"
         static let useSampleData = "sharpedge.useSampleData"
+        static let captureLanguage = "sharpedge.captureLanguage"
     }
 
     /// Default backend over Tailscale (compose publishes api on host port 8010).
@@ -26,6 +27,12 @@ final class AppConfig: ObservableObject {
         didSet { UserDefaults.standard.set(useSampleData, forKey: Keys.useSampleData) }
     }
 
+    /// Language the dictation screen opens in. Remembered because most households
+    /// cook in one or two languages, not four.
+    @Published var captureLanguage: CaptureLanguage {
+        didSet { UserDefaults.standard.set(captureLanguage.rawValue, forKey: Keys.captureLanguage) }
+    }
+
     /// Token is read/written through the Keychain, mirrored here only for UI binding.
     @Published var token: String {
         didSet {
@@ -37,6 +44,7 @@ final class AppConfig: ObservableObject {
         let d = UserDefaults.standard
         baseURLString = d.string(forKey: Keys.baseURL) ?? AppConfig.defaultBaseURL
         gfOnly = d.bool(forKey: Keys.gfOnly)
+        captureLanguage = CaptureLanguage(rawValue: d.string(forKey: Keys.captureLanguage) ?? "") ?? .en
         token = Keychain.get() ?? ""
         #if DEBUG
         // Default ON in DEBUG so the app is fully explorable without the Tailscale backend.

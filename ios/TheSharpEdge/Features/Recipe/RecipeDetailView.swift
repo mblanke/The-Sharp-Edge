@@ -147,7 +147,7 @@ struct RecipeDetailView: View {
                         .font(Typography.mono(15, weight: .semibold))
                         .foregroundStyle(Theme.offWhite)
                         .frame(width: 28, height: 28)
-                        .background(Theme.green, in: Circle())
+                        .background(Theme.primary, in: Circle())
                     VStack(alignment: .leading, spacing: 6) {
                         Text(StepText.attributed(step.text))
                             .font(Typography.body(17))
@@ -156,7 +156,7 @@ struct RecipeDetailView: View {
                         if let t = step.timerSeconds {
                             Label(timeString(t), systemImage: "timer")
                                 .font(Typography.mono(12))
-                                .foregroundStyle(Theme.copper)
+                                .foregroundStyle(Theme.accent)
                         }
                     }
                 }

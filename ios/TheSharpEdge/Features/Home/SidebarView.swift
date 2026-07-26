@@ -6,6 +6,9 @@ struct SidebarView: View {
     @EnvironmentObject var config: AppConfig
     @Binding var selection: SidebarRoute?
 
+    @State private var showCapture = false
+    @State private var draft: RecipeCreate?
+
     var body: some View {
         List(selection: $selection) {
             Section {
@@ -16,11 +19,11 @@ struct SidebarView: View {
                     Label("Gluten-free only", systemImage: "leaf")
                         .font(Typography.body(15, weight: .semibold))
                 }
-                .tint(Theme.green)
+                .tint(Theme.primary)
             }
 
             if store.isLoading && store.sections.isEmpty {
-                HStack { ProgressView().tint(Theme.green); Text("Loading recipes…").font(Typography.mono(13)).foregroundStyle(Theme.faint) }
+                HStack { ProgressView().tint(Theme.primary); Text("Loading recipes…").font(Typography.mono(13)).foregroundStyle(Theme.faint) }
             } else if let error = store.error, store.sections.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(error).font(Typography.body(14)).foregroundStyle(Theme.faint)
@@ -36,7 +39,7 @@ struct SidebarView: View {
                             .tag(SidebarRoute.recipe(recipe.slug))
                     }
                 } header: {
-                    Text(section.name).font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.copper)
+                    Text(section.name).font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.accent)
                 }
             }
 
@@ -46,12 +49,52 @@ struct SidebarView: View {
                 navRow("Hidden-gluten guide", systemImage: "exclamationmark.shield", route: .glutenGuide)
                 navRow("Settings", systemImage: "gearshape", route: .settings)
             } header: {
-                Text("Tools").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.copper)
+                Text("Tools").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.accent)
             }
         }
         .listStyle(.sidebar)
         .navigationTitle("The Sharp Edge")
         .refreshable { await store.load(env.dataSource, gfOnly: config.gfOnly) }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button { draft = RecipeCreate() } label: {
+                        Label("Type it in", systemImage: "square.and.pencil")
+                    }
+                    Button { showCapture = true } label: {
+                        Label("Dictate it", systemImage: "mic")
+                    }
+                } label: {
+                    Label("Add recipe", systemImage: "plus")
+                }
+            }
+        }
+        .onAppear {
+            #if DEBUG
+            // Screenshot hook, same idea as RootView's UITEST_ROUTE.
+            switch ProcessInfo.processInfo.environment["UITEST_SHEET"] {
+            case "capture": showCapture = true
+            case "create": draft = RecipeCreate()
+            default: break
+            }
+            #endif
+        }
+        .sheet(isPresented: $showCapture) {
+            VoiceCaptureView { captured in
+                showCapture = false
+                // Dictation is never 100% right, so it always lands on the editable
+                // form rather than saving straight through.
+                draft = captured
+            }
+        }
+        .sheet(item: $draft) { newDraft in
+            NavigationStack {
+                RecipeEditorView(mode: .create(newDraft)) { saved in
+                    Task { await store.load(env.dataSource, gfOnly: config.gfOnly) }
+                    selection = .recipe(saved.slug)
+                }
+            }
+        }
     }
 
     private func recipeRow(_ recipe: RecipeCard) -> some View {

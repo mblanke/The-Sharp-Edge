@@ -8,11 +8,11 @@ struct GFBadge: View {
         if gf {
             Text("GF")
                 .font(Typography.mono(12, weight: .semibold))
-                .foregroundStyle(Theme.greenDeep)
+                .foregroundStyle(Theme.primaryDeep)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Theme.green.opacity(0.16), in: Capsule())
-                .overlay(Capsule().stroke(Theme.green.opacity(0.35), lineWidth: 1))
+                .background(Theme.primary.opacity(0.16), in: Capsule())
+                .overlay(Capsule().stroke(Theme.primary.opacity(0.35), lineWidth: 1))
                 .accessibilityLabel("Gluten free")
         }
     }
@@ -26,7 +26,7 @@ struct Eyebrow: View {
         Text(text.uppercased())
             .font(Typography.mono(12, weight: .semibold))
             .tracking(1.2)
-            .foregroundStyle(Theme.copper)
+            .foregroundStyle(Theme.accent)
     }
 }
 
@@ -43,7 +43,7 @@ struct SectionHeaderLabel: View {
     }
 }
 
-// MARK: - Mono quantity with copper flash
+// MARK: - Mono quantity with accent flash
 
 struct MonoQuantity: View {
     var text: String
@@ -53,7 +53,7 @@ struct MonoQuantity: View {
     var body: some View {
         Text(text)
             .font(Typography.mono(size, weight: .semibold))
-            .foregroundStyle(flashing ? Theme.copper : Theme.greenDeep)
+            .foregroundStyle(flashing ? Theme.accent : Theme.primaryDeep)
             .animation(.easeOut(duration: 0.45), value: flashing)
             .monospacedDigit()
     }
@@ -70,7 +70,7 @@ struct Chip: View {
             .foregroundStyle(selected ? Theme.offWhite : Theme.ink)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(selected ? Theme.greenDeep : Theme.card, in: Capsule())
+            .background(selected ? Theme.primaryDeep : Theme.card, in: Capsule())
             .overlay(Capsule().stroke(Theme.line, lineWidth: selected ? 0 : 1))
     }
 }
@@ -85,7 +85,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 18)
             .frame(minHeight: Theme.minTouch)
             .frame(maxWidth: .infinity)
-            .background(configuration.isPressed ? Theme.green : Theme.greenDeep, in: Capsule())
+            .background(configuration.isPressed ? Theme.primary : Theme.primaryDeep, in: Capsule())
     }
 }
 
@@ -93,7 +93,7 @@ struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Typography.body(16, weight: .semibold))
-            .foregroundStyle(Theme.greenDeep)
+            .foregroundStyle(Theme.primaryDeep)
             .padding(.horizontal, 18)
             .frame(minHeight: Theme.minTouch)
             .frame(maxWidth: .infinity)
@@ -145,7 +145,7 @@ struct ScaleStepper: View {
                     } label: {
                         Text("base \(baseValue)")
                             .font(Typography.mono(12))
-                            .foregroundStyle(Theme.copper)
+                            .foregroundStyle(Theme.accent)
                     }
                 }
             }
@@ -163,7 +163,7 @@ struct ScaleStepper: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Theme.offWhite)
                 .frame(width: Theme.minTouch, height: Theme.minTouch)
-                .background(enabled ? Theme.greenDeep : Theme.faint.opacity(0.4), in: Circle())
+                .background(enabled ? Theme.primaryDeep : Theme.faint.opacity(0.4), in: Circle())
         }
         .disabled(!enabled)
     }
@@ -174,7 +174,7 @@ struct ScaleStepper: View {
 struct LoadingView: View {
     var body: some View {
         VStack(spacing: 12) {
-            ProgressView().tint(Theme.green)
+            ProgressView().tint(Theme.primary)
             Text("Loading…").font(Typography.mono(13)).foregroundStyle(Theme.faint)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -188,7 +188,7 @@ struct ErrorStateView: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 28))
-                .foregroundStyle(Theme.copper)
+                .foregroundStyle(Theme.accent)
             Text(message)
                 .font(Typography.body(15))
                 .foregroundStyle(Theme.faint)

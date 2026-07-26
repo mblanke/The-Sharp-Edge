@@ -95,7 +95,7 @@ enum SampleData {
         ))
 
     static let cucumberDressing = RecipeFull(
-        slug: "cucumber-dressing", title: "Creamy Cucumber-Wasabi Dressing", category: "Sauces, Dressings & Salsas",
+        slug: "cucumber-dressing", title: "Creamy Cucumber-Wasabi Dressing", category: "Sauces & Salsas",
         meta: "Makes ~2 cups", baseYield: 2, yieldWord: "cups", gf: true, noscale: false, status: "active",
         source: "family recipe",
         currentVersion: version(
@@ -113,7 +113,7 @@ enum SampleData {
         ))
 
     static let celeriac = RecipeFull(
-        slug: "celeriac-puree", title: "Celeriac Purée", category: "Side Dishes",
+        slug: "celeriac-puree", title: "Celeriac Purée", category: "Sides",
         meta: "Silky, metric measures", baseYield: 4, yieldWord: "servings", gf: true, noscale: false, status: "active",
         source: nil,
         currentVersion: version(
@@ -132,7 +132,7 @@ enum SampleData {
         ))
 
     static let souvlaki = RecipeFull(
-        slug: "souvlaki-marinade", title: "Souvlaki Marinade", category: "Marinades & Rubs",
+        slug: "souvlaki-marinade", title: "Souvlaki Marinade", category: "Marinades",
         meta: "Enough for ~1.5 kg chicken or pork", baseYield: 1, yieldWord: "batches", gf: true, noscale: false, status: "active",
         source: nil,
         currentVersion: version(
@@ -245,6 +245,67 @@ enum SampleData {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+
+    #if DEBUG
+    /// Canned dictation for the simulator, which has no usable microphone path.
+    /// Real lines someone would say — including the ones that used to break the parser:
+    /// German compound numerals, a decimal comma, French partitive "de", Romanian
+    /// diacritics, and a "to taste" phrase in every language.
+    static func dictation(_ language: CaptureLanguage, _ stage: Int) -> String {
+        let scripts: [CaptureLanguage: [String]] = [
+            .en: [
+                "Smoked Paprika Butter",
+                "sauces",
+                """
+                two and a half tablespoons smoked paprika. half a cup of soft butter. \
+                one clove of garlic, grated. a pinch of saffron. sea salt to taste
+                """,
+                """
+                Beat the butter until pale. Fold in the paprika and garlic. \
+                Roll in parchment and chill for two hours
+                """,
+            ],
+            .fr: [
+                "Beurre Maître d'Hôtel",
+                "sauces",
+                """
+                200 grammes de beurre. 2 cuillères à soupe de persil haché. \
+                1,5 cuillères à café de jus de citron. une pincée de sel. poivre à votre goût
+                """,
+                """
+                Travailler le beurre en pommade. Incorporer le persil et le citron. \
+                Rouler en boudin et réserver au froid
+                """,
+            ],
+            .de: [
+                "Gurkensalat mit Dill",
+                "salate",
+                """
+                zweieinhalb Salatgurken. 200 Gramm saure Sahne. \
+                1,5 Esslöffel frischer Dill. eine Prise Salz. Pfeffer nach Geschmack
+                """,
+                """
+                Die Gurken sehr dünn hobeln. Mit Salz bestreuen und zwanzig Minuten ziehen lassen. \
+                Ausdrücken und mit der sauren Sahne und dem Dill vermengen
+                """,
+            ],
+            .ro: [
+                "Ciorbă de Perișoare",
+                "ciorbe",
+                """
+                500 g de carne tocată. două linguri de orez. o linguriță de sare, după gust. \
+                1,5 litri de supă de legume. un praf de piper
+                """,
+                """
+                Amestecă bine carnea cu orezul. Formează perișoare mici. \
+                Fierbe-le în supă timp de treizeci de minute
+                """,
+            ],
+        ]
+        let script = scripts[language] ?? scripts[.en]!
+        return stage < script.count ? script[stage] : ""
+    }
+    #endif
 }
 
 /// Type-erasing Encodable wrapper for the sample SSE encoder.

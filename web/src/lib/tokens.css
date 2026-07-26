@@ -1,13 +1,21 @@
-/* Design tokens — "washi & bottle green" (CLAUDE.md §7). Used everywhere. */
+/* Design tokens — "C · Faïence" (CLAUDE.md §7). Used everywhere.
+   Blue-and-white kitchen tile with an ochre mustard accent. Light theme only;
+   the accent is deliberately dark so it clears WCAG AA at the 10–11px label sizes. */
 :root {
-  --paper: #f2f1ec;
-  --ink: #20241e;
-  --faint: #6b6f63;
-  --green: #3e6b4a;
-  --green-deep: #2c4f36;
-  --copper: #c87a2e;
-  --line: #d9d7cc;
-  --card: #fafaf6;
+  --paper: #f2f3f5;
+  --ink: #14161c;
+  --faint: #5f6570;
+  --primary: #1f4a8f;
+  --primary-deep: #14315f;
+  --accent: #8a5e17;
+  --line: #dcdee3;
+  --card: #fbfcfd;
+
+  /* Derived — text and fills that sit on --primary / --primary-deep. */
+  --off-white: #f7f8fa;
+  --btn-ghost: rgba(255, 255, 255, 0.14);
+  --btn-outline: rgba(255, 255, 255, 0.4);
+  --accent-wash: #f4efe6;
 }
 
 html {
@@ -35,18 +43,18 @@ body {
 .qty {
   font-family: 'Spline Sans Mono', monospace;
   font-weight: 500;
-  color: var(--green-deep);
+  color: var(--primary-deep);
   transition: color 0.45s ease;
 }
 
 .qty.flash {
-  color: var(--copper);
+  color: var(--accent);
   transition: none;
 }
 
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--copper);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 

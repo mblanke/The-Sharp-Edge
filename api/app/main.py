@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.problems import install_problem_handlers
-from app.routers import ask, library, recipes
+from app.routers import ask, library, parse, recipes
 
 
 def create_app() -> FastAPI:
@@ -19,6 +19,7 @@ def create_app() -> FastAPI:
     app.include_router(recipes.router, prefix="/api/v1")
     app.include_router(library.router, prefix="/api/v1")
     app.include_router(ask.router, prefix="/api/v1")
+    app.include_router(parse.router, prefix="/api/v1")
 
     @app.get("/api/v1/healthz")
     async def healthz():

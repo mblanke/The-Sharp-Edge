@@ -27,7 +27,7 @@ struct RootView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .task(id: config.useSampleData) { await store.load(env.dataSource, gfOnly: config.gfOnly) }
-        .tint(Theme.green)
+        .tint(Theme.primary)
         .onAppear(perform: applyLaunchRoute)
     }
 

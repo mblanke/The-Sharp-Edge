@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import { problemDetail } from './problem';
-import type { RecipeFull, RecipeUpdate, RecipeCard } from './types';
+import type { RecipeCreate, RecipeFull, RecipeUpdate, RecipeCard } from './types';
 
 /** Server-side API client — load functions run in the web container and
  *  reach the api container over the compose network (API_URL). */
@@ -39,6 +39,28 @@ export async function updateRecipe(
 ): Promise<RecipeFull> {
   const res = await fetchFn(`${API_URL}/api/v1/recipes/${encodeURIComponent(slug)}`, {
     method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const detail = await problemDetail(res);
+    throw new ApiError(detail, res.status);
+  }
+  return res.json() as Promise<RecipeFull>;
+}
+
+/** POST a new recipe. Same server-side-only rule as updateRecipe: the API proxy at
+ *  routes/api/[...path] forwards no Authorization header, so this cannot be called
+ *  from the browser. A duplicate slug comes back as a 409 for the form to surface. */
+export async function createRecipe(
+  fetchFn: typeof fetch,
+  payload: RecipeCreate
+): Promise<RecipeFull> {
+  const res = await fetchFn(`${API_URL}/api/v1/recipes`, {
+    method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${env.API_TOKEN ?? ''}`

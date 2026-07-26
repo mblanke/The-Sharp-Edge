@@ -135,6 +135,59 @@ struct RecipeFull: Codable, Hashable, Identifiable {
     }
 }
 
+/// POST body — creates a recipe and its version 1.
+/// Differs from RecipeUpdate in exactly one way that matters: the slug is
+/// caller-supplied and permanent. QR codes are printed against it (CLAUDE.md §5),
+/// so it is generated once via /parse/slug and confirmed before save.
+struct RecipeCreate: Codable, Identifiable {
+    /// Presentation identity only — `sheet(item:)` needs it. Never sent on the wire.
+    var id: String { slug.isEmpty ? "new" : slug }
+
+    var slug: String
+    var title: String
+    var category: String
+    var meta: String?
+    var baseYield: Int
+    var yieldWord: String
+    var gf: Bool
+    var noscale: Bool
+    var source: String?
+    var status: String
+    var label: String?
+    var ingredients: [Ingredient]
+    var steps: [Step]
+    var notes: [String]
+
+    init(slug: String = "", title: String = "", category: String = Category.order[0],
+         meta: String? = nil, baseYield: Int = 4, yieldWord: String = "servings",
+         gf: Bool = false, noscale: Bool = false, source: String? = nil,
+         status: String = "draft", label: String? = nil,
+         ingredients: [Ingredient] = [], steps: [Step] = [], notes: [String] = []) {
+        self.slug = slug
+        self.title = title
+        self.category = category
+        self.meta = meta
+        self.baseYield = baseYield
+        self.yieldWord = yieldWord
+        self.gf = gf
+        self.noscale = noscale
+        self.source = source
+        self.status = status
+        self.label = label
+        self.ingredients = ingredients
+        self.steps = steps
+        self.notes = notes
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case slug, title, category, meta
+        case baseYield = "base_yield"
+        case yieldWord = "yield_word"
+        case gf, noscale, source, status, label
+        case ingredients, steps, notes
+    }
+}
+
 /// PUT body — appends a new version. Slug never changes.
 struct RecipeUpdate: Codable {
     var title: String?

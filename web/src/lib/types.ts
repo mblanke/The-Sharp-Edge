@@ -58,6 +58,12 @@ export interface RecipeUpdate {
 }
 
 /** Units the API accepts (empty = countable; counting noun lives in name). */
+/** POST body. Differs from RecipeUpdate only in the caller-supplied, permanent slug —
+ *  QR codes are printed against it, so it is generated once and never renamed. */
+export interface RecipeCreate extends RecipeUpdate {
+  slug: string;
+}
+
 export const ALLOWED_UNITS = ['', 'g', 'ml', 'cup', 'tbsp', 'tsp', 'lb', 'oz'] as const;
 
 /** Card / glue-in order — CLAUDE.md §10. */

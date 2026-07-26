@@ -51,6 +51,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>The Sharp Edge connects to your recipe server on your Tailscale network to load and save recipes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The Sharp Edge uses the microphone so you can dictate a recipe while you cook.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Dictated recipes are transcribed on this device where the language supports it. Romanian has no on-device model, so that audio is transcribed by Apple's speech service.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- The recipe backend is reached over Tailscale by plain HTTP (no TLS on the

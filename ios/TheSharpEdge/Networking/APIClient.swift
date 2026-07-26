@@ -63,6 +63,8 @@ final class APIClient: DataSource {
         switch status {
         case 401: return .unauthorized
         case 404: return .notFound
+        // Create only: the slug is already taken. Fixable inline, so it gets its own case.
+        case 409: return .slugTaken(detail ?? "That slug is already in use.")
         case 502: return .atlasDown
         default: return .server(status: status, detail: detail)
         }
@@ -90,6 +92,31 @@ final class APIClient: DataSource {
     func updateRecipe(_ slug: String, _ payload: RecipeUpdate) async throws -> RecipeFull {
         let body = try JSONCoding.encoder.encode(payload)
         return try await run(request(endpoints.recipe(slug), method: "PUT", authed: true, body: body), as: RecipeFull.self)
+    }
+
+    func createRecipe(_ payload: RecipeCreate) async throws -> RecipeFull {
+        let body = try JSONCoding.encoder.encode(payload)
+        return try await run(request(endpoints.createRecipe(), method: "POST", authed: true, body: body), as: RecipeFull.self)
+    }
+
+    // MARK: - Parse helpers (unauthenticated)
+
+    func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
+        let body = try JSONCoding.encoder.encode(ParseIngredientsRequest(lines: lines, lang: lang.rawValue))
+        let res = try await run(request(endpoints.parseIngredients(), method: "POST", body: body),
+                                as: ParseIngredientsResponse.self)
+        return res.ingredients
+    }
+
+    func slug(for title: String) async throws -> SlugResponse {
+        let body = try JSONCoding.encoder.encode(SlugRequest(title: title))
+        return try await run(request(endpoints.parseSlug(), method: "POST", body: body), as: SlugResponse.self)
+    }
+
+    func category(for spoken: String, lang: CaptureLanguage) async throws -> String? {
+        let body = try JSONCoding.encoder.encode(CategoryRequest(spoken: spoken, lang: lang.rawValue))
+        return try await run(request(endpoints.parseCategory(), method: "POST", body: body),
+                             as: CategoryResponse.self).category
     }
 
     // MARK: - Library / search / conversations

@@ -49,7 +49,7 @@ struct SettingsView: View {
                 Toggle("Use sample data (offline)", isOn: Binding(
                     get: { config.useSampleData },
                     set: { config.useSampleData = $0 }
-                )).tint(Theme.green)
+                )).tint(Theme.primary)
                 Text("When on, the app renders bundled fixtures instead of the network.")
                     .font(Typography.body(12)).foregroundStyle(Theme.faint)
             }
@@ -72,9 +72,9 @@ struct SettingsView: View {
     private var healthBadge: some View {
         switch health {
         case .unknown: EmptyView()
-        case .ok: Label("API ok", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.green).font(Typography.mono(13))
-        case .ragOk: Label("API + index ok", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.green).font(Typography.mono(13))
-        case let .down(msg): Label(msg, systemImage: "xmark.circle.fill").foregroundStyle(Theme.copper).font(Typography.mono(13))
+        case .ok: Label("API ok", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.primary).font(Typography.mono(13))
+        case .ragOk: Label("API + index ok", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.primary).font(Typography.mono(13))
+        case let .down(msg): Label(msg, systemImage: "xmark.circle.fill").foregroundStyle(Theme.accent).font(Typography.mono(13))
         }
     }
 

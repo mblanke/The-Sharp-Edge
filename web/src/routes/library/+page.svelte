@@ -90,18 +90,18 @@
 </svelte:head>
 
 <section class="pt-7">
-  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--copper)">
+  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--accent)">
     Culinary library
   </div>
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">The shelf</h2>
   <p class="mt-1 text-[13.5px]" style="color: var(--faint)">
     Books dropped in the Cooking folder are indexed automatically. Search the shelf, or
-    <a href="/ask" style="color: var(--green-deep)">ask the library</a> a question.
+    <a href="/ask" style="color: var(--primary-deep)">ask the library</a> a question.
   </p>
 
   <div
     class="font-mono-label mt-3 inline-block rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--green-deep)' : 'var(--copper)'}; background: var(--card)"
+    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--primary-deep)' : 'var(--accent)'}; background: var(--card)"
   >
     index: {data.library.rag_health.ok ? 'online' : 'unreachable'}
     {#if data.library.rag_health.qdrant_points}
@@ -125,7 +125,7 @@
     <button
       type="submit"
       class="font-mono-label min-h-[48px] rounded-full px-6 text-[12px] uppercase tracking-widest"
-      style="background: var(--green-deep); color: #F4F3EC"
+      style="background: var(--primary-deep); color: var(--off-white)"
       disabled={searching || query.trim().length < 2}
     >
       {searching ? '…' : 'Search'}
@@ -133,13 +133,13 @@
   </form>
 
   {#if errorMsg}
-    <p class="mt-3 text-[13.5px]" style="color: var(--copper)">{errorMsg}</p>
+    <p class="mt-3 text-[13.5px]" style="color: var(--accent)">{errorMsg}</p>
   {/if}
 
   {#if searched}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
+      style="border-color: var(--line); color: var(--primary)"
     >
       Results
     </h3>
@@ -164,7 +164,7 @@
                 <span class="qty shrink-0 text-[12px]">p.{r.page}</span>
               {/if}
               {#if r.heading}
-                <span style="color: var(--copper)">{r.heading}</span>
+                <span style="color: var(--accent)">{r.heading}</span>
               {/if}
             </div>
             <p class="mt-1.5 text-[14px]" style="color: var(--ink)">
@@ -178,7 +178,7 @@
 
   <h3
     class="font-mono-label mt-8 border-b pb-1 text-xs uppercase tracking-widest"
-    style="border-color: var(--line); color: var(--green)"
+    style="border-color: var(--line); color: var(--primary)"
   >
     On the shelf
   </h3>

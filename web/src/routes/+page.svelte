@@ -25,19 +25,19 @@
 
 <nav aria-label="Filters" class="flex items-center gap-3 pt-5">
   <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">Show</span>
-  <div class="flex overflow-hidden rounded-full border" style="border-color: var(--green-deep)">
+  <div class="flex overflow-hidden rounded-full border" style="border-color: var(--primary-deep)">
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
-      style:background={gfOnly ? 'transparent' : 'var(--green-deep)'}
-      style:color={gfOnly ? 'var(--green-deep)' : '#F4F3EC'}
+      style:background={gfOnly ? 'transparent' : 'var(--primary-deep)'}
+      style:color={gfOnly ? 'var(--primary-deep)' : 'var(--off-white)'}
       onclick={() => (gfOnly = false)}
     >
       All
     </button>
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
-      style:background={gfOnly ? 'var(--green-deep)' : 'transparent'}
-      style:color={gfOnly ? '#F4F3EC' : 'var(--green-deep)'}
+      style:background={gfOnly ? 'var(--primary-deep)' : 'transparent'}
+      style:color={gfOnly ? 'var(--off-white)' : 'var(--primary-deep)'}
       onclick={() => (gfOnly = true)}
     >
       GF only
@@ -50,7 +50,7 @@
     <a
       href="#cat-{cat}"
       class="font-mono-label rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--line); color: var(--green-deep); background: var(--card)"
+      style="border-color: var(--line); color: var(--primary-deep); background: var(--card)"
     >
       {cat}
     </a>
@@ -62,7 +62,7 @@
     <section id="cat-{cat}" class="mt-9 scroll-mt-4">
       <h2
         class="font-mono-label border-b pb-1 text-[11px] uppercase tracking-widest"
-        style="border-color: var(--line); color: var(--green)"
+        style="border-color: var(--line); color: var(--primary)"
       >
         {cat}
       </h2>
@@ -80,7 +80,7 @@
                 {#if r.gf}
                   <span
                     class="font-mono-label rounded-full px-2.5 py-1 text-[10.5px] uppercase tracking-widest"
-                    style="background: var(--green); color: #F4F3EC"
+                    style="background: var(--primary); color: var(--off-white)"
                   >
                     GF
                   </span>

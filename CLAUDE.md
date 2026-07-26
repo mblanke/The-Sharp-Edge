@@ -167,13 +167,17 @@ Conventions: Pydantic schemas for every request/response; errors as RFC-7807 pro
 
 ## 7. Frontend requirements
 
-**Design tokens ("washi & bottle green")** — in `tokens.css`, used everywhere:
+**Design tokens ("C · Faïence" — blue-and-white kitchen tile, ochre accent)** — in `tokens.css`, used everywhere:
 ```
---paper #F2F1EC   --ink #20241E    --faint #6B6F63
---green #3E6B4A   --green-deep #2C4F36
---copper #C87A2E  --line #D9D7CC   --card #FAFAF6
+--paper #F2F3F5   --ink #14161C    --faint #5F6570
+--primary #1F4A8F --primary-deep #14315F
+--accent #8A5E17  --line #DCDEE3   --card #FBFCFD
+--off-white #F7F8FA  --btn-ghost rgba(255,255,255,.14)
+--btn-outline rgba(255,255,255,.4)  --accent-wash #F4EFE6
 ```
-Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities copper (~450 ms).
+Light theme only; dark mode is deliberately out of scope. The ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses. `Theme.swift` mirrors these names exactly.
+
+Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities accent (~450 ms).
 
 Pages:
 - **Home** — category chip index + recipe cards. GF filter toggle.

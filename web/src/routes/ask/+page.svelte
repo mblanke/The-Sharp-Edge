@@ -94,7 +94,7 @@
 </svelte:head>
 
 <section class="pt-7">
-  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--copper)">
+  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--accent)">
     Culinary library
   </div>
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">Ask the library</h2>
@@ -105,10 +105,10 @@
   {#if data.recipeSlug}
     <div
       class="font-mono-label mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-      style="border-color: var(--green); color: var(--green-deep); background: var(--card)"
+      style="border-color: var(--primary); color: var(--primary-deep); background: var(--card)"
     >
       scoped to: {data.recipeTitle ?? data.recipeSlug}
-      <a href="/ask" class="no-underline" style="color: var(--copper)" title="Clear scope">✕</a>
+      <a href="/ask" class="no-underline" style="color: var(--accent)" title="Clear scope">✕</a>
     </div>
   {/if}
 
@@ -117,7 +117,7 @@
       {#if msg.role === 'user'}
         <div
           class="self-end rounded-2xl rounded-br-sm px-4 py-2.5 text-[15px]"
-          style="background: var(--green-deep); color: #F4F3EC; max-width: 85%"
+          style="background: var(--primary-deep); color: var(--off-white); max-width: 85%"
         >
           {msg.content}
         </div>
@@ -136,7 +136,7 @@
               {#each msg.citations as c (c.n)}
                 <button
                   class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
-                  style="border-color: var(--green); color: var(--green-deep)"
+                  style="border-color: var(--primary); color: var(--primary-deep)"
                   onclick={() => (openSource = openSource === c.n ? null : c.n)}
                 >
                   [{c.n}] {c.title ?? bookName(c.source_path)}{c.page != null ? ` · p.${c.page}` : ''}
@@ -147,7 +147,7 @@
               {@const src = msg.sources?.find((s) => s.n === openSource)}
               {#if src}
                 <div class="mt-2 rounded-xl border p-3 text-[13px]" style="border-color: var(--line); color: var(--faint)">
-                  <div class="font-mono-label mb-1 text-[10.5px] uppercase tracking-widest" style="color: var(--copper)">
+                  <div class="font-mono-label mb-1 text-[10.5px] uppercase tracking-widest" style="color: var(--accent)">
                     {src.source_path}{src.page != null ? ` · p.${src.page}` : ''}
                   </div>
                   {src.text}
@@ -161,7 +161,7 @@
   </div>
 
   {#if errorMsg}
-    <p class="mt-3 text-[13.5px]" style="color: var(--copper)">{errorMsg}</p>
+    <p class="mt-3 text-[13.5px]" style="color: var(--accent)">{errorMsg}</p>
   {/if}
 
   <form
@@ -181,7 +181,7 @@
     <button
       type="submit"
       class="font-mono-label min-h-[48px] rounded-full px-6 text-[12px] uppercase tracking-widest"
-      style="background: var(--green-deep); color: #F4F3EC"
+      style="background: var(--primary-deep); color: var(--off-white)"
       disabled={busy || !question.trim()}
     >
       {busy ? '…' : 'Ask'}
@@ -201,7 +201,7 @@
   {#if data.conversations.length}
     <h3
       class="font-mono-label mt-8 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
+      style="border-color: var(--line); color: var(--primary)"
     >
       Recent conversations
     </h3>
@@ -210,7 +210,7 @@
         <li class="border-b border-dashed" style="border-color: var(--line)">
           <button
             class="min-h-[44px] w-full py-2 text-left text-[14px]"
-            style="color: var(--green-deep)"
+            style="color: var(--primary-deep)"
             onclick={() => loadConversation(conv.id)}
           >
             {conv.title ?? 'untitled'}

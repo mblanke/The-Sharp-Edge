@@ -65,7 +65,7 @@ struct CookModeView: View {
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             Spacer(minLength: 0)
             Text("Step \(idx + 1)")
-                .font(Typography.mono(16, weight: .semibold)).foregroundStyle(Theme.copper)
+                .font(Typography.mono(16, weight: .semibold)).foregroundStyle(Theme.accent)
             Text(StepText.attributed(step.text))
                 .font(Typography.display(30, weight: .regular))
                 .foregroundStyle(Theme.ink)
@@ -101,7 +101,7 @@ struct CookModeView: View {
     private var pageDots: some View {
         HStack(spacing: 6) {
             ForEach(0..<steps.count, id: \.self) { i in
-                Circle().fill(i == index ? Theme.green : Theme.line)
+                Circle().fill(i == index ? Theme.primary : Theme.line)
                     .frame(width: 7, height: 7)
             }
         }
@@ -116,7 +116,7 @@ struct CookModeView: View {
                         ForEach(section.rows) { row in
                             HStack {
                                 Text(row.display).font(Typography.mono(15, weight: .semibold))
-                                    .foregroundStyle(Theme.greenDeep).frame(minWidth: 70, alignment: .leading)
+                                    .foregroundStyle(Theme.primaryDeep).frame(minWidth: 70, alignment: .leading)
                                 Text(row.name).font(Typography.body(15))
                             }
                         }

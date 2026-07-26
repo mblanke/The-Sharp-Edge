@@ -13,7 +13,7 @@ struct TheSharpEdgeApp: App {
             RootView()
                 .environmentObject(env)
                 .environmentObject(env.config)
-                .tint(Theme.green)
+                .tint(Theme.primary)
         }
     }
 }

@@ -29,6 +29,10 @@ struct Endpoints {
     func qr(_ slug: String) -> URL? { url("/recipes/\(slug)/qr") }
     func createRecipe() -> URL? { url("/recipes") }
 
+    func parseIngredients() -> URL? { url("/parse/ingredients") }
+    func parseSlug() -> URL? { url("/parse/slug") }
+    func parseCategory() -> URL? { url("/parse/category") }
+
     func search(q: String, topK: Int) -> URL? {
         url("/search", query: ["q": q, "top_k": String(topK)])
     }

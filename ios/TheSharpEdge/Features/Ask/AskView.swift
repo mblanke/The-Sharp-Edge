@@ -36,7 +36,7 @@ struct AskView: View {
 
     private func scopeBanner(_ slug: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "link").foregroundStyle(Theme.copper)
+            Image(systemName: "link").foregroundStyle(Theme.accent)
             Text("Scoped to this recipe").font(Typography.mono(12)).foregroundStyle(Theme.faint)
             Spacer()
         }
@@ -53,7 +53,7 @@ struct AskView: View {
                         turnView(turn).id(turn.id)
                     }
                     if let error = store.errorText {
-                        Text(error).font(Typography.body(14)).foregroundStyle(Theme.copper)
+                        Text(error).font(Typography.body(14)).foregroundStyle(Theme.accent)
                     }
                 }
                 .padding(Theme.Space.xl)
@@ -72,7 +72,7 @@ struct AskView: View {
             Text("Answers cite the cookbooks on the shelf. Local models only — corpus never leaves your network.")
                 .font(Typography.body(15)).foregroundStyle(Theme.faint)
             if !store.recent.isEmpty {
-                Text("Recent").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.copper).padding(.top, 8)
+                Text("Recent").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.accent).padding(.top, 8)
                 ForEach(store.recent) { conv in
                     Button {
                         Task { await load(conv) }
@@ -99,12 +99,12 @@ struct AskView: View {
                     .font(Typography.body(16))
                     .foregroundStyle(Theme.offWhite)
                     .padding(Theme.Space.m)
-                    .background(Theme.greenDeep, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                    .background(Theme.primaryDeep, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if turn.text.isEmpty && turn.streaming {
-                        HStack(spacing: 6) { ProgressView().tint(Theme.green); Text("Thinking…").font(Typography.mono(13)).foregroundStyle(Theme.faint) }
+                        HStack(spacing: 6) { ProgressView().tint(Theme.primary); Text("Thinking…").font(Typography.mono(13)).foregroundStyle(Theme.faint) }
                     } else {
                         Text(turn.text)
                             .font(Typography.body(16)).foregroundStyle(Theme.ink)
@@ -137,10 +137,10 @@ struct AskView: View {
                 CardSurface {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            Text(src.title ?? "Source").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.greenDeep)
+                            Text(src.title ?? "Source").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.primaryDeep)
                             if let p = src.page { Text("p. \(p)").font(Typography.mono(12)).foregroundStyle(Theme.faint) }
                         }
-                        if let heading = src.heading { Text(heading).font(Typography.mono(12)).foregroundStyle(Theme.copper) }
+                        if let heading = src.heading { Text(heading).font(Typography.mono(12)).foregroundStyle(Theme.accent) }
                         if let text = src.text { Text(text).font(Typography.body(14)).foregroundStyle(Theme.ink) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -166,13 +166,13 @@ struct AskView: View {
                 Button { store.stop() } label: {
                     Image(systemName: "stop.fill").foregroundStyle(Theme.offWhite)
                         .frame(width: Theme.minTouch, height: Theme.minTouch)
-                        .background(Theme.copper, in: Circle())
+                        .background(Theme.accent, in: Circle())
                 }
             } else {
                 Button { store.send(env.dataSource, scopeSlug: scopeSlug) } label: {
                     Image(systemName: "arrow.up").foregroundStyle(Theme.offWhite).font(.system(size: 18, weight: .bold))
                         .frame(width: Theme.minTouch, height: Theme.minTouch)
-                        .background(store.input.isEmpty ? Theme.faint.opacity(0.4) : Theme.greenDeep, in: Circle())
+                        .background(store.input.isEmpty ? Theme.faint.opacity(0.4) : Theme.primaryDeep, in: Circle())
                 }
                 .disabled(store.input.isEmpty)
             }
