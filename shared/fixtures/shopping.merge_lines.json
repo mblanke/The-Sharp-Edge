@@ -1,0 +1,765 @@
+{
+  "version": 1,
+  "function": "merge_lines",
+  "note": "Adding a second recipe must ADD to a line, never replace it.",
+  "tolerance": 0.001,
+  "cases": [
+    {
+      "id": "same-ingredient-and-unit-adds",
+      "args": {
+        "lines": [
+          {
+            "name": "sweet Hungarian paprika",
+            "amount": 3,
+            "unit": "tbsp",
+            "recipe": "goulash"
+          },
+          {
+            "name": "sweet Hungarian paprika",
+            "amount": 2,
+            "unit": "tbsp",
+            "recipe": "rub"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "sweet Hungarian paprika",
+          "amount": 5,
+          "unit": "tbsp",
+          "display": "5 tbsp",
+          "to_taste": false,
+          "recipes": [
+            "goulash",
+            "rub"
+          ],
+          "check_gluten": true,
+          "aisle": "Herbs & spices"
+        }
+      ]
+    },
+    {
+      "id": "preparation-is-ignored-when-matching",
+      "args": {
+        "lines": [
+          {
+            "name": "beef chuck, cut into 1-inch cubes",
+            "amount": 2,
+            "unit": "lb",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef chuck, trimmed",
+            "amount": 1,
+            "unit": "lb",
+            "recipe": "stew"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "beef chuck, cut into 1-inch cubes",
+          "amount": 3,
+          "unit": "lb",
+          "display": "3 lb",
+          "to_taste": false,
+          "recipes": [
+            "goulash",
+            "stew"
+          ],
+          "check_gluten": false,
+          "aisle": "Meat & fish"
+        }
+      ]
+    },
+    {
+      "id": "singular-and-plural-merge",
+      "args": {
+        "lines": [
+          {
+            "name": "yellow onions, diced",
+            "amount": 3,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "yellow onion",
+            "amount": 2,
+            "unit": "",
+            "recipe": "soup"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "yellow onions, diced",
+          "amount": 5,
+          "unit": "",
+          "display": "5",
+          "to_taste": false,
+          "recipes": [
+            "goulash",
+            "soup"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        }
+      ]
+    },
+    {
+      "id": "volume-units-convert-and-add",
+      "args": {
+        "lines": [
+          {
+            "name": "olive oil",
+            "amount": 1,
+            "unit": "cup",
+            "recipe": "a"
+          },
+          {
+            "name": "olive oil",
+            "amount": 2,
+            "unit": "tbsp",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "olive oil",
+          "amount": 1.1250004226757064,
+          "unit": "cup",
+          "display": "1 ⅛ cup",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "smaller-unit-wins-when-it-is-the-larger-amount",
+      "args": {
+        "lines": [
+          {
+            "name": "olive oil",
+            "amount": 3,
+            "unit": "tbsp",
+            "recipe": "a"
+          },
+          {
+            "name": "olive oil",
+            "amount": 1,
+            "unit": "tsp",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "olive oil",
+          "amount": 3.3333324316282087,
+          "unit": "tbsp",
+          "display": "3 ⅓ tbsp",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "weight-units-convert-and-add",
+      "args": {
+        "lines": [
+          {
+            "name": "butter",
+            "amount": 500,
+            "unit": "g",
+            "recipe": "a"
+          },
+          {
+            "name": "butter",
+            "amount": 1,
+            "unit": "lb",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "butter",
+          "amount": 953.592,
+          "unit": "g",
+          "display": "955 g",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Dairy & eggs"
+        }
+      ]
+    },
+    {
+      "id": "same-unit-addition-is-exact",
+      "args": {
+        "lines": [
+          {
+            "name": "beef chuck",
+            "amount": 2,
+            "unit": "lb",
+            "recipe": "a"
+          },
+          {
+            "name": "beef chuck",
+            "amount": 1,
+            "unit": "lb",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "beef chuck",
+          "amount": 3,
+          "unit": "lb",
+          "display": "3 lb",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Meat & fish"
+        }
+      ]
+    },
+    {
+      "id": "volume-and-weight-never-combine",
+      "args": {
+        "lines": [
+          {
+            "name": "stock",
+            "amount": 2,
+            "unit": "cup",
+            "recipe": "a"
+          },
+          {
+            "name": "stock",
+            "amount": 400,
+            "unit": "g",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "stock",
+          "amount": 2,
+          "unit": "cup",
+          "display": "2 cup",
+          "to_taste": false,
+          "recipes": [
+            "a"
+          ],
+          "check_gluten": true,
+          "aisle": "Pantry"
+        },
+        {
+          "name": "stock",
+          "amount": 400,
+          "unit": "g",
+          "display": "400 g",
+          "to_taste": false,
+          "recipes": [
+            "b"
+          ],
+          "check_gluten": true,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "countables-add",
+      "args": {
+        "lines": [
+          {
+            "name": "limes",
+            "amount": 2,
+            "unit": "",
+            "recipe": "a"
+          },
+          {
+            "name": "limes",
+            "amount": 3,
+            "unit": "",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "limes",
+          "amount": 5,
+          "unit": "",
+          "display": "5",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        }
+      ]
+    },
+    {
+      "id": "to-taste-items-do-not-gain-a-quantity",
+      "args": {
+        "lines": [
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "a"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "salt",
+          "amount": 0,
+          "unit": "",
+          "display": "to taste",
+          "to_taste": true,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Herbs & spices"
+        }
+      ]
+    },
+    {
+      "id": "a-measured-item-absorbs-a-to-taste-one",
+      "args": {
+        "lines": [
+          {
+            "name": "black pepper",
+            "amount": 1,
+            "unit": "tsp",
+            "recipe": "goulash"
+          },
+          {
+            "name": "black pepper",
+            "amount": 0,
+            "unit": "",
+            "recipe": "salad"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "black pepper",
+          "amount": 1,
+          "unit": "tsp",
+          "display": "1 tsp",
+          "to_taste": false,
+          "recipes": [
+            "goulash",
+            "salad"
+          ],
+          "check_gluten": false,
+          "aisle": "Herbs & spices"
+        }
+      ]
+    },
+    {
+      "id": "absorption-works-in-either-order",
+      "args": {
+        "lines": [
+          {
+            "name": "black pepper",
+            "amount": 0,
+            "unit": "",
+            "recipe": "salad"
+          },
+          {
+            "name": "black pepper",
+            "amount": 1,
+            "unit": "tsp",
+            "recipe": "goulash"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "black pepper",
+          "amount": 1,
+          "unit": "tsp",
+          "display": "1 tsp",
+          "to_taste": false,
+          "recipes": [
+            "goulash",
+            "salad"
+          ],
+          "check_gluten": false,
+          "aisle": "Herbs & spices"
+        }
+      ]
+    },
+    {
+      "id": "order-of-first-appearance-is-kept",
+      "args": {
+        "lines": [
+          {
+            "name": "onions",
+            "amount": 1,
+            "unit": "",
+            "recipe": "a"
+          },
+          {
+            "name": "garlic",
+            "amount": 2,
+            "unit": "",
+            "recipe": "b"
+          },
+          {
+            "name": "onions",
+            "amount": 1,
+            "unit": "",
+            "recipe": "c"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "onions",
+          "amount": 2,
+          "unit": "",
+          "display": "2",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "c"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        },
+        {
+          "name": "garlic",
+          "amount": 2,
+          "unit": "",
+          "display": "2",
+          "to_taste": false,
+          "recipes": [
+            "b"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        }
+      ]
+    },
+    {
+      "id": "three-recipes-accumulate",
+      "args": {
+        "lines": [
+          {
+            "name": "olive oil",
+            "amount": 2,
+            "unit": "tbsp",
+            "recipe": "a"
+          },
+          {
+            "name": "olive oil",
+            "amount": 2,
+            "unit": "tbsp",
+            "recipe": "b"
+          },
+          {
+            "name": "olive oil",
+            "amount": 2,
+            "unit": "tbsp",
+            "recipe": "c"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "olive oil",
+          "amount": 6,
+          "unit": "tbsp",
+          "display": "6 tbsp",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b",
+            "c"
+          ],
+          "check_gluten": false,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "a-duplicate-recipe-is-not-listed-twice",
+      "args": {
+        "lines": [
+          {
+            "name": "olive oil",
+            "amount": 1,
+            "unit": "tbsp",
+            "recipe": "a"
+          },
+          {
+            "name": "olive oil",
+            "amount": 1,
+            "unit": "tbsp",
+            "recipe": "a"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "olive oil",
+          "amount": 2,
+          "unit": "tbsp",
+          "display": "2 tbsp",
+          "to_taste": false,
+          "recipes": [
+            "a"
+          ],
+          "check_gluten": false,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "gluten-flag-survives-merging",
+      "args": {
+        "lines": [
+          {
+            "name": "beef broth",
+            "amount": 2,
+            "unit": "cup",
+            "recipe": "a"
+          },
+          {
+            "name": "beef broth",
+            "amount": 1,
+            "unit": "cup",
+            "recipe": "b"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "beef broth",
+          "amount": 3,
+          "unit": "cup",
+          "display": "3 cup",
+          "to_taste": false,
+          "recipes": [
+            "a",
+            "b"
+          ],
+          "check_gluten": true,
+          "aisle": "Pantry"
+        }
+      ]
+    },
+    {
+      "id": "a-realistic-two-recipe-shop",
+      "args": {
+        "lines": [
+          {
+            "name": "yellow onions, diced",
+            "amount": 3,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "garlic cloves, minced",
+            "amount": 4,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef chuck, cut into 1-inch cubes",
+            "amount": 2,
+            "unit": "lb",
+            "recipe": "goulash"
+          },
+          {
+            "name": "sweet Hungarian paprika",
+            "amount": 3,
+            "unit": "tbsp",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef broth",
+            "amount": 3,
+            "unit": "cup",
+            "recipe": "goulash"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "red onion, finely diced",
+            "amount": 0.25,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "jalapeño, seeded and minced",
+            "amount": 1,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "limes",
+            "amount": 2,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "salsa"
+          }
+        ]
+      },
+      "expect": [
+        {
+          "name": "yellow onions, diced",
+          "amount": 3,
+          "unit": "",
+          "display": "3",
+          "to_taste": false,
+          "recipes": [
+            "goulash"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        },
+        {
+          "name": "garlic cloves, minced",
+          "amount": 4,
+          "unit": "",
+          "display": "4",
+          "to_taste": false,
+          "recipes": [
+            "goulash"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        },
+        {
+          "name": "beef chuck, cut into 1-inch cubes",
+          "amount": 2,
+          "unit": "lb",
+          "display": "2 lb",
+          "to_taste": false,
+          "recipes": [
+            "goulash"
+          ],
+          "check_gluten": false,
+          "aisle": "Meat & fish"
+        },
+        {
+          "name": "sweet Hungarian paprika",
+          "amount": 3,
+          "unit": "tbsp",
+          "display": "3 tbsp",
+          "to_taste": false,
+          "recipes": [
+            "goulash"
+          ],
+          "check_gluten": true,
+          "aisle": "Herbs & spices"
+        },
+        {
+          "name": "beef broth",
+          "amount": 3,
+          "unit": "cup",
+          "display": "3 cup",
+          "to_taste": false,
+          "recipes": [
+            "goulash"
+          ],
+          "check_gluten": true,
+          "aisle": "Pantry"
+        },
+        {
+          "name": "salt",
+          "amount": 0,
+          "unit": "",
+          "display": "to taste",
+          "to_taste": true,
+          "recipes": [
+            "goulash",
+            "salsa"
+          ],
+          "check_gluten": false,
+          "aisle": "Herbs & spices"
+        },
+        {
+          "name": "red onion, finely diced",
+          "amount": 0.25,
+          "unit": "",
+          "display": "¼",
+          "to_taste": false,
+          "recipes": [
+            "salsa"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        },
+        {
+          "name": "jalapeño, seeded and minced",
+          "amount": 1,
+          "unit": "",
+          "display": "1",
+          "to_taste": false,
+          "recipes": [
+            "salsa"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        },
+        {
+          "name": "limes",
+          "amount": 2,
+          "unit": "",
+          "display": "2",
+          "to_taste": false,
+          "recipes": [
+            "salsa"
+          ],
+          "check_gluten": false,
+          "aisle": "Produce"
+        }
+      ]
+    }
+  ]
+}

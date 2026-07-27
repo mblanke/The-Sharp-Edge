@@ -252,3 +252,26 @@ Known gaps to leave as editable placeholders: spaghetti-sauce herb quantities, b
 - Config only via env (`config.py`); `.env.example` stays current.
 - No secrets, no owner name, no editorializing in user-facing strings.
 - If a decision isn't covered here, prefer the boring option and note it in a `DECISIONS.md`.
+
+## 14. Cross-language parity (non-negotiable)
+
+The kitchen arithmetic exists three times: Python (`api/app/services/`), Swift
+(`ios/TheSharpEdge/Domain/`), TypeScript (`web/src/lib/`). §8 used to say "the server is
+canonical" and the clients "mirror" it. That was a comment, and comments don't fail builds —
+by the time this rule was written the iOS gluten-watch list had drifted to 14 terms against
+the server's 23, and `AISLE_ORDER` existed in four hand-copied places.
+
+**Any change to `scaling.py`, `shopping.py`, `aisles.py` or `ingredients.py` must add or
+change a case in `shared/fixtures/`.** Regenerate with `python api/scripts/dump_fixtures.py`;
+every port that hasn't followed then goes red on the exact input that moved. CI enforces both
+halves (`.github/workflows/parity.yml`): `--check` fails on stale fixtures, and the pytest,
+vitest and XCTest suites all read the same files. See `shared/fixtures/README.md`.
+
+This matters more than it used to: in **local notebook mode** (a device hosting its own
+recipes, with no server in the loop) the Swift implementation *is* the answer a cook acts on.
+GF is load-bearing (§1) — a term missing from the Swift gluten list is a bad week, not a
+cosmetic difference.
+
+iOS tests: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test
+-project ios/TheSharpEdge.xcodeproj -scheme TheSharpEdge -destination 'platform=iOS
+Simulator,name=iPad Pro 11-inch (M4)'`. Simulator only — fixtures resolve via `#filePath`.

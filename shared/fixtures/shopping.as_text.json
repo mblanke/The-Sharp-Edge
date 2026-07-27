@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "function": "as_text",
+  "note": "List apps split pasted text on newlines, so one item per line is the contract.",
+  "cases": [
+    {
+      "id": "gluten-flag-survives-merging-plain",
+      "args": {
+        "lines": [
+          {
+            "name": "beef broth",
+            "amount": 2,
+            "unit": "cup",
+            "recipe": "a"
+          },
+          {
+            "name": "beef broth",
+            "amount": 1,
+            "unit": "cup",
+            "recipe": "b"
+          }
+        ],
+        "group_by_aisle": false
+      },
+      "expect": "Shopping list\n\n3 cup beef broth  (check GF)"
+    },
+    {
+      "id": "gluten-flag-survives-merging-by-aisle",
+      "args": {
+        "lines": [
+          {
+            "name": "beef broth",
+            "amount": 2,
+            "unit": "cup",
+            "recipe": "a"
+          },
+          {
+            "name": "beef broth",
+            "amount": 1,
+            "unit": "cup",
+            "recipe": "b"
+          }
+        ],
+        "group_by_aisle": true
+      },
+      "expect": "Shopping list\n\nPantry\n3 cup beef broth  (check GF)"
+    },
+    {
+      "id": "a-realistic-two-recipe-shop-plain",
+      "args": {
+        "lines": [
+          {
+            "name": "yellow onions, diced",
+            "amount": 3,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "garlic cloves, minced",
+            "amount": 4,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef chuck, cut into 1-inch cubes",
+            "amount": 2,
+            "unit": "lb",
+            "recipe": "goulash"
+          },
+          {
+            "name": "sweet Hungarian paprika",
+            "amount": 3,
+            "unit": "tbsp",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef broth",
+            "amount": 3,
+            "unit": "cup",
+            "recipe": "goulash"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "red onion, finely diced",
+            "amount": 0.25,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "jalapeño, seeded and minced",
+            "amount": 1,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "limes",
+            "amount": 2,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "salsa"
+          }
+        ],
+        "group_by_aisle": false
+      },
+      "expect": "Shopping list\n\n3 yellow onions, diced\n4 garlic cloves, minced\n2 lb beef chuck, cut into 1-inch cubes\n3 tbsp sweet Hungarian paprika  (check GF)\n3 cup beef broth  (check GF)\nto taste salt\n¼ red onion, finely diced\n1 jalapeño, seeded and minced\n2 limes"
+    },
+    {
+      "id": "a-realistic-two-recipe-shop-by-aisle",
+      "args": {
+        "lines": [
+          {
+            "name": "yellow onions, diced",
+            "amount": 3,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "garlic cloves, minced",
+            "amount": 4,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef chuck, cut into 1-inch cubes",
+            "amount": 2,
+            "unit": "lb",
+            "recipe": "goulash"
+          },
+          {
+            "name": "sweet Hungarian paprika",
+            "amount": 3,
+            "unit": "tbsp",
+            "recipe": "goulash"
+          },
+          {
+            "name": "beef broth",
+            "amount": 3,
+            "unit": "cup",
+            "recipe": "goulash"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "goulash"
+          },
+          {
+            "name": "red onion, finely diced",
+            "amount": 0.25,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "jalapeño, seeded and minced",
+            "amount": 1,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "limes",
+            "amount": 2,
+            "unit": "",
+            "recipe": "salsa"
+          },
+          {
+            "name": "salt",
+            "amount": 0,
+            "unit": "",
+            "recipe": "salsa"
+          }
+        ],
+        "group_by_aisle": true
+      },
+      "expect": "Shopping list\n\nProduce\n3 yellow onions, diced\n4 garlic cloves, minced\n¼ red onion, finely diced\n1 jalapeño, seeded and minced\n2 limes\n\nMeat & fish\n2 lb beef chuck, cut into 1-inch cubes\n\nPantry\n3 cup beef broth  (check GF)\n\nHerbs & spices\n3 tbsp sweet Hungarian paprika  (check GF)\nto taste salt"
+    }
+  ]
+}
