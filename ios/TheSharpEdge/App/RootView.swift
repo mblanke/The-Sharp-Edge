@@ -16,10 +16,12 @@ struct RootView: View {
 
     @State private var selection: SidebarRoute?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var showImportPicker = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(store: store, selection: $selection)
+            SidebarView(store: store, selection: $selection,
+                        showImportPicker: $showImportPicker)
                 .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
         } detail: {
             NavigationStack {
@@ -45,6 +47,9 @@ struct RootView: View {
         )) {
             SetupView()
         }
+        // Every arrival route for a .sharpedge file funnels through one confirmation
+        // sheet — an import that happens on tap is how people lose recipes.
+        .importingRecipes(showPicker: $showImportPicker)
     }
 
     /// DEBUG-only: allow screenshots/tests to open a specific screen via an env var.

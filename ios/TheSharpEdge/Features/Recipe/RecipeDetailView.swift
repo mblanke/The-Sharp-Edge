@@ -14,7 +14,6 @@ struct RecipeDetailView: View {
     @State private var addError: String?
     @StateObject private var shopping = ShoppingStore()
     @State private var checked: Set<String> = []
-
     var body: some View {
         Group {
             if store.isLoading && store.recipe == nil {
@@ -29,6 +28,21 @@ struct RecipeDetailView: View {
         }
         .background(Theme.paper.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                // Available in both modes on purpose: sending somebody a recipe is the
+                // point of the format, and the owner is the one with recipes to send.
+                // Built from what is already loaded, so it costs nothing and needs no
+                // second tap.
+                if let recipe = store.recipe {
+                    ShareLink(item: NotebookExport.current(recipe),
+                              preview: SharePreview(recipe.title,
+                                                    image: Image(systemName: "doc.text"))) {
+                        Label("Share recipe", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
         .task(id: env.generation) {
             await store.load(env.dataSource, slug: slug)
             #if DEBUG

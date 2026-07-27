@@ -5,6 +5,7 @@ struct SidebarView: View {
     @EnvironmentObject var env: AppEnvironment
     @EnvironmentObject var config: AppConfig
     @Binding var selection: SidebarRoute?
+    @Binding var showImportPicker: Bool
 
     @State private var showCapture = false
     @State private var draft: RecipeCreate?
@@ -91,6 +92,10 @@ struct SidebarView: View {
                     }
                     Button { showCapture = true } label: {
                         Label("Dictate it", systemImage: "mic")
+                    }
+                    Divider()
+                    Button { showImportPicker = true } label: {
+                        Label("Import from a file", systemImage: "square.and.arrow.down")
                     }
                 } label: {
                     Label("Add recipe", systemImage: "plus")

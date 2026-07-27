@@ -15,6 +15,8 @@ struct SettingsView: View {
     enum HealthState { case unknown, ok, ragOk, down(String) }
 
     @State private var pendingMode: AppMode?
+    @State private var notebookDoc: NotebookDocument?
+    @State private var showImport = false
 
     var body: some View {
         Form {
@@ -99,6 +101,33 @@ struct SettingsView: View {
             }
             #endif
 
+            Section("Recipes") {
+                if config.mode == .local {
+                    if let doc = notebookDoc, !doc.recipes.isEmpty {
+                        ShareLink(item: doc, preview: SharePreview(
+                            "\(doc.recipes.count) recipes", image: Image(systemName: "doc.text"))
+                        ) {
+                            Label("Export all \(doc.recipes.count) recipes",
+                                  systemImage: "square.and.arrow.up")
+                        }
+                    } else {
+                        Text(notebookDoc == nil ? "Preparing…" : "Nothing to export yet.")
+                            .font(Typography.body(13)).foregroundStyle(Theme.faint)
+                    }
+                } else {
+                    // From a server this is 20×(1+versions) requests, and a partial
+                    // failure has no good answer — half a notebook that looks whole is
+                    // worse than an error. Single recipes export from their own screen.
+                    Text("Export the whole notebook from a device-hosted notebook. Individual recipes can be shared from any recipe screen.")
+                        .font(Typography.body(12)).foregroundStyle(Theme.faint)
+                }
+                Button {
+                    showImport = true
+                } label: {
+                    Label("Import from a file", systemImage: "square.and.arrow.down")
+                }
+            }
+
             Section {
                 Button("Save settings") { commit() }
                     .font(Typography.body(16, weight: .semibold))
@@ -110,6 +139,11 @@ struct SettingsView: View {
             urlField = config.baseURLString
             tokenField = config.token
         }
+        .task(id: env.generation) {
+            guard config.mode == .local else { notebookDoc = nil; return }
+            notebookDoc = await NotebookExport.everything(from: env.localStore)
+        }
+        .importingRecipes(showPicker: $showImport)
         .alert("Switch notebook?", isPresented: Binding(
             get: { pendingMode != nil },
             set: { if !$0 { pendingMode = nil } })
