@@ -25,6 +25,8 @@ struct Endpoints {
     }
     func recipe(_ slug: String) -> URL? { url("/recipes/\(slug)") }
     func versions(_ slug: String) -> URL? { url("/recipes/\(slug)/versions") }
+    func version(_ slug: String, _ n: Int) -> URL? { url("/recipes/\(slug)/versions/\(n)") }
+    func restoreVersion(_ slug: String, _ n: Int) -> URL? { url("/recipes/\(slug)/versions/\(n)/restore") }
     func scale(_ slug: String) -> URL? { url("/recipes/\(slug)/scale") }
     func qr(_ slug: String) -> URL? { url("/recipes/\(slug)/qr") }
     func createRecipe() -> URL? { url("/recipes") }

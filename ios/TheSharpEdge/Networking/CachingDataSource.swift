@@ -83,6 +83,16 @@ final class CachingDataSource: DataSource {
         try await upstream.versions(slug)
     }
 
+    func version(_ slug: String, _ n: Int) async throws -> VersionOut {
+        try await upstream.version(slug, n)
+    }
+
+    func restoreVersion(_ slug: String, _ n: Int) async throws -> RecipeFull {
+        let restored = try await upstream.restoreVersion(slug, n)
+        await cache.save(restored)
+        return restored
+    }
+
     /// Falls back to the local engine, which is a verbatim port of the server's
     /// (CLAUDE.md §8) — so the numbers are identical, not approximate.
     func scale(_ slug: String, target: Int) async throws -> ScaleResponse {

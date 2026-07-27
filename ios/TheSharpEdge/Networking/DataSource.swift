@@ -6,6 +6,10 @@ protocol DataSource: AnyObject {
     func listRecipes() async throws -> [RecipeCard]
     func recipe(_ slug: String) async throws -> RecipeFull
     func versions(_ slug: String) async throws -> [VersionSummary]
+    /// Full body of one past version — /versions carries metadata only.
+    func version(_ slug: String, _ n: Int) async throws -> VersionOut
+    /// Brings a past version back as a NEW version, so the restore is itself undoable.
+    func restoreVersion(_ slug: String, _ n: Int) async throws -> RecipeFull
     func scale(_ slug: String, target: Int) async throws -> ScaleResponse
     func updateRecipe(_ slug: String, _ body: RecipeUpdate) async throws -> RecipeFull
     func createRecipe(_ body: RecipeCreate) async throws -> RecipeFull

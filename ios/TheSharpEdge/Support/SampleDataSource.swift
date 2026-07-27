@@ -28,6 +28,15 @@ final class SampleDataSource: DataSource {
         return [VersionSummary(id: v.id, version: v.version, label: v.label, isCurrent: true, createdAt: v.createdAt)]
     }
 
+    func version(_ slug: String, _ n: Int) async throws -> VersionOut {
+        guard let r = SampleData.full(slug) else { throw APIError.notFound }
+        return r.currentVersion
+    }
+
+    func restoreVersion(_ slug: String, _ n: Int) async throws -> RecipeFull {
+        try await recipe(slug)
+    }
+
     func scale(_ slug: String, target: Int) async throws -> ScaleResponse {
         let r = try await recipe(slug)
         let rows = ScalingEngine.scale(r.currentVersion.ingredients, baseYield: r.baseYield, targetYield: target)

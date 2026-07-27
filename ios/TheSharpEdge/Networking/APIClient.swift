@@ -84,6 +84,15 @@ final class APIClient: DataSource {
         try await run(request(endpoints.versions(slug)), as: [VersionSummary].self)
     }
 
+    func version(_ slug: String, _ n: Int) async throws -> VersionOut {
+        try await run(request(endpoints.version(slug, n)), as: VersionOut.self)
+    }
+
+    func restoreVersion(_ slug: String, _ n: Int) async throws -> RecipeFull {
+        try await run(request(endpoints.restoreVersion(slug, n), method: "POST", authed: true),
+                      as: RecipeFull.self)
+    }
+
     func scale(_ slug: String, target: Int) async throws -> ScaleResponse {
         let body = try JSONCoding.encoder.encode(ScaleRequest(targetYield: target))
         return try await run(request(endpoints.scale(slug), method: "POST", body: body), as: ScaleResponse.self)

@@ -9,6 +9,7 @@ struct RecipeDetailView: View {
 
     @State private var showCook = false
     @State private var showEdit = false
+    @State private var showHistory = false
     @State private var addedToList = false
     @State private var addError: String?
     @StateObject private var shopping = ShoppingStore()
@@ -32,6 +33,7 @@ struct RecipeDetailView: View {
             await store.load(env.dataSource, slug: slug)
             #if DEBUG
             if ProcessInfo.processInfo.environment["UITEST_COOK"] == "1" { showCook = true }
+            if ProcessInfo.processInfo.environment["UITEST_HISTORY"] == "1" { showHistory = true }
             #endif
         }
         .fullScreenCover(isPresented: $showCook) {
@@ -50,6 +52,13 @@ struct RecipeDetailView: View {
             Button("OK", role: .cancel) { addError = nil }
         } message: {
             Text(addError ?? "")
+        }
+        .sheet(isPresented: $showHistory) {
+            VersionHistoryView(slug: slug, versions: store.versions) { restored in
+                store.recipe = restored
+                store.target = min(store.maxYield, max(1, store.target))
+                Task { await store.load(env.dataSource, slug: slug) }
+            }
         }
         .sheet(isPresented: $showEdit) {
             if let recipe = store.recipe {
@@ -93,7 +102,7 @@ struct RecipeDetailView: View {
                 ingredients
                 steps(recipe)
                 if !recipe.currentVersion.notes.isEmpty { notes(recipe) }
-                if store.versions.count > 1 { VersionSwitcher(versions: store.versions) }
+                if store.versions.count > 1 { VersionSwitcher(versions: store.versions) { showHistory = true } }
                 actions(recipe)
             }
             .padding(Theme.Space.xl)
@@ -249,13 +258,24 @@ struct RecipeDetailView: View {
 
 struct VersionSwitcher: View {
     var versions: [VersionSummary]
+    /// Tapping opens the history, where a version can be read and restored. These
+    /// used to be decoration — there was no endpoint behind them to switch to.
+    var onOpen: () -> Void = {}
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Versions").font(Typography.display(20)).foregroundStyle(Theme.ink)
+            HStack {
+                Text("Versions").font(Typography.display(20)).foregroundStyle(Theme.ink)
+                Spacer()
+                Button("History", action: onOpen).font(Typography.body(14, weight: .semibold))
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(versions) { v in
-                        Chip(text: v.label ?? "v\(v.version)", selected: v.isCurrent)
+                        Button(action: onOpen) {
+                            Chip(text: v.label ?? "v\(v.version)", selected: v.isCurrent)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
