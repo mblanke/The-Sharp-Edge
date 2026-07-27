@@ -1,14 +1,18 @@
 name: TestFlight upload
 
 # Builds the iPad app on an Apple-silicon GitHub runner and uploads to TestFlight
-# via the App Store Connect API key. Trigger manually from the Actions tab, or push
-# a change under ios/. Mirrors the Family-Hub pipeline.
+# via the App Store Connect API key. Mirrors the Family-Hub pipeline.
 
+# Manual only, deliberately. This used to run on every push touching ios/, which meant
+# a day of ordinary iOS work produced 18 TestFlight builds. Each build runs on a fresh
+# runner with automatic signing, so each one mints a NEW development certificate; the
+# prune step below then revokes the excess, and Apple emails about every revocation.
+# Eighteen commits, eighteen emails.
+#
+# Shipping a build is a decision, not a consequence of committing. Run it from the
+# Actions tab, or with: gh workflow run testflight.yml
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["ios/**", ".github/workflows/testflight.yml"]
 
 concurrency:
   group: testflight
@@ -39,6 +43,13 @@ jobs:
         # hit, archiving fails with "Choose a certificate to revoke" and no build
         # ships. Keep the two newest API-created ones and revoke the rest; anything
         # with a human display name (a real developer's Mac) is never touched.
+        #
+        # Apple emails on every revocation, so this is one email per build. That is
+        # tolerable now the workflow is manual-only; it was not when every commit
+        # triggered a build. The permanent fix is to stop minting certificates at
+        # all — store one distribution identity as a p12 secret and import it — but
+        # that changes the signing path of a working release pipeline, so it is a
+        # deliberate change rather than a drive-by one.
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
