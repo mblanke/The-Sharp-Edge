@@ -43,6 +43,13 @@ final class AppConfig: ObservableObject {
     init() {
         let d = UserDefaults.standard
         baseURLString = d.string(forKey: Keys.baseURL) ?? AppConfig.defaultBaseURL
+        #if DEBUG
+        // QA hook: point at an unreachable host to exercise the offline path without
+        // taking the real server down.
+        if let override = ProcessInfo.processInfo.environment["UITEST_BASE_URL"] {
+            baseURLString = override
+        }
+        #endif
         gfOnly = d.bool(forKey: Keys.gfOnly)
         captureLanguage = CaptureLanguage(rawValue: d.string(forKey: Keys.captureLanguage) ?? "") ?? .en
         token = Keychain.get() ?? ""

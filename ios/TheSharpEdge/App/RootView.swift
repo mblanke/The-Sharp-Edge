@@ -23,7 +23,10 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
         } detail: {
             NavigationStack {
-                detailView
+                VStack(spacing: 0) {
+                    OfflineBanner()
+                    detailView
+                }
             }
             .environmentObject(store)
         }

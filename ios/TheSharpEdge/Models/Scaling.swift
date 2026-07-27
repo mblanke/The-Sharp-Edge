@@ -23,6 +23,17 @@ struct ScaledIngredient: Codable, Hashable, Identifiable {
         case display
     }
 
+    init(amount: Double, unit: String, name: String, note: String? = nil,
+         section: String? = nil, scaledAmount: Double, display: String) {
+        self.amount = amount
+        self.unit = unit
+        self.name = name
+        self.note = note
+        self.section = section
+        self.scaledAmount = scaledAmount
+        self.display = display
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         amount = try c.decodeIfPresent(Double.self, forKey: .amount) ?? 0

@@ -12,6 +12,7 @@ struct TheSharpEdgeApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(env)
+                .environmentObject(env.offline)
                 .environmentObject(env.config)
                 .tint(Theme.primary)
         }

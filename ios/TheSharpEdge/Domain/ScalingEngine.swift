@@ -100,3 +100,25 @@ struct ScaledRow: Identifiable, Hashable {
     var name: String { ingredient.name }
     var note: String? { ingredient.note }
 }
+
+extension ScalingEngine {
+    /// Build the same payload the server's /scale returns, locally.
+    ///
+    /// This engine is a verbatim port of `api/app/services/scaling.py` with matching
+    /// test tables, so an offline scale is identical to an online one rather than an
+    /// approximation — which is what makes serving a cached recipe honest.
+    static func offlineScaleResponse(_ recipe: RecipeFull, target: Int) throws -> ScaleResponse {
+        let rows = scale(recipe.currentVersion.ingredients,
+                         baseYield: recipe.baseYield, targetYield: target)
+        return ScaleResponse(
+            slug: recipe.slug,
+            baseYield: recipe.baseYield,
+            targetYield: target,
+            yieldWord: recipe.yieldWord,
+            ingredients: rows.map {
+                ScaledIngredient(amount: $0.ingredient.amount, unit: $0.ingredient.unit,
+                                 name: $0.name, note: $0.note, section: $0.section,
+                                 scaledAmount: $0.scaledAmount, display: $0.display)
+            })
+    }
+}
