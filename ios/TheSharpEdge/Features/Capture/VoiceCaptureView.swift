@@ -152,7 +152,7 @@ struct VoiceCaptureView: View {
             if speech.isListening {
                 speech.stop()
             } else {
-                Task { await speech.start(language: language) }
+                Task { await speech.start(language: language, resuming: binding(for: stage).wrappedValue) }
             }
         } label: {
             Label(speech.isListening ? "Stop" : "Hold the thought — tap to dictate",

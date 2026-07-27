@@ -47,12 +47,16 @@ final class SpeechRecognizerService: ObservableObject {
         return (r.isAvailable, r.supportsOnDeviceRecognition)
     }
 
-    func start(language: CaptureLanguage) async {
+    /// `resuming` carries whatever is already in the field, so tapping the mic again
+    /// after a break continues the list instead of wiping it. Stopping to think is a
+    /// normal thing to do halfway through reading out ingredients.
+    func start(language: CaptureLanguage, resuming existing: String = "") async {
         stop()
-        transcript = ""
-        pausedTranscript = ""
-        finalisedText = ""
-        finalisedLines = []
+        let banked = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+        transcript = banked
+        pausedTranscript = banked
+        finalisedText = banked
+        finalisedLines = banked.isEmpty ? [] : banked.split(separator: "\n").map(String.init)
         wantsToListen = true
         activeLanguage = language
 
