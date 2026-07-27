@@ -36,6 +36,12 @@ final class FixtureHygieneTests: XCTestCase {
         "shopping.as_text",
         "aisles.classify_aisle",
         "aisles.aisle_rank",
+        "ingredients.strip_diacritics",
+        "ingredients.normalise_spoken",
+        "ingredients.parse_ingredient",
+        "ingredients.split_run_on",
+        "ingredients.slugify",
+        "ingredients.match_category",
     ]
 
     func testFixtureDirectoryIsReachable() throws {

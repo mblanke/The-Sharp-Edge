@@ -111,8 +111,10 @@ class Lexicon:
     units: dict[str, str]
     #: spoken number/fraction phrase → numeric value, matched only at the start of a line
     numbers: dict[str, float]
-    #: "N and a half" style suffixes applied to a preceding digit
-    half_suffixes: tuple[str, ...] = ()
+    #: "N and a half" style suffixes applied to a preceding digit → the value they add.
+    #: A dict rather than a tuple because "and a quarter" is not 0.5; when this was a
+    #: bare tuple every suffix added 0.5, so "2 and a quarter cups" parsed as 2.5.
+    half_suffixes: dict[str, float] = field(default_factory=dict)
     #: "pinch"-type phrases: force amount 0, dropped from the name
     pinch: tuple[str, ...] = ()
     #: "to taste"-type phrases: force amount 0, dropped from the name
@@ -187,7 +189,8 @@ LEXICONS: dict[str, Lexicon] = {
             "a third of a": _THIRD, "a third": _THIRD, "two thirds": _TWO_THIRDS,
             "a": 1, "an": 1,
         },
-        half_suffixes=("and a half", "and a quarter", "and three quarters", "and a third"),
+        half_suffixes={"and a half": 0.5, "and a quarter": 0.25,
+                       "and three quarters": 0.75, "and a third": _THIRD},
         pinch=("a pinch of", "a pinch", "pinch of", "a dash of", "a dash"),
         to_taste=("to taste", "season to taste"),
         connectors=("of",),
@@ -217,7 +220,8 @@ LEXICONS: dict[str, Lexicon] = {
             "trois quarts de": 0.75, "trois quarts": 0.75,
             "un tiers de": _THIRD, "un tiers": _THIRD, "deux tiers": _TWO_THIRDS,
         },
-        half_suffixes=("et demi", "et demie"),
+        half_suffixes={"et demi": 0.5, "et demie": 0.5,
+                       "et quart": 0.25, "et un quart": 0.25},
         pinch=("une pincée de", "une pincée", "pincée de", "pincée"),
         to_taste=("à votre goût", "selon le goût", "selon votre goût", "au goût"),
         connectors=("de la", "de l'", "des", "du", "d'", "de"),
@@ -304,7 +308,7 @@ LEXICONS: dict[str, Lexicon] = {
             "trei sferturi de": 0.75, "trei sferturi": 0.75,
             "o treime de": _THIRD, "o treime": _THIRD, "două treimi": _TWO_THIRDS,
         },
-        half_suffixes=("și jumătate", "și un sfert"),
+        half_suffixes={"și jumătate": 0.5, "si jumatate": 0.5, "și un sfert": 0.25},
         pinch=("un praf de", "un praf", "praf de", "un vârf de cuțit de", "un vârf de cuțit",
                "vârf de cuțit"),
         to_taste=("după gust", "dupa gust"),
@@ -358,8 +362,27 @@ def _compile(lang: str):
         for variant in _variants(phrase):
             number_lookup[re.sub(r"\s+", " ", variant.lower())] = value
 
-    halves = (re.compile(rf"^\s*({NUM})\s+(?:{_alternation(lex.half_suffixes)})(?![^\W\d_])", re.I)
-              if lex.half_suffixes else None)
+    # "2 and a half cups", but also "a cup and a half" — English, French and Romanian all
+    # let the fraction follow the unit, and that word order used to strand it in the
+    # ingredient name with the amount silently short by up to 0.75.
+    # Units are already canonical by the time this runs, so the optional middle group is
+    # matched against UNIT_MAP's values rather than the spoken phrases.
+    canonical_units = "|".join(
+        re.escape(u) for u in sorted(set(UNIT_MAP.values()), key=len, reverse=True)
+    )
+    halves = (
+        re.compile(
+            rf"^\s*({NUM})\s+(?:({canonical_units})\s+)?({_alternation(lex.half_suffixes)})"
+            rf"(?![^\W\d_])",
+            re.I,
+        )
+        if lex.half_suffixes
+        else None
+    )
+    half_lookup = {}
+    for phrase, value in lex.half_suffixes.items():
+        for variant in _variants(phrase):
+            half_lookup[re.sub(r"\s+", " ", variant.lower())] = value
     pinch = (re.compile(rf"(?<![^\W\d_])(?:{_alternation(lex.pinch)})(?![^\W\d_])\s*", re.I)
              if lex.pinch else None)
     to_taste = (re.compile(rf"[,;]?\s*(?<![^\W\d_])(?:{_alternation(lex.to_taste)})(?![^\W\d_])\s*", re.I)
@@ -378,8 +401,8 @@ def _compile(lang: str):
     approx = (re.compile(rf"(?<![^\W\d_])(?:{_alternation(lex.approx)})(?![^\W\d_])\s*", re.I)
               if lex.approx else None)
     return dict(lex=lex, units=units, unit_lookup=unit_lookup, numbers=numbers,
-                number_lookup=number_lookup, halves=halves, pinch=pinch,
-                to_taste=to_taste, connectors=connectors, approx=approx)
+                number_lookup=number_lookup, halves=halves, half_lookup=half_lookup,
+                pinch=pinch, to_taste=to_taste, connectors=connectors, approx=approx)
 
 
 _COMPILED = {lang: _compile(lang) for lang in LANGS}
@@ -430,11 +453,15 @@ def normalise_spoken(text: str, lang: str = "en") -> str:
         if value is not None:
             text = f"{_fmt(value)} {text[m.end():].lstrip()}".strip()
 
-    # "2 et demi" / "2 și jumătate" — digits followed by a half-suffix.
+    # "2 et demi" / "2 și jumătate", and the unit-in-the-middle word order:
+    # "1 cup and a half" / "o cană și jumătate" / "une tasse et demie".
     if c["halves"] is not None:
         m = c["halves"].match(text)
         if m:
-            text = f"{_fmt(float(Fraction(m.group(1))) + 0.5)} {text[m.end():].lstrip()}".strip()
+            key = re.sub(r"\s+", " ", m.group(3).lower())
+            extra = c["half_lookup"].get(key, 0.5)
+            unit = f"{m.group(2)} " if m.group(2) else ""
+            text = f"{_fmt(float(Fraction(m.group(1))) + extra)} {unit}{text[m.end():].lstrip()}".strip()
 
     # Partitive glue between the unit and the name: "200 g de farine" → "200 g farine".
     if c["connectors"] is not None:

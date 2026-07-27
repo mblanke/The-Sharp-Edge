@@ -29,6 +29,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.services.aisles import aisle_rank, classify_aisle  # noqa: E402
+from app.services.ingredients import (  # noqa: E402
+    match_category,
+    normalise_spoken,
+    parse_ingredient,
+    slugify,
+    split_run_on,
+    strip_diacritics,
+)
 from app.services.scaling import format_amount  # noqa: E402
 from app.services.shopping import ShoppingLine, as_text, merge_lines, normalise_name  # noqa: E402
 
@@ -250,6 +258,157 @@ MERGE_INPUTS: list[tuple[str, list[tuple[str, float, str, str]]]] = [
 ]
 
 
+# ------------------------------------------------------- ingredient parsing
+
+# (id, line, lang, spoken). The printed-text cases are byte-pinned by the seed
+# importer; the spoken ones are the dictation path across all four languages.
+PARSE_INPUTS = [
+    # --- printed text (en). These must not move: recipes-master.md imports through them.
+    ("printed-weight-with-preparation", "2 lb beef chuck, cut into 1-inch cubes", "en", False),
+    ("printed-mixed-fraction", "1 1/2 cups all-purpose flour", "en", False),
+    ("printed-vulgar-fraction", "¾ cup heavy cream", "en", False),
+    ("printed-metric-is-converted", "1 kg tomatoes", "en", False),
+    ("printed-litres-become-ml", "1.5 l stock", "en", False),
+    ("printed-countable-has-no-unit", "3 yellow onions, diced", "en", False),
+    ("printed-range-averages", "2–3 cloves garlic, minced", "en", False),
+    ("printed-range-with-units-both-sides", "700 g–1 kg beef", "en", False),
+    ("printed-juice-of", "Juice of 2 limes", "en", False),
+    ("printed-zest-of", "Zest of 1 lemon", "en", False),
+    ("printed-a-non-unit-word-stays-in-the-name", "1 can diced tomatoes", "en", False),
+    ("printed-approx-marker", "~500 g potatoes", "en", False),
+    ("printed-no-quantity-at-all", "flaky salt and black pepper", "en", False),
+    ("printed-leading-dash-is-stripped", "- 2 tbsp olive oil", "en", False),
+
+    # --- spoken English
+    ("spoken-en-number-word", "two pounds beef chuck", "en", True),
+    ("spoken-en-and-a-quarter", "two and a quarter cups flour", "en", True),
+    ("spoken-en-and-a-half", "three and a half teaspoons salt", "en", True),
+    ("spoken-en-half-a", "half a cup of cream", "en", True),
+    ("spoken-en-a-third-of-a", "a third of a cup sugar", "en", True),
+    ("spoken-en-pinch-is-to-taste", "a pinch of saffron", "en", True),
+    ("spoken-en-to-taste-is-zero", "black pepper to taste", "en", True),
+    ("spoken-en-connector-of-is-dropped", "200 grams of flour", "en", True),
+    ("spoken-en-approx", "about 500 grams potatoes", "en", True),
+    ("spoken-en-an-is-one", "an onion, diced", "en", True),
+    # The fraction may follow the unit as well as precede it. This word order used to
+    # strand "and a half" in the ingredient name with the amount short by up to 0.75.
+    ("spoken-en-fraction-after-the-unit", "a cup and a half of cream", "en", True),
+    ("spoken-en-fraction-after-a-plural-unit", "two cups and a half of flour", "en", True),
+    # Each suffix carries its own value; these all used to add 0.5.
+    ("spoken-en-digit-and-a-quarter", "2 and a quarter cups flour", "en", True),
+    ("spoken-en-digit-and-three-quarters", "2 and three quarters cups flour", "en", True),
+    ("spoken-en-digit-and-a-third", "2 and a third cups flour", "en", True),
+    ("spoken-en-digit-and-a-half", "2 and a half cups flour", "en", True),
+
+    # --- spoken French
+    ("spoken-fr-grams-with-partitive", "200 grammes de farine", "fr", True),
+    ("spoken-fr-livre-is-500g", "une livre de beurre", "fr", True),
+    ("spoken-fr-tablespoon-phrase", "deux cuillères à soupe d'huile", "fr", True),
+    ("spoken-fr-teaspoon-phrase", "une cuillère à café de sel", "fr", True),
+    ("spoken-fr-decimal-comma", "1,5 kg de tomates", "fr", True),
+    ("spoken-fr-et-demi", "deux et demi tasses de lait", "fr", True),
+    ("spoken-fr-pincee-is-zero", "une pincée de sel", "fr", True),
+    ("spoken-fr-au-gout-is-zero", "poivre au goût", "fr", True),
+    ("spoken-fr-no-accents-still-matches", "deux cuilleres a soupe d'huile", "fr", True),
+
+    # --- spoken German
+    ("spoken-de-compound-number", "zweieinhalb Esslöffel Paprikapulver", "de", True),
+    ("spoken-de-pfund-is-500g", "ein Pfund Butter", "de", True),
+    ("spoken-de-teaspoon", "zwei Teelöffel Salz", "de", True),
+    ("spoken-de-prise-is-zero", "eine Prise Muskat", "de", True),
+    ("spoken-de-nach-geschmack-is-zero", "Pfeffer nach Geschmack", "de", True),
+    ("spoken-de-decimal-comma", "1,5 kg Kartoffeln", "de", True),
+    ("spoken-de-anderthalb", "anderthalb Tassen Mehl", "de", True),
+
+    # --- spoken Romanian (the language the old [A-Za-zÀ-ÿ] class broke entirely)
+    ("spoken-ro-tablespoons", "două linguri de ulei", "ro", True),
+    ("spoken-ro-teaspoon", "o linguriță de sare", "ro", True),
+    ("spoken-ro-grams", "500 grame de făină", "ro", True),
+    ("spoken-ro-cup-and-a-half", "o cană și jumătate de lapte", "ro", True),
+    ("spoken-ro-praf-is-zero", "un praf de sare", "ro", True),
+    ("spoken-ro-dupa-gust-is-zero", "piper după gust", "ro", True),
+    ("spoken-ro-cedilla-spelling-still-matches", "două linguriţe de zahăr", "ro", True),
+]
+
+NORMALISE_SPOKEN_INPUTS = [
+    ("en-number-word-and-unit", "two tablespoons olive oil", "en"),
+    ("en-and-a-half", "two and a half cups flour", "en"),
+    ("en-of-is-dropped-after-a-unit", "200 grams of flour", "en"),
+    ("fr-grams-partitive", "200 grammes de farine", "fr"),
+    ("fr-elided-partitive", "deux cuillères à soupe d'huile", "fr"),
+    ("fr-decimal-comma", "1,5 kg de tomates", "fr"),
+    ("fr-livre", "une livre de beurre", "fr"),
+    ("de-compound", "zweieinhalb Esslöffel Paprikapulver", "de"),
+    ("de-pfund", "ein Pfund Butter", "de"),
+    ("ro-linguri", "două linguri de ulei", "ro"),
+    ("ro-cana-si-jumatate", "o cană și jumătate de lapte", "ro"),
+    ("en-fraction-after-the-unit", "a cup and a half of cream", "en"),
+    ("fr-fraction-after-the-unit", "une tasse et demie de lait", "fr"),
+    ("ro-fraction-after-the-unit", "două linguri și jumătate de ulei", "ro"),
+    ("vulgar-fraction-after-a-digit", "1½ cups flour", "en"),
+    ("bare-vulgar-fraction", "¾ cup cream", "en"),
+]
+
+# The bug this fixes, in the reporter's words: "I dictated the entire recipe and it
+# added it as one ingredient."
+SPLIT_RUN_ON_INPUTS = [
+    ("a-dictated-run-of-three", "two pounds beef chuck three onions four cloves of garlic", "en"),
+    ("digits-run", "2 lb beef chuck 3 onions 4 cloves garlic", "en"),
+    ("mixed-fraction-stays-whole", "1 1/2 cups flour 1 tsp salt", "en"),
+    ("range-stays-whole", "2 to 3 cloves garlic 1 onion diced", "en"),
+    ("hyphenated-measurement-stays-whole", "2 lb beef chuck cut into 1-inch cubes", "en"),
+    ("cm-measurement-stays-whole", "1 kg potatoes cut into 2 cm dice", "en"),
+    ("single-ingredient-is-not-split", "2 lb beef chuck, cubed", "en"),
+    ("empty-line", "", "en"),
+    ("no-quantities-at-all", "salt and pepper to taste", "en"),
+    ("french-run", "deux cuillères à soupe d'huile trois oignons", "fr"),
+    ("german-run", "zwei Esslöffel Öl drei Zwiebeln", "de"),
+    ("romanian-run", "două linguri de ulei trei cepe", "ro"),
+    ("real-cookie-dictation",
+     "two and a quarter cups flour one teaspoon baking soda one teaspoon salt "
+     "one cup butter three quarters cup sugar two eggs two cups chocolate chips", "en"),
+]
+
+SLUGIFY_INPUTS = [
+    ("plain-title", "Mango Salsa"),
+    ("romanian-diacritics", "Vișinată"),
+    ("parenthetical-year", "Family Spaghetti Sauce (2009)"),
+    ("ampersand", "Salt & Pepper Rub"),
+    ("already-a-slug", "mango-salsa"),
+    ("leading-and-trailing-junk", "  ...Goulash!  "),
+    ("collapses-runs-of-separators", "Beef   ---   Stew"),
+    ("french-accents", "Crème Brûlée"),
+    ("german-sharp-s", "Weißwein Sauce"),
+    ("apostrophe", "Grandma's Pancakes"),
+]
+
+MATCH_CATEGORY_INPUTS = [
+    ("exact-english", "Marinades", "en"),
+    ("english-loose-salsa", "salsa", "en"),
+    ("english-loose-dessert", "dessert", "en"),
+    ("french-sauces", "sauces", "fr"),
+    ("french-plat-principal-is-a-main", "plat principal", "fr"),
+    ("french-entree-is-a-starter-not-a-main", "entrée", "fr"),
+    ("german-hauptgerichte", "Hauptgerichte", "de"),
+    ("german-nachspeisen", "Nachspeisen", "de"),
+    ("romanian-supe", "supe", "ro"),
+    ("romanian-garnituri", "garnituri", "ro"),
+    ("unknown-returns-nothing", "wibble", "en"),
+    ("empty-returns-nothing", "", "en"),
+    ("trailing-punctuation-is-ignored", "Salads.", "en"),
+]
+
+STRIP_DIACRITICS_INPUTS = [
+    ("romanian-comma-below", "Vișinată"),
+    ("romanian-cedilla-legacy", "Vişinată"),
+    ("french-accents", "Crème Brûlée"),
+    ("german-sharp-s-becomes-ss", "Weißwein"),
+    ("german-capital-sharp-s", "STRAẞE"),
+    ("t-comma-below", "Constanța"),
+    ("plain-ascii-is-unchanged", "beef chuck"),
+]
+
+
 # ---------------------------------------------------------------- generation
 
 def _lines(spec):
@@ -327,6 +486,69 @@ def build() -> dict[str, dict]:
                                 for n, a, u, r in spec]},
              "expect": [_line_out(ln) for ln in merge_lines(_lines(spec))]}
             for i, spec in MERGE_INPUTS
+        ],
+    }
+
+    out["ingredients.strip_diacritics"] = {
+        "version": 1, "function": "strip_diacritics",
+        "note": "Parsing folds harder than the shopping list does: cedilla forms are "
+                "mapped to comma-below first, and ß becomes ss (NFKD leaves it alone).",
+        "cases": [
+            {"id": i, "args": {"text": t}, "expect": strip_diacritics(t)}
+            for i, t in STRIP_DIACRITICS_INPUTS
+        ],
+    }
+
+    out["ingredients.normalise_spoken"] = {
+        "version": 1, "function": "normalise_spoken",
+        "note": "Rewrites a dictated line into the English-canonical form the core "
+                "parser reads. Ingredient NAMES are never translated.",
+        "cases": [
+            {"id": i, "args": {"text": t, "lang": lang},
+             "expect": normalise_spoken(t, lang)}
+            for i, t, lang in NORMALISE_SPOKEN_INPUTS
+        ],
+    }
+
+    out["ingredients.parse_ingredient"] = {
+        "version": 1, "function": "parse_ingredient",
+        "note": "amount 0 means to taste (CLAUDE.md §5) — an em dash that never scales.",
+        "tolerance": 0.0001,
+        "cases": [
+            {"id": i, "args": {"line": line, "lang": lang, "spoken": spoken},
+             "expect": parse_ingredient(line, lang=lang, spoken=spoken)}
+            for i, line, lang, spoken in PARSE_INPUTS
+        ],
+    }
+
+    out["ingredients.split_run_on"] = {
+        "version": 1, "function": "split_run_on",
+        "note": "Speech recognition does not punctuate, so quantities are the boundary. "
+                "Without this a dictated recipe lands as a single ingredient.",
+        "cases": [
+            {"id": i, "args": {"line": line, "lang": lang},
+             "expect": split_run_on(line, lang)}
+            for i, line, lang in SPLIT_RUN_ON_INPUTS
+        ],
+    }
+
+    out["ingredients.slugify"] = {
+        "version": 1, "function": "slugify",
+        "note": "Slugs are the QR contract (CLAUDE.md §5) — generated once, never renamed.",
+        "cases": [
+            {"id": i, "args": {"title": t}, "expect": slugify(t)}
+            for i, t in SLUGIFY_INPUTS
+        ],
+    }
+
+    out["ingredients.match_category"] = {
+        "version": 1, "function": "match_category",
+        "note": "French 'entrée' is a starter; the English category 'Entrées' is the "
+                "main course. These two must never match each other.",
+        "cases": [
+            {"id": i, "args": {"spoken": s, "lang": lang},
+             "expect": match_category(s, lang)}
+            for i, s, lang in MATCH_CATEGORY_INPUTS
         ],
     }
 

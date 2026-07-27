@@ -18,6 +18,14 @@ from pathlib import Path
 import pytest
 
 from app.services.aisles import aisle_rank, classify_aisle
+from app.services.ingredients import (
+    match_category,
+    normalise_spoken,
+    parse_ingredient,
+    slugify,
+    split_run_on,
+    strip_diacritics,
+)
 from app.services.scaling import format_amount
 from app.services.shopping import ShoppingLine, as_text, merge_lines, normalise_name
 from tests.fixtures import all_fixture_names, cases, load
@@ -33,6 +41,12 @@ CONSUMED = {
     "shopping.as_text",
     "aisles.classify_aisle",
     "aisles.aisle_rank",
+    "ingredients.strip_diacritics",
+    "ingredients.normalise_spoken",
+    "ingredients.parse_ingredient",
+    "ingredients.split_run_on",
+    "ingredients.slugify",
+    "ingredients.match_category",
 }
 
 
@@ -91,6 +105,42 @@ def test_as_text_matches_fixture(case_id, args, expect):
         assert as_text(merged, group_by=lambda ln: classify_aisle(ln.name)) == expect
     else:
         assert as_text(merged) == expect
+
+
+# ------------------------------------------------------------- ingredients
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.strip_diacritics"))
+def test_strip_diacritics_matches_fixture(case_id, args, expect):
+    assert strip_diacritics(args["text"]) == expect
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.normalise_spoken"))
+def test_normalise_spoken_matches_fixture(case_id, args, expect):
+    assert normalise_spoken(args["text"], args["lang"]) == expect
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.parse_ingredient"))
+def test_parse_ingredient_matches_fixture(case_id, args, expect):
+    tol = load("ingredients.parse_ingredient").get("tolerance", 0.0001)
+    got = parse_ingredient(args["line"], lang=args["lang"], spoken=args["spoken"])
+    assert got["name"] == expect["name"]
+    assert got["unit"] == expect["unit"]
+    assert got["amount"] == pytest.approx(expect["amount"], abs=tol)
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.split_run_on"))
+def test_split_run_on_matches_fixture(case_id, args, expect):
+    assert split_run_on(args["line"], args["lang"]) == expect
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.slugify"))
+def test_slugify_matches_fixture(case_id, args, expect):
+    assert slugify(args["title"]) == expect
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("ingredients.match_category"))
+def test_match_category_matches_fixture(case_id, args, expect):
+    assert match_category(args["spoken"], args["lang"]) == expect
 
 
 # ------------------------------------------------------------------- the net

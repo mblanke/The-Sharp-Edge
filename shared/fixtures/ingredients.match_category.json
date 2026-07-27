@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "function": "match_category",
+  "note": "French 'entrée' is a starter; the English category 'Entrées' is the main course. These two must never match each other.",
+  "cases": [
+    {
+      "id": "exact-english",
+      "args": {
+        "spoken": "Marinades",
+        "lang": "en"
+      },
+      "expect": "Marinades"
+    },
+    {
+      "id": "english-loose-salsa",
+      "args": {
+        "spoken": "salsa",
+        "lang": "en"
+      },
+      "expect": "Sauces & Salsas"
+    },
+    {
+      "id": "english-loose-dessert",
+      "args": {
+        "spoken": "dessert",
+        "lang": "en"
+      },
+      "expect": "Baking & Desserts"
+    },
+    {
+      "id": "french-sauces",
+      "args": {
+        "spoken": "sauces",
+        "lang": "fr"
+      },
+      "expect": "Sauces & Salsas"
+    },
+    {
+      "id": "french-plat-principal-is-a-main",
+      "args": {
+        "spoken": "plat principal",
+        "lang": "fr"
+      },
+      "expect": "Entrées"
+    },
+    {
+      "id": "french-entree-is-a-starter-not-a-main",
+      "args": {
+        "spoken": "entrée",
+        "lang": "fr"
+      },
+      "expect": "Appetizers & Preserves"
+    },
+    {
+      "id": "german-hauptgerichte",
+      "args": {
+        "spoken": "Hauptgerichte",
+        "lang": "de"
+      },
+      "expect": "Entrées"
+    },
+    {
+      "id": "german-nachspeisen",
+      "args": {
+        "spoken": "Nachspeisen",
+        "lang": "de"
+      },
+      "expect": "Baking & Desserts"
+    },
+    {
+      "id": "romanian-supe",
+      "args": {
+        "spoken": "supe",
+        "lang": "ro"
+      },
+      "expect": "Soups & Stews"
+    },
+    {
+      "id": "romanian-garnituri",
+      "args": {
+        "spoken": "garnituri",
+        "lang": "ro"
+      },
+      "expect": "Sides"
+    },
+    {
+      "id": "unknown-returns-nothing",
+      "args": {
+        "spoken": "wibble",
+        "lang": "en"
+      },
+      "expect": null
+    },
+    {
+      "id": "empty-returns-nothing",
+      "args": {
+        "spoken": "",
+        "lang": "en"
+      },
+      "expect": null
+    },
+    {
+      "id": "trailing-punctuation-is-ignored",
+      "args": {
+        "spoken": "Salads.",
+        "lang": "en"
+      },
+      "expect": "Salads"
+    }
+  ]
+}

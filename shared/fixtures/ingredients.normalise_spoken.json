@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "function": "normalise_spoken",
+  "note": "Rewrites a dictated line into the English-canonical form the core parser reads. Ingredient NAMES are never translated.",
+  "cases": [
+    {
+      "id": "en-number-word-and-unit",
+      "args": {
+        "text": "two tablespoons olive oil",
+        "lang": "en"
+      },
+      "expect": "2 tbsp olive oil"
+    },
+    {
+      "id": "en-and-a-half",
+      "args": {
+        "text": "two and a half cups flour",
+        "lang": "en"
+      },
+      "expect": "2.5 cup flour"
+    },
+    {
+      "id": "en-of-is-dropped-after-a-unit",
+      "args": {
+        "text": "200 grams of flour",
+        "lang": "en"
+      },
+      "expect": "200 g flour"
+    },
+    {
+      "id": "fr-grams-partitive",
+      "args": {
+        "text": "200 grammes de farine",
+        "lang": "fr"
+      },
+      "expect": "200 g farine"
+    },
+    {
+      "id": "fr-elided-partitive",
+      "args": {
+        "text": "deux cuillères à soupe d'huile",
+        "lang": "fr"
+      },
+      "expect": "2 tbsp huile"
+    },
+    {
+      "id": "fr-decimal-comma",
+      "args": {
+        "text": "1,5 kg de tomates",
+        "lang": "fr"
+      },
+      "expect": "1.5 kg tomates"
+    },
+    {
+      "id": "fr-livre",
+      "args": {
+        "text": "une livre de beurre",
+        "lang": "fr"
+      },
+      "expect": "1 halfkilo beurre"
+    },
+    {
+      "id": "de-compound",
+      "args": {
+        "text": "zweieinhalb Esslöffel Paprikapulver",
+        "lang": "de"
+      },
+      "expect": "2.5 tbsp Paprikapulver"
+    },
+    {
+      "id": "de-pfund",
+      "args": {
+        "text": "ein Pfund Butter",
+        "lang": "de"
+      },
+      "expect": "1 halfkilo Butter"
+    },
+    {
+      "id": "ro-linguri",
+      "args": {
+        "text": "două linguri de ulei",
+        "lang": "ro"
+      },
+      "expect": "2 tbsp ulei"
+    },
+    {
+      "id": "ro-cana-si-jumatate",
+      "args": {
+        "text": "o cană și jumătate de lapte",
+        "lang": "ro"
+      },
+      "expect": "1.5 cup lapte"
+    },
+    {
+      "id": "en-fraction-after-the-unit",
+      "args": {
+        "text": "a cup and a half of cream",
+        "lang": "en"
+      },
+      "expect": "1.5 cup cream"
+    },
+    {
+      "id": "fr-fraction-after-the-unit",
+      "args": {
+        "text": "une tasse et demie de lait",
+        "lang": "fr"
+      },
+      "expect": "1.5 cup lait"
+    },
+    {
+      "id": "ro-fraction-after-the-unit",
+      "args": {
+        "text": "două linguri și jumătate de ulei",
+        "lang": "ro"
+      },
+      "expect": "2.5 tbsp ulei"
+    },
+    {
+      "id": "vulgar-fraction-after-a-digit",
+      "args": {
+        "text": "1½ cups flour",
+        "lang": "en"
+      },
+      "expect": "1 1/2 cup flour"
+    },
+    {
+      "id": "bare-vulgar-fraction",
+      "args": {
+        "text": "¾ cup cream",
+        "lang": "en"
+      },
+      "expect": "3/4 cup cream"
+    }
+  ]
+}

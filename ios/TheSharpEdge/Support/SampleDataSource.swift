@@ -114,22 +114,22 @@ final class SampleDataSource: DataSource {
         Self.basket.clear(checkedOnly: checkedOnly)
     }
 
-    // Offline approximation of /parse/* — see OfflineParse. The server is canonical.
+    // The full parser, not an approximation — IngredientParse is fixture-pinned to
+    // /parse/* case for case, so the DEBUG path behaves exactly like the server and like
+    // a device-hosted notebook.
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
-        lines
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            .flatMap { OfflineParse.splitRun($0) }      // dictation carries no punctuation
-            .map(OfflineParse.ingredient)
+        IngredientParse.parseLines(lines, lang: lang.rawValue, spoken: true)
     }
 
     func slug(for title: String) async throws -> SlugResponse {
-        let slug = OfflineParse.slug(title)
+        let slug = IngredientParse.slugify(title)
         let taken = SampleData.full(slug) != nil || Self.created[slug] != nil
-        return SlugResponse(slug: slug, available: !slug.isEmpty && !taken, valid: !slug.isEmpty)
+        return SlugResponse(slug: slug, available: !slug.isEmpty && !taken,
+                            valid: IngredientParse.isValidSlug(slug))
     }
 
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String? {
-        Category.match(spoken)
+        IngredientParse.matchCategory(spoken, lang: lang.rawValue)
     }
 
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] {

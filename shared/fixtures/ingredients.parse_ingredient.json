@@ -1,0 +1,697 @@
+{
+  "version": 1,
+  "function": "parse_ingredient",
+  "note": "amount 0 means to taste (CLAUDE.md §5) — an em dash that never scales.",
+  "tolerance": 0.0001,
+  "cases": [
+    {
+      "id": "printed-weight-with-preparation",
+      "args": {
+        "line": "2 lb beef chuck, cut into 1-inch cubes",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "lb",
+        "name": "beef chuck, cut into 1-inch cubes"
+      }
+    },
+    {
+      "id": "printed-mixed-fraction",
+      "args": {
+        "line": "1 1/2 cups all-purpose flour",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1.5,
+        "unit": "cup",
+        "name": "all-purpose flour"
+      }
+    },
+    {
+      "id": "printed-vulgar-fraction",
+      "args": {
+        "line": "¾ cup heavy cream",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "¾ cup heavy cream"
+      }
+    },
+    {
+      "id": "printed-metric-is-converted",
+      "args": {
+        "line": "1 kg tomatoes",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1000.0,
+        "unit": "g",
+        "name": "tomatoes"
+      }
+    },
+    {
+      "id": "printed-litres-become-ml",
+      "args": {
+        "line": "1.5 l stock",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1500.0,
+        "unit": "ml",
+        "name": "stock"
+      }
+    },
+    {
+      "id": "printed-countable-has-no-unit",
+      "args": {
+        "line": "3 yellow onions, diced",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 3.0,
+        "unit": "",
+        "name": "yellow onions, diced"
+      }
+    },
+    {
+      "id": "printed-range-averages",
+      "args": {
+        "line": "2–3 cloves garlic, minced",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.5,
+        "unit": "",
+        "name": "cloves garlic, minced"
+      }
+    },
+    {
+      "id": "printed-range-with-units-both-sides",
+      "args": {
+        "line": "700 g–1 kg beef",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 850.0,
+        "unit": "g",
+        "name": "beef"
+      }
+    },
+    {
+      "id": "printed-juice-of",
+      "args": {
+        "line": "Juice of 2 limes",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "",
+        "name": "limes, juiced"
+      }
+    },
+    {
+      "id": "printed-zest-of",
+      "args": {
+        "line": "Zest of 1 lemon",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "",
+        "name": "lemon, zested"
+      }
+    },
+    {
+      "id": "printed-a-non-unit-word-stays-in-the-name",
+      "args": {
+        "line": "1 can diced tomatoes",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "",
+        "name": "can diced tomatoes"
+      }
+    },
+    {
+      "id": "printed-approx-marker",
+      "args": {
+        "line": "~500 g potatoes",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "g",
+        "name": "potatoes"
+      }
+    },
+    {
+      "id": "printed-no-quantity-at-all",
+      "args": {
+        "line": "flaky salt and black pepper",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "flaky salt and black pepper"
+      }
+    },
+    {
+      "id": "printed-leading-dash-is-stripped",
+      "args": {
+        "line": "- 2 tbsp olive oil",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "olive oil"
+      }
+    },
+    {
+      "id": "spoken-en-number-word",
+      "args": {
+        "line": "two pounds beef chuck",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "lb",
+        "name": "beef chuck"
+      }
+    },
+    {
+      "id": "spoken-en-and-a-quarter",
+      "args": {
+        "line": "two and a quarter cups flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.25,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-and-a-half",
+      "args": {
+        "line": "three and a half teaspoons salt",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 3.5,
+        "unit": "tsp",
+        "name": "salt"
+      }
+    },
+    {
+      "id": "spoken-en-half-a",
+      "args": {
+        "line": "half a cup of cream",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0.5,
+        "unit": "cup",
+        "name": "cream"
+      }
+    },
+    {
+      "id": "spoken-en-a-third-of-a",
+      "args": {
+        "line": "a third of a cup sugar",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0.333333,
+        "unit": "cup",
+        "name": "sugar"
+      }
+    },
+    {
+      "id": "spoken-en-pinch-is-to-taste",
+      "args": {
+        "line": "a pinch of saffron",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "saffron"
+      }
+    },
+    {
+      "id": "spoken-en-to-taste-is-zero",
+      "args": {
+        "line": "black pepper to taste",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "black pepper"
+      }
+    },
+    {
+      "id": "spoken-en-connector-of-is-dropped",
+      "args": {
+        "line": "200 grams of flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 200.0,
+        "unit": "g",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-approx",
+      "args": {
+        "line": "about 500 grams potatoes",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "g",
+        "name": "potatoes"
+      }
+    },
+    {
+      "id": "spoken-en-an-is-one",
+      "args": {
+        "line": "an onion, diced",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "",
+        "name": "onion, diced"
+      }
+    },
+    {
+      "id": "spoken-en-fraction-after-the-unit",
+      "args": {
+        "line": "a cup and a half of cream",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.5,
+        "unit": "cup",
+        "name": "cream"
+      }
+    },
+    {
+      "id": "spoken-en-fraction-after-a-plural-unit",
+      "args": {
+        "line": "two cups and a half of flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.5,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-digit-and-a-quarter",
+      "args": {
+        "line": "2 and a quarter cups flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.25,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-digit-and-three-quarters",
+      "args": {
+        "line": "2 and three quarters cups flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.75,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-digit-and-a-third",
+      "args": {
+        "line": "2 and a third cups flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.33333,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-en-digit-and-a-half",
+      "args": {
+        "line": "2 and a half cups flour",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.5,
+        "unit": "cup",
+        "name": "flour"
+      }
+    },
+    {
+      "id": "spoken-fr-grams-with-partitive",
+      "args": {
+        "line": "200 grammes de farine",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 200.0,
+        "unit": "g",
+        "name": "farine"
+      }
+    },
+    {
+      "id": "spoken-fr-livre-is-500g",
+      "args": {
+        "line": "une livre de beurre",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "g",
+        "name": "beurre"
+      }
+    },
+    {
+      "id": "spoken-fr-tablespoon-phrase",
+      "args": {
+        "line": "deux cuillères à soupe d'huile",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "huile"
+      }
+    },
+    {
+      "id": "spoken-fr-teaspoon-phrase",
+      "args": {
+        "line": "une cuillère à café de sel",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "tsp",
+        "name": "sel"
+      }
+    },
+    {
+      "id": "spoken-fr-decimal-comma",
+      "args": {
+        "line": "1,5 kg de tomates",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1500.0,
+        "unit": "g",
+        "name": "tomates"
+      }
+    },
+    {
+      "id": "spoken-fr-et-demi",
+      "args": {
+        "line": "deux et demi tasses de lait",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.5,
+        "unit": "cup",
+        "name": "lait"
+      }
+    },
+    {
+      "id": "spoken-fr-pincee-is-zero",
+      "args": {
+        "line": "une pincée de sel",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "sel"
+      }
+    },
+    {
+      "id": "spoken-fr-au-gout-is-zero",
+      "args": {
+        "line": "poivre au goût",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "poivre"
+      }
+    },
+    {
+      "id": "spoken-fr-no-accents-still-matches",
+      "args": {
+        "line": "deux cuilleres a soupe d'huile",
+        "lang": "fr",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "huile"
+      }
+    },
+    {
+      "id": "spoken-de-compound-number",
+      "args": {
+        "line": "zweieinhalb Esslöffel Paprikapulver",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.5,
+        "unit": "tbsp",
+        "name": "Paprikapulver"
+      }
+    },
+    {
+      "id": "spoken-de-pfund-is-500g",
+      "args": {
+        "line": "ein Pfund Butter",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "g",
+        "name": "Butter"
+      }
+    },
+    {
+      "id": "spoken-de-teaspoon",
+      "args": {
+        "line": "zwei Teelöffel Salz",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tsp",
+        "name": "Salz"
+      }
+    },
+    {
+      "id": "spoken-de-prise-is-zero",
+      "args": {
+        "line": "eine Prise Muskat",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "Muskat"
+      }
+    },
+    {
+      "id": "spoken-de-nach-geschmack-is-zero",
+      "args": {
+        "line": "Pfeffer nach Geschmack",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "Pfeffer"
+      }
+    },
+    {
+      "id": "spoken-de-decimal-comma",
+      "args": {
+        "line": "1,5 kg Kartoffeln",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1500.0,
+        "unit": "g",
+        "name": "Kartoffeln"
+      }
+    },
+    {
+      "id": "spoken-de-anderthalb",
+      "args": {
+        "line": "anderthalb Tassen Mehl",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.5,
+        "unit": "cup",
+        "name": "Mehl"
+      }
+    },
+    {
+      "id": "spoken-ro-tablespoons",
+      "args": {
+        "line": "două linguri de ulei",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "ulei"
+      }
+    },
+    {
+      "id": "spoken-ro-teaspoon",
+      "args": {
+        "line": "o linguriță de sare",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "tsp",
+        "name": "sare"
+      }
+    },
+    {
+      "id": "spoken-ro-grams",
+      "args": {
+        "line": "500 grame de făină",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "g",
+        "name": "făină"
+      }
+    },
+    {
+      "id": "spoken-ro-cup-and-a-half",
+      "args": {
+        "line": "o cană și jumătate de lapte",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 1.5,
+        "unit": "cup",
+        "name": "lapte"
+      }
+    },
+    {
+      "id": "spoken-ro-praf-is-zero",
+      "args": {
+        "line": "un praf de sare",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "sare"
+      }
+    },
+    {
+      "id": "spoken-ro-dupa-gust-is-zero",
+      "args": {
+        "line": "piper după gust",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "",
+        "name": "piper"
+      }
+    },
+    {
+      "id": "spoken-ro-cedilla-spelling-still-matches",
+      "args": {
+        "line": "două linguriţe de zahăr",
+        "lang": "ro",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tsp",
+        "name": "zahăr"
+      }
+    }
+  ]
+}
