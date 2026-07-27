@@ -69,6 +69,46 @@ enum OfflineParse {
     private static let connectors = ["de la ", "de l'", "d'", "des ", "du ", "de ", "of "]
     private static let vulgar: [Character: Double] = ["¼": 0.25, "½": 0.5, "¾": 0.75, "⅓": 1.0 / 3, "⅔": 2.0 / 3]
 
+    /// Break a punctuation-free dictated run into one ingredient each. Mirrors
+    /// split_run_on() in api/app/services/ingredients.py — without it, sample mode
+    /// turns a whole dictated list into a single ingredient even though the server
+    /// would have split it correctly.
+    static func splitRun(_ raw: String) -> [String] {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return [] }
+        let tokens = text.split(separator: " ").map(String.init)
+        var starts = [0]
+
+        func isQuantity(_ t: String) -> Bool {
+            let k = t.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ",;"))
+            if numberWords[k] != nil { return true }
+            return Double(k.replacingOccurrences(of: ",", with: ".")) != nil || k.contains("/")
+        }
+        let glue: Set<String> = ["to", "or", "and", "de", "of", "et", "und"]
+
+        for i in 1..<max(tokens.count, 1) {
+            let tok = tokens[i]
+            guard isQuantity(tok) else { continue }
+            let prev = tokens[i - 1].lowercased()
+            // not the second half of "1 1/2" or "2 to 3", and not "1 inch"
+            if isQuantity(prev) || glue.contains(prev) { continue }
+            if i + 1 < tokens.count,
+               ["inch", "inches", "cm", "mm"].contains(tokens[i + 1].lowercased()) { continue }
+            if i - starts[starts.count - 1] < 2 { continue }
+            starts.append(i)
+        }
+        guard starts.count > 1 else { return [text] }
+
+        var out: [String] = []
+        for (n, a) in starts.enumerated() {
+            let b = n + 1 < starts.count ? starts[n + 1] : tokens.count
+            let piece = tokens[a..<b].joined(separator: " ")
+                .trimmingCharacters(in: CharacterSet(charactersIn: " ,;"))
+            if !piece.isEmpty { out.append(piece) }
+        }
+        return out
+    }
+
     static func ingredient(_ raw: String) -> Ingredient {
         var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         var forcedZero = false

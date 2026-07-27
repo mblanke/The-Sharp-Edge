@@ -134,7 +134,10 @@ final class SampleDataSource: DataSource {
 
     // Offline approximation of /parse/* — see OfflineParse. The server is canonical.
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
-        lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map(OfflineParse.ingredient)
+        lines
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .flatMap { OfflineParse.splitRun($0) }      // dictation carries no punctuation
+            .map(OfflineParse.ingredient)
     }
 
     func slug(for title: String) async throws -> SlugResponse {
