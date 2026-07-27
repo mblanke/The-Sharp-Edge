@@ -111,7 +111,7 @@ final class SampleDataSource: DataSource {
                     id: UUID(), name: name, amount: row.scaledAmount,
                     unit: row.ingredient.unit, display: row.display,
                     toTaste: row.scaledAmount == 0, checked: false, recipes: [slug],
-                    checkGluten: Self.hidesGluten(name)))
+                    checkGluten: Self.hidesGluten(name), aisle: "Other"))
             }
         }
         return Self.basket

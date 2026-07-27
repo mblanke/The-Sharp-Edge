@@ -12,6 +12,29 @@ final class ShoppingStore: ObservableObject {
     var toBuy: [ShoppingItem] { items }
     var remaining: Int { items.filter { !$0.checked }.count }
 
+    /// Walking order through a shop: fresh edges, then the middle, then frozen last.
+    /// Mirrors AISLE_ORDER in api/app/services/aisles.py.
+    static let aisleOrder = ["Produce", "Meat & fish", "Dairy & eggs", "Bakery",
+                             "Pantry", "Herbs & spices", "Frozen", "Other"]
+
+    struct AisleGroup: Identifiable {
+        var id: String { name }
+        let name: String
+        let items: [ShoppingItem]
+    }
+
+    /// Grouped by aisle so the list is walked once instead of criss-crossed. Empty
+    /// aisles never appear.
+    var byAisle: [AisleGroup] {
+        Dictionary(grouping: items, by: { $0.aisle })
+            .map { AisleGroup(name: $0.key, items: $0.value) }
+            .sorted { a, b in
+                let ra = Self.aisleOrder.firstIndex(of: a.name) ?? Self.aisleOrder.count
+                let rb = Self.aisleOrder.firstIndex(of: b.name) ?? Self.aisleOrder.count
+                return ra == rb ? a.name < b.name : ra < rb
+            }
+    }
+
     func load(_ source: DataSource) async {
         isLoading = true
         error = nil

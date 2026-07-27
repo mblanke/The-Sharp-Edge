@@ -174,16 +174,23 @@ def merge_lines(lines: list[ShoppingLine]) -> list[ShoppingLine]:
     return [merged[k] for k in kept]
 
 
-def as_text(lines: list[ShoppingLine], title: str = "Shopping list") -> str:
+def as_text(lines: list[ShoppingLine], title: str = "Shopping list", group_by=None) -> str:
     """Plain text for the share sheet — AnyList, Notes, Reminders and Messages all
-    take this. One item per line so list apps split it into separate entries."""
-    buy = [ln for ln in lines if not ln.to_taste]
-    staples = [ln for ln in lines if ln.to_taste]
+    take this. One item per line so list apps split it into separate entries.
+
+    `group_by` optionally emits an aisle heading before each run, so the pasted list
+    is walkable rather than a dump. Callers pass the lines already sorted.
+    """
     out = [title, ""]
-    for ln in buy:
+    current = None
+    for ln in lines:
+        if group_by is not None:
+            heading = group_by(ln)
+            if heading != current:
+                if current is not None:
+                    out.append("")
+                out.append(heading)
+                current = heading
         flag = "  (check GF)" if ln.check_gluten else ""
         out.append(f"{ln.display} {ln.name}{flag}")
-    if staples:
-        out += ["", "Check you have:"]
-        out += [f"{ln.name}" for ln in staples]
     return "\n".join(out)

@@ -91,20 +91,24 @@ struct ShoppingView: View {
                 }
             }
 
-            Section {
-                ForEach(store.toBuy) { item in row(item) }
-                    .onDelete { indexes in
-                        let doomed = indexes.map { store.toBuy[$0] }
-                        Task { for item in doomed { await store.remove(env.dataSource, item) } }
+            ForEach(store.byAisle) { group in
+                Section {
+                    ForEach(group.items) { item in row(item) }
+                        .onDelete { indexes in
+                            let doomed = indexes.map { group.items[$0] }
+                            Task { for item in doomed { await store.remove(env.dataSource, item) } }
+                        }
+                } header: {
+                    HStack {
+                        Text(group.name)
+                        Spacer()
+                        if group.id == store.byAisle.first?.id {
+                            Text(editMode.isEditing && !selection.isEmpty
+                                 ? "\(selection.count) selected"
+                                 : "\(store.remaining) left")
+                                .font(Typography.mono(12)).foregroundStyle(Theme.faint)
+                        }
                     }
-            } header: {
-                HStack {
-                    Text("To buy")
-                    Spacer()
-                    Text(editMode.isEditing && !selection.isEmpty
-                         ? "\(selection.count) selected"
-                         : "\(store.remaining) left")
-                        .font(Typography.mono(12)).foregroundStyle(Theme.faint)
                 }
             }
         }

@@ -148,17 +148,31 @@ def test_plain_ingredients_are_not_flagged():
 # ---------------------------------------------------------------- share text
 
 def test_text_export_is_one_item_per_line():
+    """List apps split pasted text on newlines, so one item per line is the contract."""
     text = as_text(merge_lines([
         line("beef chuck, cubed", 2, "lb"),
         line("beef broth", 3, "cup"),
-        line("salt", 0),
     ]))
     body = [ln for ln in text.splitlines() if ln.strip()]
     assert "2 lb beef chuck, cubed" in body
     assert any("beef broth" in ln and "check GF" in ln for ln in body)
-    # to-taste items are separated out — you do not buy them
-    assert "Check you have:" in body
-    assert body.index("Check you have:") < body.index("salt")
+
+
+def test_text_export_can_group_by_aisle():
+    """Headings turn a dump into something you can walk."""
+    from app.services.aisles import aisle_rank, classify_aisle
+    lines = merge_lines([
+        line("beef chuck, cubed", 2, "lb"),
+        line("yellow onions", 3),
+        line("beef broth", 3, "cup"),
+    ])
+    lines.sort(key=lambda ln: aisle_rank(classify_aisle(ln.name)))
+    text = as_text(lines, group_by=lambda ln: classify_aisle(ln.name))
+    body = [ln for ln in text.splitlines() if ln.strip()]
+    assert "Produce" in body and "Meat & fish" in body and "Pantry" in body
+    # fresh first, cupboard last — the order you actually walk
+    assert body.index("Produce") < body.index("Meat & fish") < body.index("Pantry")
+    assert body.index("Produce") < body.index("3 yellow onions")
 
 
 def test_text_export_has_no_gf_flag_on_safe_items():

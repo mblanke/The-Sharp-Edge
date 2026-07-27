@@ -33,6 +33,8 @@ class ShoppingItemOut(BaseModel):
     recipes: list[str] = []
     #: True for ingredients that routinely hide gluten — worth verifying in the shop.
     check_gluten: bool = False
+    #: Which part of the shop this comes from, so the list can be walked once.
+    aisle: str = "Other"
 
 
 class ShoppingListOut(BaseModel):

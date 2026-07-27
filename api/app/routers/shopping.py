@@ -25,6 +25,7 @@ from app.schemas.shopping import (
     ShoppingListOut,
     ShoppingToggle,
 )
+from app.services.aisles import aisle_rank, classify_aisle
 from app.services.scaling import scale_ingredients
 from app.services.shopping import ShoppingLine, as_text, merge_lines
 
@@ -45,6 +46,7 @@ def _out(item: ShoppingItem) -> ShoppingItemOut:
         id=item.id, name=item.name, amount=item.amount, unit=item.unit,
         display=line.display, to_taste=item.to_taste, checked=item.checked,
         recipes=list(item.recipes or []), check_gluten=line.check_gluten,
+        aisle=classify_aisle(item.name),
     )
 
 
@@ -62,8 +64,11 @@ async def get_list(session: AsyncSession = Depends(get_session)) -> ShoppingList
 @router.get("/text", response_class=Response)
 async def get_text(session: AsyncSession = Depends(get_session)) -> Response:
     """Plain text for the iOS share sheet — AnyList, Notes, Reminders all accept it."""
-    items = await _all(session)
-    body = as_text([_to_line(i) for i in items if not i.checked])
+    items = [i for i in await _all(session) if not i.checked]
+    # Grouped and ordered the way you walk a shop, so the exported text is useful
+    # in AnyList or Notes rather than just a dump.
+    items.sort(key=lambda i: (aisle_rank(classify_aisle(i.name)), i.created_at))
+    body = as_text([_to_line(i) for i in items], group_by=lambda i: classify_aisle(i.name))
     return Response(content=body, media_type="text/plain; charset=utf-8")
 
 

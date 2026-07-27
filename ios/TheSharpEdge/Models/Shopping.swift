@@ -18,9 +18,12 @@ struct ShoppingItem: Codable, Identifiable, Hashable {
     var recipes: [String]
     /// Routinely hides gluten; worth verifying the label in the shop.
     var checkGluten: Bool
+    /// Which part of the shop this comes from. Classified server-side so the app and
+    /// web agree — see api/app/services/aisles.py.
+    var aisle: String
 
     enum CodingKeys: String, CodingKey {
-        case id, name, amount, unit, display, checked, recipes
+        case id, name, amount, unit, display, checked, recipes, aisle
         case toTaste = "to_taste"
         case checkGluten = "check_gluten"
     }
