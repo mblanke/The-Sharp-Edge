@@ -29,7 +29,7 @@ struct RecipeDetailView: View {
         }
         .background(Theme.paper.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: config.useSampleData) {
+        .task(id: env.generation) {
             await store.load(env.dataSource, slug: slug)
             #if DEBUG
             if ProcessInfo.processInfo.environment["UITEST_COOK"] == "1" { showCook = true }

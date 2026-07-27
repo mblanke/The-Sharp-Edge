@@ -4,11 +4,16 @@ import Combine
 /// App-wide configuration: server URL (UserDefaults), bearer token (Keychain),
 /// GF-only filter (persisted), and the DEBUG sample-data toggle.
 final class AppConfig: ObservableObject {
-    private enum Keys {
+    /// Internal rather than private: `ModeMigration` reads these to tell an existing
+    /// install from a fresh one, and it must look at the same keys this writes.
+    enum Keys {
         static let baseURL = "sharpedge.baseURL"
         static let gfOnly = "sharpedge.gfOnly"
         static let useSampleData = "sharpedge.useSampleData"
         static let captureLanguage = "sharpedge.captureLanguage"
+        static let mode = "sharpedge.mode"
+        static let setupComplete = "sharpedge.setupComplete"
+        static let modeOrigin = "sharpedge.modeOrigin"
     }
 
     /// Default backend over Tailscale (compose publishes api on host port 8010).
@@ -40,8 +45,35 @@ final class AppConfig: ObservableObject {
         }
     }
 
+    /// Where this device's recipes live. Changing it swaps the whole data source; it
+    /// never moves or merges data (see `AppMode`).
+    @Published var mode: AppMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: Keys.mode) }
+    }
+
+    /// False only on a genuinely fresh install, which is the one case that gets the
+    /// first-run chooser.
+    @Published var setupComplete: Bool {
+        didSet { UserDefaults.standard.set(setupComplete, forKey: Keys.setupComplete) }
+    }
+
     init() {
         let d = UserDefaults.standard
+
+        // Decide the mode BEFORE the reads below can create any of the keys the decision
+        // depends on. Persisted immediately: the heuristic must run exactly once, on the
+        // first launch of a build that has modes, and never re-evaluate afterwards.
+        if let stored = d.string(forKey: Keys.mode).flatMap(AppMode.init(rawValue:)) {
+            mode = stored
+            setupComplete = d.bool(forKey: Keys.setupComplete)
+        } else {
+            let decision = ModeMigration.decide(defaults: d)
+            mode = decision.mode
+            setupComplete = decision.setupComplete
+            d.set(decision.mode.rawValue, forKey: Keys.mode)
+            d.set(decision.setupComplete, forKey: Keys.setupComplete)
+            d.set(decision.origin.rawValue, forKey: Keys.modeOrigin)
+        }
         baseURLString = d.string(forKey: Keys.baseURL) ?? AppConfig.defaultBaseURL
         #if DEBUG
         // QA hook: point at an unreachable host to exercise the offline path without
@@ -80,7 +112,33 @@ final class AppConfig: ObservableObject {
         #else
         useSampleData = false
         #endif
+
+        #if DEBUG
+        applyUITestOverrides()
+        #endif
     }
 
     var baseURL: URL? { URL(string: baseURLString) }
+
+    /// Which signal decided the mode on this device. Diagnostic only — surfaced in
+    /// Settings so a wrong answer can be explained rather than guessed at.
+    var modeOrigin: String {
+        UserDefaults.standard.string(forKey: Keys.modeOrigin) ?? "unknown"
+    }
+
+    /// Ask and the Library need the server's cookbook corpus (CLAUDE.md §1).
+    var hasLibrary: Bool { mode == .server }
+
+    #if DEBUG
+    /// QA hooks matching the existing UITEST_* convention. Without them there is no way
+    /// to reach the first-run path in the simulator, since it only fires once per install.
+    func applyUITestOverrides() {
+        let env = ProcessInfo.processInfo.environment
+        if let raw = env["UITEST_MODE"], let m = AppMode(rawValue: raw) {
+            mode = m
+            setupComplete = true
+        }
+        if env["UITEST_SETUP"] == "1" { setupComplete = false }
+    }
+    #endif
 }

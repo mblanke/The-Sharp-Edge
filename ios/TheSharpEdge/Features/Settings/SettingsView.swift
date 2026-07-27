@@ -14,8 +14,22 @@ struct SettingsView: View {
 
     enum HealthState { case unknown, ok, ragOk, down(String) }
 
+    @State private var pendingMode: AppMode?
+
     var body: some View {
         Form {
+            Section("Notebook") {
+                HStack {
+                    Text(config.mode.title).font(Typography.body(15))
+                    Spacer()
+                    Button("Change") { pendingMode = config.mode == .local ? .server : .local }
+                        .font(Typography.body(14))
+                }
+                Text(config.mode.blurb)
+                    .font(Typography.body(12)).foregroundStyle(Theme.faint)
+            }
+
+            if config.mode == .server {
             Section("Server") {
                 TextField("Base URL", text: $urlField)
                     .textInputAutocapitalization(.never)
@@ -70,13 +84,16 @@ struct SettingsView: View {
                         .font(Typography.mono(12)).foregroundStyle(Theme.primary)
                 }
             }
+            }   // if mode == .server
 
             #if DEBUG
             Section("Developer") {
                 Toggle("Use sample data (offline)", isOn: Binding(
                     get: { config.useSampleData },
-                    set: { config.useSampleData = $0 }
+                    set: { config.useSampleData = $0; env.rebuildDataSource() }
                 )).tint(Theme.primary)
+                Text("Mode chosen by: \(config.modeOrigin)")
+                    .font(Typography.mono(11)).foregroundStyle(Theme.faint)
                 Text("When on, the app renders bundled fixtures instead of the network.")
                     .font(Typography.body(12)).foregroundStyle(Theme.faint)
             }
@@ -93,6 +110,26 @@ struct SettingsView: View {
             urlField = config.baseURLString
             tokenField = config.token
         }
+        .alert("Switch notebook?", isPresented: Binding(
+            get: { pendingMode != nil },
+            set: { if !$0 { pendingMode = nil } })
+        ) {
+            Button("Cancel", role: .cancel) { pendingMode = nil }
+            Button("Switch") {
+                if let target = pendingMode {
+                    config.mode = target
+                    config.setupComplete = true
+                    env.rebuildDataSource()
+                }
+                pendingMode = nil
+            }
+        } message: {
+            // Say plainly what does not happen. "Switch" sounds reversible and is —
+            // but somebody expecting their recipes to come along would be badly surprised.
+            Text(pendingMode == .local
+                 ? "This iPad will show its own notebook, which starts empty. Nothing is copied from the server, and nothing you add here syncs back. Your server recipes are untouched — switch back any time."
+                 : "This iPad will show recipes from your server. The notebook on this device stays exactly as it is, and is still here if you switch back. Nothing is copied either way.")
+        }
     }
 
     @ViewBuilder
@@ -108,6 +145,10 @@ struct SettingsView: View {
     private func commit() {
         config.baseURLString = urlField.trimmingCharacters(in: .whitespacesAndNewlines)
         config.token = tokenField.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Rebuild synchronously. This used to ride on a 150 ms debounce, so anything
+        // reading env.dataSource on the next line — "Test connection", notably — was
+        // talking to the *previous* server with the *previous* token.
+        env.rebuildDataSource()
     }
 
     /// Tests what actually matters. /healthz needs no token, so a green tick from it

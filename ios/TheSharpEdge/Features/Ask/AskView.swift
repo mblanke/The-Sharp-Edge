@@ -23,7 +23,7 @@ struct AskView: View {
                 Button { store.newConversation() } label: { Image(systemName: "square.and.pencil") }
             }
         }
-        .task(id: config.useSampleData) { await store.loadRecent(env.dataSource) }
+        .task(id: env.generation) { await store.loadRecent(env.dataSource) }
         .onAppear {
             #if DEBUG
             if ProcessInfo.processInfo.environment["UITEST_ASK"] == "1", store.turns.isEmpty {

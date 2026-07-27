@@ -19,7 +19,7 @@ struct LibraryView: View {
         .background(Theme.paper.ignoresSafeArea())
         .navigationTitle("Library")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: config.useSampleData) {
+        .task(id: env.generation) {
             await store.loadStatus(env.dataSource)
             #if DEBUG
             // Screenshot/QA hook: run a query on launch so search results can be

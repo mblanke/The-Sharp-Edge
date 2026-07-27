@@ -45,8 +45,13 @@ struct SidebarView: View {
 
             Section {
                 navRow("Shopping list", systemImage: "cart", route: .shopping)
-                navRow("Library", systemImage: "books.vertical", route: .library)
-                navRow("Ask", systemImage: "bubble.left.and.text.bubble.right", route: .ask(nil))
+                // Absent rather than disabled on a device-hosted notebook. These read
+                // the owner's private cookbook corpus, which is not part of what gets
+                // shared (CLAUDE.md §1) — and a greyed-out row advertises it.
+                if config.hasLibrary {
+                    navRow("Library", systemImage: "books.vertical", route: .library)
+                    navRow("Ask", systemImage: "bubble.left.and.text.bubble.right", route: .ask(nil))
+                }
                 navRow("Hidden-gluten guide", systemImage: "exclamationmark.shield", route: .glutenGuide)
                 navRow("Settings", systemImage: "gearshape", route: .settings)
             } header: {

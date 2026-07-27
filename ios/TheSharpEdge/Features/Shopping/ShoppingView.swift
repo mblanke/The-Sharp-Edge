@@ -64,7 +64,7 @@ struct ShoppingView: View {
         } message: {
             Text("This removes every item, ticked or not. It can't be undone.")
         }
-        .task(id: config.useSampleData) { await store.load(env.dataSource) }
+        .task(id: env.generation) { await store.load(env.dataSource) }
         .refreshable { await store.load(env.dataSource) }
     }
 
