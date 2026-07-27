@@ -100,3 +100,24 @@ def test_every_aisle_is_reachable():
 )
 def test_near_misses_where_a_shorter_word_would_win(name, aisle):
     assert classify_aisle(name) == aisle
+
+
+@pytest.mark.parametrize(
+    "name,aisle",
+    [
+        # Preparation after the comma is not where a thing lives in the shop.
+        ("jalapeño, seeded and minced", "Produce"),       # "minced" is not mince
+        ("beef chuck, cut into 1-inch cubes", "Meat & fish"),
+        ("red onion, finely diced", "Produce"),
+        ("salmon fillets, about 170 to 200 g each", "Meat & fish"),
+        ("lime, zested", "Produce"),
+        ("English cucumber, grated and squeezed dry", "Produce"),
+    ],
+)
+def test_preparation_does_not_decide_the_aisle(name, aisle):
+    assert classify_aisle(name) == aisle
+
+
+def test_falls_back_to_the_whole_name_when_the_head_says_nothing():
+    """"1 can of San Marzano tomatoes, drained" — the head alone is uninformative."""
+    assert classify_aisle("tin of San Marzano tomatoes, drained") != "Other"

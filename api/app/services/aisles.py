@@ -115,8 +115,15 @@ def _fold(name: str) -> str:
 
 
 def classify_aisle(name: str) -> str:
-    """Best-guess aisle for an ingredient name, or "Other" when nothing matches."""
-    probe = _fold(name)
+    """Best-guess aisle for an ingredient name, or "Other" when nothing matches.
+
+    Classified on the part before the first comma, the same head the merge key uses.
+    Recipe names carry preparation after it — "jalapeño, seeded and minced" — and
+    preparation is not where a thing lives in the shop. Matching the whole string put
+    that jalapeño in Meat & fish, because "minced" contains "mince".
+    """
+    head = _fold(name.split(",")[0])
+    probe = head or _fold(name)
     if not probe:
         return "Other"
     for aisle, terms in _OVERRIDES:
@@ -127,6 +134,10 @@ def classify_aisle(name: str) -> str:
         for term in sorted(terms, key=len, reverse=True):
             if term in probe:
                 return aisle
+    # Nothing in the head — fall back to the whole string before giving up, so
+    # "1 can of San Marzano tomatoes, drained" still finds its aisle.
+    if probe != _fold(name):
+        return classify_aisle(name.replace(",", " "))
     return "Other"
 
 
