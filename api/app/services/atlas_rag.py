@@ -11,6 +11,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.config import settings
+from app.services.expand import expand_passages
 from app.services.lexical import hybrid_order
 from app.services.passages import to_passages
 
@@ -73,7 +74,11 @@ class AtlasRag:
         # four of the eight result slots.
         passages = list(to_passages(scoped, keep=len(scoped) or keep))
         order = hybrid_order(question, passages)
-        return [passages[i] for i in order[:keep]]
+        ranked = [passages[i] for i in order[:keep]]
+        # Pull the neighbouring chunks for the best few so a result reads as a recipe
+        # rather than a window that starts mid-sentence — and so text-extracted books
+        # recover their page numbers from the markers in those neighbours.
+        return await expand_passages(ranked, self._http())
 
     async def health(self) -> dict:
         try:

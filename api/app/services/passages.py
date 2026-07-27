@@ -220,4 +220,8 @@ def _merge(run: list[dict[str, Any]]) -> Passage:
         score=_score(head),
         rerank_score=head.get("rerank_score"),
         chunk_count=len(run),
+        # Carried so a passage can be expanded into its neighbours later
+        # (services/expand.py). The best-scoring chunk of the run is the anchor.
+        doc_id=head.get("doc_id"),
+        chunk_index=head.get("chunk_index"),
     )
