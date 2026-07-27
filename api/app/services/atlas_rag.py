@@ -11,6 +11,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.config import settings
+from app.services.lexical import hybrid_order
 from app.services.passages import to_passages
 
 
@@ -64,9 +65,15 @@ class AtlasRag:
             raise HTTPException(502, f"Atlas rag-api unreachable: {exc}") from exc
         chunks = res.json().get("chunks", [])
         scoped = [c for c in chunks if _in_scope(c, settings.rag_source_folder)]
-        if as_passages:
-            return list(to_passages(scoped, keep=keep))
-        return scoped[:keep]
+        if not as_passages:
+            return scoped[:keep]
+
+        # Merge first, rank second. The unit a cook reads is a passage, not a chunk —
+        # ranking chunks and then merging would let four fragments of one recipe occupy
+        # four of the eight result slots.
+        passages = list(to_passages(scoped, keep=len(scoped) or keep))
+        order = hybrid_order(question, passages)
+        return [passages[i] for i in order[:keep]]
 
     async def health(self) -> dict:
         try:

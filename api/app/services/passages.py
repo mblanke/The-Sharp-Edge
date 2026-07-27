@@ -37,6 +37,26 @@ _PAGE_MARKER = re.compile(r"\[page\s+(\d+)\]\s*")
 _SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
 
 
+#: A quantity opening a line — digits or a vulgar fraction.
+_LEADING_QUANTITY = re.compile(r"^[\d¼½¾⅓⅔⅛⅜⅝⅞]")
+#: A page number closing a line.
+_TRAILING_PAGE = re.compile(r"\d\s*$")
+
+
+def _looks_like_contents(text: str) -> bool:
+    """A table of contents: dish names with page numbers hanging off the right.
+
+    Split on single newlines rather than blank lines — a contents page is a dense
+    column, and the blank-line segmentation used elsewhere collapses it into one blob.
+    """
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 6:
+        return False
+    trailing = sum(1 for ln in lines if _TRAILING_PAGE.search(ln)) / len(lines)
+    leading = sum(1 for ln in lines if _LEADING_QUANTITY.match(ln)) / len(lines)
+    return trailing >= 0.4 and trailing > leading
+
+
 def looks_like_index(text: str) -> bool:
     """True for index / table-of-contents / recipe-list pages.
 
@@ -53,6 +73,21 @@ def looks_like_index(text: str) -> bool:
     lists would be worse than keeping a few indexes, hence the digit guard first.
     """
     if not text or not text.strip():
+        return True
+
+    # A table of contents is *also* full of digits, so the digit guard further down
+    # waves it through as an "ingredient list". Where the digits sit is the
+    # discriminator:
+    #
+    #     contents:        Onion Soup    335        → line ENDS with a page number
+    #     ingredient list: 40 grams Vidalia onion   → line STARTS with a quantity
+    #
+    # Measured on the real corpus for "french onion soup": the CIA's contents page
+    # scored 0.78 lines-ending-in-digits against 0.00 for every genuine ingredient list
+    # retrieved alongside it. Checked first because a contents page is a dense column
+    # with almost no blank lines — it has ~2 blank-line segments, so the segment-count
+    # guard below would otherwise return False before this ever ran.
+    if _looks_like_contents(text):
         return True
 
     segments = [s.strip() for s in _SEGMENT_SPLIT.split(text) if s.strip()]
