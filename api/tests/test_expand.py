@@ -145,3 +145,40 @@ async def test_passages_without_an_anchor_are_left_alone():
 async def test_nothing_in_nothing_out():
     async with httpx.AsyncClient(base_url="http://rag") as client:
         assert await expand_passages([], client) == []
+
+
+@pytest.mark.asyncio
+async def test_an_index_neighbour_is_not_stitched_into_a_good_passage():
+    """A recipe near the back of a book sits next to the index.
+
+    Seen live in the app before this guard: a real CIA passage came back with
+    "Soup, 335 / Soup Gratinée, 335 / Blackberry and Port-Poac…" welded onto the end —
+    the contamination the read-side filter removes from the *ranking*, reappearing
+    inside a single result.
+    """
+    index_page = "\n".join([
+        "Passion and Mango-Poached 982-983", "Relish, Curried, 961",
+        "Coconut Spicy, 442-443", "Butter, 300", "Soup, 335",
+        "Soup Gratinee, 335", "Pear(s) 1148-1150", "Blackberry and Port-Poached 44",
+    ])
+    window = [chunk(5, "Sweat the onions slowly until deeply caramelised."),
+              chunk(6, index_page)]
+    async with httpx.AsyncClient(transport=_transport(window),
+                                 base_url="http://rag") as client:
+        out = await expand_passages(
+            [{"doc_id": "d1", "chunk_index": 5, "text": "x"}], client)
+
+    assert "deeply caramelised" in out[0]["text"]
+    assert "Soup Gratinee, 335" not in out[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_the_anchor_is_kept_even_if_it_trips_the_index_check():
+    """It earned its place in the ranking; dropping it would return an empty result."""
+    listish = "\n".join(f"Ingredient {i}" for i in range(12))
+    window = [chunk(3, listish)]
+    async with httpx.AsyncClient(transport=_transport(window),
+                                 base_url="http://rag") as client:
+        out = await expand_passages(
+            [{"doc_id": "d1", "chunk_index": 3, "text": listish}], client)
+    assert out[0]["text"]

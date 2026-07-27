@@ -23,7 +23,7 @@ from typing import Any
 
 import httpx
 
-from app.services.passages import _PAGE_MARKER
+from app.services.passages import _PAGE_MARKER, looks_like_index
 
 __all__ = ["expand_passages", "infer_page"]
 
@@ -113,7 +113,7 @@ async def expand_passages(
         if len(window) <= 1:
             continue
         merged = dict(passage)
-        merged["text"] = _stitch(window)
+        merged["text"] = _stitch(window, anchor=int(passage["chunk_index"]))
         merged["chunk_count"] = len(window)
         merged["expanded"] = True
 
@@ -125,16 +125,28 @@ async def expand_passages(
     return out
 
 
-def _stitch(window: list[dict[str, Any]]) -> str:
+def _stitch(window: list[dict[str, Any]], anchor: int | None = None) -> str:
     """Join a window into continuous text, dropping the page markers themselves.
 
     Chunks overlap by design (rag-api uses a 480-character overlap on 3200-character
     chunks), so the tail of one repeats the head of the next. Left in, a recipe reads
     with every few lines duplicated.
+
+    **Neighbours are filtered too.** The retrieved hit passed the index check, but the
+    chunks around it have not been looked at, and a recipe near the back of a book sits
+    next to the index. Without this the expansion happily stitched
+    "Soup, 335 / Soup Gratinée, 335 / Blackberry and Port-Poac…" onto the end of a real
+    passage — reintroducing, inside the result, exactly the contamination the read-side
+    filter removes from the ranking. The anchor itself is always kept: it earned its
+    place in the ranking.
     """
     parts: list[str] = []
     for chunk in sorted(window, key=lambda c: c.get("chunk_index") or 0):
-        text = _PAGE_MARKER.sub("", str(chunk.get("text") or "")).strip()
+        raw = str(chunk.get("text") or "")
+        is_anchor = anchor is not None and chunk.get("chunk_index") == anchor
+        if not is_anchor and looks_like_index(raw):
+            continue
+        text = _PAGE_MARKER.sub("", raw).strip()
         if not text:
             continue
         if parts:
