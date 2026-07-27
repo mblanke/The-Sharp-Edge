@@ -78,71 +78,40 @@ final class SampleDataSource: DataSource {
     }
 
     // MARK: - Shopping list (offline)
-    // Merging is the server's job (services/shopping.py). Offline we keep a simple
-    // same-name/same-unit sum so the flow is explorable, and the real arithmetic —
-    // unit families, kitchen fractions — is exercised against the live backend.
-    private static var basket: [ShoppingItem] = []
+    // Runs the real arithmetic — ShoppingBasket → ShoppingMerge → Aisles, all pinned to
+    // the server by shared/fixtures. This used to be a simple same-name/same-unit sum
+    // with its own gluten list (drifted to 14 terms against the server's 23) and a
+    // hardcoded aisle of "Other". Exercising the same code the local notebook uses is
+    // the point: the DEBUG path is now a rehearsal, not an approximation.
+    private static var basket = ShoppingBasket()
 
-    func shoppingList() async throws -> [ShoppingItem] { Self.basket }
+    func shoppingList() async throws -> [ShoppingItem] { Self.basket.items }
 
-    func shoppingText() async throws -> String {
-        let lines = Self.basket.filter { !$0.checked }.map { item -> String in
-            let flag = item.checkGluten ? "  (check GF)" : ""
-            return "\(item.display) \(item.name)\(flag)"
-        }
-        return (["Shopping list", ""] + lines).joined(separator: "\n")
-    }
+    func shoppingText() async throws -> String { Self.basket.text() }
 
     func addToShopping(_ slug: String, targetYield: Int?) async throws -> [ShoppingItem] {
         let recipe = try await self.recipe(slug)
         let target = targetYield ?? recipe.baseYield
-        for row in ScalingEngine.scale(recipe.currentVersion.ingredients,
-                                       baseYield: recipe.baseYield, targetYield: target) {
-            let name = row.name
-            if let i = Self.basket.firstIndex(where: {
-                $0.name == name && $0.unit == row.ingredient.unit && !$0.toTaste
-            }), row.scaledAmount > 0 {
-                Self.basket[i].amount += row.scaledAmount
-                Self.basket[i].display = ScalingEngine.formatAmount(Self.basket[i].amount,
-                                                                    unit: Self.basket[i].unit)
-                if !Self.basket[i].recipes.contains(slug) { Self.basket[i].recipes.append(slug) }
-            } else if !Self.basket.contains(where: { $0.name == name }) {
-                Self.basket.append(ShoppingItem(
-                    id: UUID(), name: name, amount: row.scaledAmount,
-                    unit: row.ingredient.unit, display: row.display,
-                    toTaste: row.scaledAmount == 0, checked: false, recipes: [slug],
-                    checkGluten: Self.hidesGluten(name), aisle: "Other"))
-            }
-        }
-        return Self.basket
+        return Self.basket.add(
+            ScalingEngine.scale(recipe.currentVersion.ingredients,
+                                baseYield: recipe.baseYield, targetYield: target),
+            from: slug)
     }
 
     func setShoppingChecked(_ id: UUID, _ checked: Bool) async throws -> ShoppingItem {
-        guard let i = Self.basket.firstIndex(where: { $0.id == id }) else { throw APIError.notFound }
-        Self.basket[i].checked = checked
-        return Self.basket[i]
+        try Self.basket.setChecked(id, checked)
     }
 
     func removeShoppingItem(_ id: UUID) async throws {
-        Self.basket.removeAll { $0.id == id }
+        Self.basket.remove([id])
     }
 
     func removeShoppingItems(_ ids: [UUID]) async throws {
-        Self.basket.removeAll { ids.contains($0.id) }
+        Self.basket.remove(ids)
     }
 
     func clearShopping(checkedOnly: Bool) async throws {
-        Self.basket.removeAll { checkedOnly ? $0.checked : true }
-    }
-
-    private static let glutenWatch = [
-        "paprika", "broth", "stock", "bouillon", "tomato paste", "soy sauce", "tamari",
-        "worcestershire", "hoisin", "oyster sauce", "miso", "malt", "vinegar", "mustard",
-    ]
-
-    private static func hidesGluten(_ name: String) -> Bool {
-        let probe = name.lowercased()
-        return glutenWatch.contains { probe.contains($0) }
+        Self.basket.clear(checkedOnly: checkedOnly)
     }
 
     // Offline approximation of /parse/* — see OfflineParse. The server is canonical.

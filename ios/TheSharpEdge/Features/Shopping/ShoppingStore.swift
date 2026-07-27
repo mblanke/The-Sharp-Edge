@@ -12,11 +12,6 @@ final class ShoppingStore: ObservableObject {
     var toBuy: [ShoppingItem] { items }
     var remaining: Int { items.filter { !$0.checked }.count }
 
-    /// Walking order through a shop: fresh edges, then the middle, then frozen last.
-    /// Mirrors AISLE_ORDER in api/app/services/aisles.py.
-    static let aisleOrder = ["Produce", "Meat & fish", "Dairy & eggs", "Bakery",
-                             "Pantry", "Herbs & spices", "Frozen", "Other"]
-
     struct AisleGroup: Identifiable {
         var id: String { name }
         let name: String
@@ -29,8 +24,8 @@ final class ShoppingStore: ObservableObject {
         Dictionary(grouping: items, by: { $0.aisle })
             .map { AisleGroup(name: $0.key, items: $0.value) }
             .sorted { a, b in
-                let ra = Self.aisleOrder.firstIndex(of: a.name) ?? Self.aisleOrder.count
-                let rb = Self.aisleOrder.firstIndex(of: b.name) ?? Self.aisleOrder.count
+                // Aisles.order is the single definition, fixture-pinned to the server.
+                let ra = Aisles.rank(a.name), rb = Aisles.rank(b.name)
                 return ra == rb ? a.name < b.name : ra < rb
             }
     }

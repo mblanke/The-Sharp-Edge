@@ -102,11 +102,18 @@
       "expect": "oats"
     },
     {
-      "id": "short-words-keep-their-s",
+      "id": "four-letters-is-long-enough-to-depluralise",
       "args": {
         "name": "figs"
       },
       "expect": "fig"
+    },
+    {
+      "id": "three-letter-words-keep-their-s",
+      "args": {
+        "name": "gas"
+      },
+      "expect": "gas"
     },
     {
       "id": "double-s-is-kept",
@@ -114,6 +121,13 @@
         "name": "watercress"
       },
       "expect": "watercress"
+    },
+    {
+      "id": "us-ending-is-kept",
+      "args": {
+        "name": "citrus"
+      },
+      "expect": "citrus"
     },
     {
       "id": "is-ending-is-kept",
