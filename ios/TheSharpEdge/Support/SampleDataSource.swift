@@ -132,6 +132,10 @@ final class SampleDataSource: DataSource {
         IngredientParse.matchCategory(spoken, lang: lang.rawValue)
     }
 
+    func sourcePage(path: String, page: Int) async throws -> Data {
+        throw APIError.localOnly("Opening a cookbook page")
+    }
+
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
         try? await Task.sleep(nanoseconds: 250_000_000)
         return SampleData.searchHits(q)

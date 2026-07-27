@@ -31,6 +31,9 @@ protocol DataSource: AnyObject {
     func clearShopping(checkedOnly: Bool) async throws
 
     func search(_ q: String, topK: Int) async throws -> [ChunkOut]
+    /// One page of a source book as PDF bytes. Fetched rather than linked because the
+    /// route needs the bearer token — it returns actual book content (CLAUDE.md §1).
+    func sourcePage(path: String, page: Int) async throws -> Data
     func libraryStatus() async throws -> LibraryStatus
     func conversations() async throws -> [ConversationSummary]
     func conversation(_ id: UUID) async throws -> ConversationFull

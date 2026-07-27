@@ -172,6 +172,40 @@ final class APIClient: DataSource {
 
     // MARK: - Library / search / conversations
 
+    /// RFC-7807 `detail`, when the server sent one.
+    private static func problemDetail(_ data: Data) -> String? {
+        (try? JSONCoding.decoder.decode(ProblemDetail.self, from: data))?.detail
+    }
+
+    func sourcePage(path: String, page: Int) async throws -> Data {
+        var comps = URLComponents(url: base.appendingPathComponent("api/v1/library/source"),
+                                  resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "path", value: path),
+                             URLQueryItem(name: "page", value: String(page))]
+        guard let url = comps?.url else { throw APIError.badURL }
+        var req = URLRequest(url: url)
+        if let token = tokenProvider(), !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else { throw APIError.transport("No response") }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw APIError.unauthorized }
+                if http.statusCode == 404 {
+                    throw APIError.server(status: 404, detail: Self.problemDetail(data)
+                        ?? "That page isn't available.")
+                }
+                throw APIError.server(status: http.statusCode, detail: Self.problemDetail(data))
+            }
+            return data
+        } catch let error as APIError {
+            throw error
+        } catch {
+            throw APIError.transport(error.localizedDescription)
+        }
+    }
+
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
         try await run(request(endpoints.search(q: q, topK: topK)), as: [ChunkOut].self)
     }

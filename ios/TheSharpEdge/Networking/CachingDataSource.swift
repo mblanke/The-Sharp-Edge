@@ -140,6 +140,11 @@ final class CachingDataSource: DataSource {
     func removeShoppingItems(_ ids: [UUID]) async throws { try await upstream.removeShoppingItems(ids) }
     func clearShopping(checkedOnly: Bool) async throws { try await upstream.clearShopping(checkedOnly: checkedOnly) }
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] { try await upstream.search(q, topK: topK) }
+    /// Not cached: a book page is only worth fetching when someone asks to read it, and
+    /// caching pages of copyrighted books on the device is not something to do casually.
+    func sourcePage(path: String, page: Int) async throws -> Data {
+        try await upstream.sourcePage(path: path, page: page)
+    }
     func libraryStatus() async throws -> LibraryStatus { try await upstream.libraryStatus() }
     func conversations() async throws -> [ConversationSummary] { try await upstream.conversations() }
     func conversation(_ id: UUID) async throws -> ConversationFull { try await upstream.conversation(id) }

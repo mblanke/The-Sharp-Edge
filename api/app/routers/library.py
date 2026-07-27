@@ -1,16 +1,18 @@
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.auth import require_token
 from app.db import get_session
 from app.models import Conversation
 from app.schemas.chat import BookOut, ChunkOut, ConversationFull, ConversationSummary, LibraryStatus
 from app.services.atlas_rag import atlas_rag
+from app.services.source_page import SourceError, extract_page, resolve_source
 
 router = APIRouter(tags=["library"])
 
@@ -67,3 +69,32 @@ async def get_conversation(conversation_id: UUID, session: AsyncSession = Depend
     if conversation is None:
         raise HTTPException(404, "No such conversation")
     return ConversationFull.model_validate(conversation)
+
+
+@router.get("/library/source", dependencies=[Depends(require_token)])
+async def library_source(path: str, page: int):
+    """One page of a source book, as a one-page PDF.
+
+    The point of the feature: extraction only has to be good enough to *find* the page,
+    and then you read the real thing — layout, photographs and all — rather than a
+    reconstruction that might have missed a line of the method.
+
+    Requires a token. Everything else in the library is metadata or short quoted
+    passages; this returns actual book content, and CLAUDE.md §1 keeps the corpus inside
+    the local deployment. One page at a time, PDFs only — there is deliberately no route
+    that hands over a whole book.
+    """
+    try:
+        pdf = resolve_source(path, settings.library_dir)
+        data = extract_page(pdf, page)
+    except SourceError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="page-{page}.pdf"',
+            "Cache-Control": "private, max-age=3600",
+        },
+    )

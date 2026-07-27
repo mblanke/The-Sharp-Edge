@@ -138,6 +138,10 @@ final class LocalDataSource: DataSource {
     // Absent, not merely unavailable. These read the owner's private, copyrighted
     // cookbook corpus, which is not part of what gets shared (CLAUDE.md §1).
 
+    func sourcePage(path: String, page: Int) async throws -> Data {
+        throw APIError.localOnly("Opening a cookbook page")
+    }
+
     func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
         throw APIError.localOnly("Library search")
     }

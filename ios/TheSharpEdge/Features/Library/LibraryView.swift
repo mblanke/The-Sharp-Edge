@@ -4,6 +4,15 @@ struct LibraryView: View {
     @EnvironmentObject var env: AppEnvironment
     @EnvironmentObject var config: AppConfig
     @StateObject private var store = LibraryStore()
+    /// The book page a result points at, once someone asks to see it.
+    @State private var opening: SourceTarget?
+
+    struct SourceTarget: Identifiable {
+        let id = UUID()
+        let title: String
+        let path: String
+        let page: Int
+    }
 
     var body: some View {
         ScrollView {
@@ -19,6 +28,10 @@ struct LibraryView: View {
         .background(Theme.paper.ignoresSafeArea())
         .navigationTitle("Library")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $opening) { target in
+            SourcePageView(title: target.title, path: target.path, page: target.page)
+                .environmentObject(env)
+        }
         .task(id: env.generation) {
             await store.loadStatus(env.dataSource)
             #if DEBUG
@@ -107,6 +120,20 @@ struct LibraryView: View {
                                 Text(hit.text.prefix(500) + (hit.text.count > 500 ? "…" : ""))
                                     .font(Typography.body(15)).foregroundStyle(Theme.ink)
                                     .fixedSize(horizontal: false, vertical: true)
+                                // Extracted text is a good index and a poor recipe —
+                                // a line lost by the text layer is a step never cooked.
+                                // Read it in the book instead.
+                                if let page = hit.page, let path = hit.sourcePath {
+                                    Button {
+                                        opening = SourceTarget(title: group.book,
+                                                               path: path, page: page)
+                                    } label: {
+                                        Label("Open page \(page) in the book",
+                                              systemImage: "book")
+                                            .font(Typography.body(13, weight: .semibold))
+                                    }
+                                    .padding(.top, 2)
+                                }
                             }
                             .padding(.vertical, 4)
                             Divider().overlay(Theme.line)
