@@ -30,6 +30,28 @@ struct SidebarView: View {
                     Button("Retry") { Task { await store.load(env.dataSource, gfOnly: config.gfOnly) } }
                         .font(Typography.body(14, weight: .semibold))
                 }
+            } else if store.sections.isEmpty {
+                // A device-hosted notebook starts empty, and an empty sidebar with no
+                // explanation is exactly the poor greeting the setup screen exists to
+                // avoid. Say where recipes come from rather than showing nothing.
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(config.mode == .local ? "No recipes yet" : "No recipes here yet")
+                        .font(Typography.body(16, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text(config.mode == .local
+                         ? "This iPad keeps its own notebook. Add your first recipe with ＋ above — type it in, or dictate it in English, French, German or Romanian."
+                         : "The server has no active recipes to show.")
+                        .font(Typography.body(13))
+                        .foregroundStyle(Theme.faint)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if config.mode == .local {
+                        Button { draft = RecipeCreate() } label: {
+                            Label("Add a recipe", systemImage: "square.and.pencil")
+                                .font(Typography.body(14, weight: .semibold))
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
             }
 
             ForEach(store.sections) { section in

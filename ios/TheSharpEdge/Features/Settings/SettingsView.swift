@@ -151,45 +151,45 @@ struct SettingsView: View {
         env.rebuildDataSource()
     }
 
-    /// Tests what actually matters. /healthz needs no token, so a green tick from it
-    /// says nothing about whether saving will work — which is exactly the failure
-    /// people hit. This exercises an authenticated route too and reports the token
-    /// separately from reachability.
+    /// Tests what actually matters, against the values currently in the fields.
+    ///
+    /// This used to `commit()` and then read `env.dataSource` on the next line — which
+    /// was rebuilt on a 150 ms debounce, so it tested the *previous* server with the
+    /// *previous* token. `ServerProbe` builds a throwaway client from the typed values,
+    /// so the answer is about what you just typed. It also checks the host is a Sharp
+    /// Edge server at all, and reports the token separately from reachability, because
+    /// `/healthz` needs no token and a green tick from it says nothing about saving.
     private func checkHealth() async {
-        commit()
         checking = true
         health = .unknown
         tokenState = .unknown
-        let source = env.dataSource
-        do {
-            let ok = try await source.health()
-            guard ok else { health = .down("no response"); checking = false; return }
-            if let status = try? await source.libraryStatus(), status.ragHealth.ok {
-                health = .ragOk
-            } else {
-                health = .ok
-            }
-        } catch {
-            health = .down((error as? APIError)?.errorDescription ?? "unreachable")
-            checking = false
+        defer { checking = false }
+
+        let typedURL = urlField.trimmingCharacters(in: .whitespacesAndNewlines)
+        let typedToken = tokenField.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: typedURL) else {
+            health = .down("that doesn't look like a URL")
             return
         }
 
-        // An authenticated no-op: adding nothing to the shopping list round-trips the
-        // bearer token without changing any data.
-        if config.token.isEmpty {
-            tokenState = .missing
-        } else {
-            do {
-                _ = try await source.shoppingList()          // unauthenticated read, warms the path
-                _ = try await source.clearShopping(checkedOnly: true)  // authenticated, no-op when nothing is ticked
-                tokenState = .valid
-            } catch let e as APIError {
-                tokenState = (e == .unauthorized) ? .rejected : .valid
-            } catch {
-                tokenState = .rejected
+        switch await ServerProbe.check(url: url, token: typedToken) {
+        case let .ok(_, token):
+            health = .ok
+            switch token {
+            case .none: tokenState = .missing
+            case .accepted: tokenState = .valid
+            case .rejected: tokenState = .rejected
             }
+            // Only persist settings that have been shown to work.
+            commit()
+            // The index is a separate question from "is the server up".
+            if let status = try? await env.dataSource.libraryStatus(), status.ragHealth.ok {
+                health = .ragOk
+            }
+        case let .unreachable(why):
+            health = .down(why)
+        case .notSharpEdge:
+            health = .down("answered, but isn't a Sharp Edge server")
         }
-        checking = false
     }
 }

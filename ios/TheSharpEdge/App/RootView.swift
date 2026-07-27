@@ -31,9 +31,20 @@ struct RootView: View {
             .environmentObject(store)
         }
         .navigationSplitViewStyle(.balanced)
-        .task(id: env.generation) { await store.load(env.dataSource, gfOnly: config.gfOnly) }
+        // Gated on setup: loading behind the cover would fire a request at whatever URL
+        // happens to be stored, which on a stranger's iPad is the owner's tailnet.
+        .task(id: env.generation) {
+            guard config.setupComplete else { return }
+            await store.load(env.dataSource, gfOnly: config.gfOnly)
+        }
         .tint(Theme.primary)
         .onAppear(perform: applyLaunchRoute)
+        .fullScreenCover(isPresented: Binding(
+            get: { !config.setupComplete },
+            set: { _ in }          // no dismiss affordance: a choice has to be made
+        )) {
+            SetupView()
+        }
     }
 
     /// DEBUG-only: allow screenshots/tests to open a specific screen via an env var.
@@ -70,18 +81,22 @@ struct RootView: View {
         case .settings:
             SettingsView()
         case .none:
-            WelcomeDetail()
+            WelcomeDetail(local: config.mode == .local)
         }
     }
 }
 
 private struct WelcomeDetail: View {
+    /// A device-hosted notebook has no printed cards to scan, so the standard line
+    /// would be describing a thing this iPad cannot do.
+    var local = false
+
     var body: some View {
         VStack(spacing: 14) {
             Text("The Sharp Edge")
                 .font(Typography.display(40))
                 .foregroundStyle(Theme.ink)
-            Text("Scan a card, scale the dish, cook.")
+            Text(local ? "Your recipes, on this iPad." : "Scan a card, scale the dish, cook.")
                 .font(Typography.body(17))
                 .foregroundStyle(Theme.faint)
         }
