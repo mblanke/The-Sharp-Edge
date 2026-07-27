@@ -135,3 +135,59 @@ async def test_duplicate_slug_conflict(client, auth):
     await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
     r = await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
     assert r.status_code == 409
+
+
+# ---------------------------------------------------------------- version history
+# Versions were append-only but write-only: /versions returned metadata with no body,
+# so an old version existed in the database and could not be read or restored.
+
+async def test_fetch_a_past_version_body(client, auth):
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    edit = dict(GOULASH)
+    edit["title"] = "Renamed"
+    edit["ingredients"] = [{"amount": 1, "unit": "lb", "name": "something else"}]
+    await client.put("/api/v1/recipes/goulash", json=edit, headers=auth)
+
+    r = await client.get("/api/v1/recipes/goulash/versions/1")
+    assert r.status_code == 200
+    v1 = r.json()
+    assert v1["version"] == 1
+    assert v1["is_current"] is False
+    assert any("beef chuck" in i["name"] for i in v1["ingredients"])   # the original body
+    assert len(v1["steps"]) == 2
+
+
+async def test_unknown_version_is_404(client, auth):
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    assert (await client.get("/api/v1/recipes/goulash/versions/99")).status_code == 404
+
+
+async def test_restore_brings_an_old_version_back_as_a_new_one(client, auth):
+    """Append-only: restoring v1 over v2 creates v3, so the restore is itself undoable."""
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    edit = dict(GOULASH)
+    edit["title"] = "Renamed"
+    edit["ingredients"] = [{"amount": 1, "unit": "lb", "name": "something else"}]
+    await client.put("/api/v1/recipes/goulash", json=edit, headers=auth)
+
+    r = await client.post("/api/v1/recipes/goulash/versions/1/restore", headers=auth)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["current_version"]["version"] == 3          # nothing destroyed
+    assert any("beef chuck" in i["name"] for i in body["current_version"]["ingredients"])
+
+    versions = (await client.get("/api/v1/recipes/goulash/versions")).json()
+    assert [v["version"] for v in versions] == [1, 2, 3]
+    assert [v["is_current"] for v in versions] == [False, False, True]
+
+
+async def test_restore_requires_auth(client, auth):
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    assert (await client.post("/api/v1/recipes/goulash/versions/1/restore")).status_code == 401
+
+
+async def test_restoring_the_current_version_is_a_no_op(client, auth):
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    r = await client.post("/api/v1/recipes/goulash/versions/1/restore", headers=auth)
+    assert r.status_code == 200
+    assert len((await client.get("/api/v1/recipes/goulash/versions")).json()) == 1
