@@ -23,6 +23,7 @@ protocol DataSource: AnyObject {
     func addToShopping(_ slug: String, targetYield: Int?) async throws -> [ShoppingItem]
     func setShoppingChecked(_ id: UUID, _ checked: Bool) async throws -> ShoppingItem
     func removeShoppingItem(_ id: UUID) async throws
+    func removeShoppingItems(_ ids: [UUID]) async throws
     func clearShopping(checkedOnly: Bool) async throws
 
     func search(_ q: String, topK: Int) async throws -> [ChunkOut]

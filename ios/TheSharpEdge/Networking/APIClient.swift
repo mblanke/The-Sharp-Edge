@@ -130,6 +130,12 @@ final class APIClient: DataSource {
         _ = try await perform(request(endpoints.shoppingItem(id), method: "DELETE", authed: true))
     }
 
+    func removeShoppingItems(_ ids: [UUID]) async throws {
+        guard !ids.isEmpty else { return }
+        let body = try JSONCoding.encoder.encode(["ids": ids.map { $0.uuidString.lowercased() }])
+        _ = try await perform(request(endpoints.shoppingDelete(), method: "POST", authed: true, body: body))
+    }
+
     func clearShopping(checkedOnly: Bool) async throws {
         _ = try await perform(request(endpoints.shoppingClear(checkedOnly: checkedOnly),
                                       method: "DELETE", authed: true))

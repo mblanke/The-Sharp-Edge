@@ -9,6 +9,12 @@ class ShoppingAdd(BaseModel):
     target_yield: int | None = Field(default=None, ge=1)
 
 
+class ShoppingDelete(BaseModel):
+    """Ids to remove in one go, so clearing a selection is a single request."""
+
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=400)
+
+
 class ShoppingToggle(BaseModel):
     checked: bool
 

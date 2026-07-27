@@ -11,6 +11,8 @@ struct ShoppingView: View {
     @EnvironmentObject var config: AppConfig
     @StateObject private var store = ShoppingStore()
     @State private var confirmClear = false
+    @State private var selection = Set<ShoppingItem.ID>()
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         Group {
@@ -30,6 +32,16 @@ struct ShoppingView: View {
                 if !store.shareText.isEmpty {
                     ShareLink(item: store.shareText) {
                         Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if !store.items.isEmpty {
+                    Button(editMode.isEditing ? "Done" : "Select") {
+                        withAnimation {
+                            editMode = editMode.isEditing ? .inactive : .active
+                            selection = []
+                        }
                     }
                 }
             }
@@ -71,7 +83,7 @@ struct ShoppingView: View {
     }
 
     private var list: some View {
-        List {
+        List(selection: $selection) {
             if let error = store.error {
                 Section {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -89,27 +101,42 @@ struct ShoppingView: View {
                 HStack {
                     Text("To buy")
                     Spacer()
-                    Text("\(store.remaining) left")
+                    Text(editMode.isEditing && !selection.isEmpty
+                         ? "\(selection.count) selected"
+                         : "\(store.remaining) left")
                         .font(Typography.mono(12)).foregroundStyle(Theme.faint)
-                }
-            }
-
-            if !store.staples.isEmpty {
-                Section {
-                    ForEach(store.staples) { item in row(item) }
-                } header: {
-                    Text("Check you have")
-                } footer: {
-                    Text("These are “to taste” in their recipes, so there's no amount to buy.")
-                        .font(Typography.body(12))
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .environment(\.editMode, $editMode)
+        .safeAreaInset(edge: .bottom) {
+            if editMode.isEditing {
+                Button(role: .destructive) {
+                    let doomed = selection
+                    selection = []
+                    Task {
+                        await store.removeMany(env.dataSource, doomed)
+                        if store.items.isEmpty { editMode = .inactive }
+                    }
+                } label: {
+                    Label(selection.isEmpty ? "Select items to remove"
+                                            : "Remove \(selection.count) item\(selection.count == 1 ? "" : "s")",
+                          systemImage: "trash")
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(selection.isEmpty)
+                .padding(Theme.Space.l)
+                .background(.thinMaterial)
+            }
+        }
     }
 
     private func row(_ item: ShoppingItem) -> some View {
         Button {
+            guard !editMode.isEditing else { return }   // in select mode a tap picks, not ticks
             Task { await store.toggle(env.dataSource, item) }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {

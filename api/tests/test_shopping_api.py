@@ -32,7 +32,13 @@ async def seed(client, auth, *recipes):
 
 
 def by_name(items, fragment):
-    return next(i for i in items if fragment.lower() in i["name"].lower())
+    match = [i for i in items if fragment.lower() in i["name"].lower()]
+    assert match, f"no item matching {fragment!r} in {[i['name'] for i in items]}"
+    return match[0]
+
+
+def has(items, fragment):
+    return any(fragment.lower() in i["name"].lower() for i in items)
 
 
 async def test_list_starts_empty(client):
@@ -83,12 +89,33 @@ async def test_adding_the_same_recipe_twice_doubles_it(client, auth):
     assert by_name(r.json()["items"], "paprika")["amount"] == 4
 
 
-async def test_to_taste_items_carry_no_quantity(client, auth):
+async def test_to_taste_items_never_join_the_list(client, auth):
+    """You do not buy "salt and pepper, to taste" — it is not shopping."""
     await seed(client, auth, GOULASH)
     r = await client.post("/api/v1/shopping/add", json={"slug": "goulash"}, headers=auth)
-    salt = by_name(r.json()["items"], "salt")
-    assert salt["to_taste"] and salt["amount"] == 0
-    assert salt["display"] == "to taste"
+    items = r.json()["items"]
+    assert not has(items, "to taste")
+    assert all(i["amount"] > 0 for i in items)
+    assert has(items, "beef chuck")          # the things you do buy are all still there
+
+
+async def test_delete_a_selection_in_one_request(client, auth):
+    await seed(client, auth, GOULASH)
+    added = await client.post("/api/v1/shopping/add", json={"slug": "goulash"}, headers=auth)
+    items = added.json()["items"]
+    doomed = [items[0]["id"], items[1]["id"]]
+    r = await client.post("/api/v1/shopping/delete", json={"ids": doomed}, headers=auth)
+    assert r.status_code == 204
+    left = (await client.get("/api/v1/shopping")).json()["items"]
+    assert len(left) == len(items) - 2
+    assert all(i["id"] not in doomed for i in left)
+
+
+async def test_bulk_delete_needs_auth(client, auth):
+    await seed(client, auth, GOULASH)
+    added = await client.post("/api/v1/shopping/add", json={"slug": "goulash"}, headers=auth)
+    r = await client.post("/api/v1/shopping/delete", json={"ids": [added.json()["items"][0]["id"]]})
+    assert r.status_code == 401
 
 
 async def test_hidden_gluten_items_are_flagged(client, auth):

@@ -118,6 +118,10 @@ final class SampleDataSource: DataSource {
         Self.basket.removeAll { $0.id == id }
     }
 
+    func removeShoppingItems(_ ids: [UUID]) async throws {
+        Self.basket.removeAll { ids.contains($0.id) }
+    }
+
     func clearShopping(checkedOnly: Bool) async throws {
         Self.basket.removeAll { checkedOnly ? $0.checked : true }
     }

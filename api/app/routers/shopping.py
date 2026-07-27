@@ -20,6 +20,7 @@ from app.models import Recipe, ShoppingItem
 from app.routers.recipes import _resolve
 from app.schemas.shopping import (
     ShoppingAdd,
+    ShoppingDelete,
     ShoppingItemOut,
     ShoppingListOut,
     ShoppingToggle,
@@ -79,13 +80,15 @@ async def add_recipe(
     target = payload.target_yield or recipe.base_yield
     scaled = scale_ingredients(version.ingredients, recipe.base_yield, target)
 
+    # amount 0 means "to taste" — salt, pepper, a drizzle of oil. They are not
+    # shopping, they are things you already have, so they never join the list.
     incoming = [
         ShoppingLine(
             name=row["name"], amount=row["scaled_amount"], unit=row.get("unit", ""),
-            to_taste=row["scaled_amount"] == 0, recipes=[recipe.slug],
+            to_taste=False, recipes=[recipe.slug],
         )
         for row in scaled
-        if (row.get("name") or "").strip()
+        if (row.get("name") or "").strip() and row["scaled_amount"] > 0
     ]
 
     existing = await _all(session)
@@ -116,6 +119,16 @@ async def toggle(
     await session.commit()
     await session.refresh(item)
     return _out(item)
+
+
+@router.post("/delete", status_code=204, dependencies=[Depends(require_token)])
+async def remove_many(
+    payload: ShoppingDelete, session: AsyncSession = Depends(get_session)
+) -> Response:
+    """Delete a selection in one request rather than one round trip per item."""
+    await session.execute(delete(ShoppingItem).where(ShoppingItem.id.in_(payload.ids)))
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.delete("/{item_id}", status_code=204, dependencies=[Depends(require_token)])

@@ -7,11 +7,10 @@ final class ShoppingStore: ObservableObject {
     @Published var error: String?
     @Published var shareText = ""
 
-    /// Things you buy, in the order they were added.
-    var toBuy: [ShoppingItem] { items.filter { !$0.toTaste } }
-    /// "Salt, to taste" — you don't buy these, you check you have them.
-    var staples: [ShoppingItem] { items.filter { $0.toTaste } }
-    var remaining: Int { toBuy.filter { !$0.checked }.count }
+    /// Everything on the list, in the order it was added. "To taste" items are no
+    /// longer added at all — you do not buy "salt and pepper, to taste".
+    var toBuy: [ShoppingItem] { items }
+    var remaining: Int { items.filter { !$0.checked }.count }
 
     func load(_ source: DataSource) async {
         isLoading = true
@@ -47,6 +46,17 @@ final class ShoppingStore: ObservableObject {
             shareText = (try? await source.shoppingText()) ?? shareText
         } catch {
             items[i].checked = previous
+            self.error = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func removeMany(_ source: DataSource, _ ids: Set<UUID>) async {
+        guard !ids.isEmpty else { return }
+        do {
+            try await source.removeShoppingItems(Array(ids))
+            items.removeAll { ids.contains($0.id) }
+            shareText = (try? await source.shoppingText()) ?? shareText
+        } catch {
             self.error = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }

@@ -36,6 +36,7 @@ struct Endpoints {
     func shopping() -> URL? { url("/shopping") }
     func shoppingText() -> URL? { url("/shopping/text") }
     func shoppingAdd() -> URL? { url("/shopping/add") }
+    func shoppingDelete() -> URL? { url("/shopping/delete") }
     func shoppingItem(_ id: UUID) -> URL? { url("/shopping/\(id.uuidString.lowercased())") }
     func shoppingClear(checkedOnly: Bool) -> URL? {
         url("/shopping", query: ["checked_only": checkedOnly ? "true" : "false"])
