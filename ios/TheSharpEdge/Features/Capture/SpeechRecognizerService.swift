@@ -30,6 +30,12 @@ final class SpeechRecognizerService: ObservableObject {
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    /// Text banked from earlier requests in this session — dictation is restarted
+    /// each time the recogniser finalises, so results must accumulate across them.
+    private var finalisedText = ""
+    private var finalisedLines: [String] = []
+    private var wantsToListen = false
+    private var activeLanguage: CaptureLanguage = .en
 
     var isListening: Bool { status == .listening }
 
@@ -44,8 +50,13 @@ final class SpeechRecognizerService: ObservableObject {
     func start(language: CaptureLanguage) async {
         stop()
         transcript = ""
+        pausedTranscript = ""
+        finalisedText = ""
+        finalisedLines = []
+        wantsToListen = true
+        activeLanguage = language
 
-        guard await requestPermissions() else { return }
+        guard await requestPermissions() else { wantsToListen = false; return }
 
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: language.localeIdentifier)),
               recognizer.isAvailable
@@ -81,21 +92,74 @@ final class SpeechRecognizerService: ObservableObject {
         }
 
         status = .listening
+        listen(with: recognizer, request: request)
+    }
+
+    /// The recogniser reports `isFinal` after a natural pause — which, when you are
+    /// reading out an ingredient list, is after every item. Ending the session there
+    /// truncated dictation to the first line or two. Instead the finished text is
+    /// banked and a fresh request started, so speaking continues until Stop is
+    /// tapped. This also covers the ~1 minute ceiling on server-side recognition,
+    /// which ends a request the same way.
+    private func listen(with recognizer: SFSpeechRecognizer, request: SFSpeechAudioBufferRecognitionRequest) {
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
             Task { @MainActor in
                 if let result {
-                    self.transcript = result.bestTranscription.formattedString
-                    self.pausedTranscript = Self.breakOnPauses(result.bestTranscription)
+                    let live = result.bestTranscription.formattedString
+                    let liveLines = Self.breakOnPauses(result.bestTranscription)
+                    self.transcript = Self.join(self.finalisedText, live)
+                    self.pausedTranscript = Self.joinLines(self.finalisedLines, liveLines)
+
+                    if result.isFinal {
+                        self.finalisedText = self.transcript
+                        self.finalisedLines = self.pausedTranscript
+                            .split(separator: "\n").map(String.init)
+                        self.restartIfWanted()
+                        return
+                    }
                 }
-                if error != nil || result?.isFinal == true {
-                    self.stop()
+                if error != nil {
+                    // A timeout or a silence-triggered end is not a failure while the
+                    // user still has the mic open; only a real stop should end it.
+                    self.restartIfWanted()
                 }
             }
         }
     }
 
+    private func restartIfWanted() {
+        task?.cancel()
+        task = nil
+        request?.endAudio()
+        request = nil
+        guard wantsToListen, let recognizer, audioEngine.isRunning else {
+            if !wantsToListen { stop() }
+            return
+        }
+        let next = SFSpeechAudioBufferRecognitionRequest()
+        next.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition { next.requiresOnDeviceRecognition = true }
+        request = next
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.inputNode.installTap(onBus: 0, bufferSize: 1024,
+                                         format: audioEngine.inputNode.outputFormat(forBus: 0)) { buffer, _ in
+            next.append(buffer)
+        }
+        listen(with: recognizer, request: next)
+    }
+
+    private static func join(_ banked: String, _ live: String) -> String {
+        banked.isEmpty ? live : (live.isEmpty ? banked : banked + " " + live)
+    }
+
+    private static func joinLines(_ banked: [String], _ live: String) -> String {
+        let liveLines = live.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+        return (banked + liveLines).joined(separator: "\n")
+    }
+
     func stop() {
+        wantsToListen = false
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)

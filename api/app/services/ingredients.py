@@ -127,14 +127,19 @@ class Lexicon:
     categories: dict[str, str] = field(default_factory=dict)
 
 
-def _ones(pairs: dict[str, float], half_words: tuple[str, ...]) -> dict[str, float]:
-    """Expand '<n> <half-word>' into the number table (e.g. 'deux et demi' → 2.5)."""
+def _ones(pairs: dict[str, float], fraction_suffixes: dict[str, float]) -> dict[str, float]:
+    """Expand '<n> <fraction phrase>' into the number table.
+
+    Recipes are full of these — "two and a quarter cups flour", "deux et demi
+    tasses". Without the expansion the fraction is left stranded in the ingredient
+    *name* ("and a quarter cup all purpose flour") and the amount is silently wrong.
+    """
     out = dict(pairs)
     for word, value in pairs.items():
         if value != int(value) or value < 1:
             continue
-        for half in half_words:
-            out[f"{word} {half}"] = value + 0.5
+        for phrase, extra in fraction_suffixes.items():
+            out[f"{word} {phrase}"] = value + extra
     return out
 
 
@@ -175,14 +180,14 @@ LEXICONS: dict[str, Lexicon] = {
             "litres": "l", "liters": "l", "litre": "l", "liter": "l",
         },
         numbers={
-            **_ones(_EN_ONES, ("and a half",)),
+            **_ones(_EN_ONES, {"and a half": 0.5, "and a quarter": 0.25, "and three quarters": 0.75, "and a third": _THIRD, "and two thirds": _TWO_THIRDS}),
             "half a": 0.5, "a half": 0.5, "half": 0.5,
             "a quarter of a": 0.25, "a quarter": 0.25, "quarter": 0.25,
             "three quarters of a": 0.75, "three quarters": 0.75,
             "a third of a": _THIRD, "a third": _THIRD, "two thirds": _TWO_THIRDS,
             "a": 1, "an": 1,
         },
-        half_suffixes=("and a half",),
+        half_suffixes=("and a half", "and a quarter", "and three quarters", "and a third"),
         pinch=("a pinch of", "a pinch", "pinch of", "a dash of", "a dash"),
         to_taste=("to taste", "season to taste"),
         connectors=("of",),
@@ -206,7 +211,7 @@ LEXICONS: dict[str, Lexicon] = {
             "livres": "halfkilo", "livre": "halfkilo",
         },
         numbers={
-            **_ones(_FR_ONES, ("et demi", "et demie")),
+            **_ones(_FR_ONES, {"et demi": 0.5, "et demie": 0.5, "et quart": 0.25, "et un quart": 0.25}),
             "un demi": 0.5, "une demie": 0.5, "demi": 0.5, "demie": 0.5,
             "un quart de": 0.25, "un quart": 0.25, "quart": 0.25,
             "trois quarts de": 0.75, "trois quarts": 0.75,
@@ -293,13 +298,13 @@ LEXICONS: dict[str, Lexicon] = {
             "litri": "l", "litru": "l",
         },
         numbers={
-            **_ones(_RO_ONES, ("și jumătate",)),
+            **_ones(_RO_ONES, {"și jumătate": 0.5, "si jumatate": 0.5, "și un sfert": 0.25}),
             "o jumătate de": 0.5, "o jumătate": 0.5, "jumătate de": 0.5, "jumătate": 0.5,
             "un sfert de": 0.25, "un sfert": 0.25, "sfert": 0.25,
             "trei sferturi de": 0.75, "trei sferturi": 0.75,
             "o treime de": _THIRD, "o treime": _THIRD, "două treimi": _TWO_THIRDS,
         },
-        half_suffixes=("și jumătate",),
+        half_suffixes=("și jumătate", "și un sfert"),
         pinch=("un praf de", "un praf", "praf de", "un vârf de cuțit de", "un vârf de cuțit",
                "vârf de cuțit"),
         to_taste=("după gust", "dupa gust"),
