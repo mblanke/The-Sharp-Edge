@@ -16,6 +16,7 @@
     <nav class="font-mono-label mt-3 flex justify-center gap-2 text-[11px] uppercase tracking-widest">
       <a href="/" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Recipes</a>
       <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Library</a>
+      <a href="/shopping" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">List</a>
       <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Ask</a>
       <a href="/new" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--ink-accent)">Add</a>
     </nav>

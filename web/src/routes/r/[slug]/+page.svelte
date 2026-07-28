@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { scaledDisplay } from '$lib/scaling';
   import type { Ingredient } from '$lib/types';
 
-  let { data } = $props();
+  let { data, form } = $props();
 
   const recipe = $derived(data.recipe);
 
@@ -179,6 +180,26 @@
   {/if}
 
   <div class="mt-6 flex flex-wrap gap-2">
+    {#if recipe.current_version.steps.length}
+      <!-- Carries the yield you are actually looking at, so cook mode shows the
+           amounts on screen rather than the base recipe. -->
+      <a
+        href="/r/{recipe.slug}/cook?yield={target}"
+        class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+        style="background: var(--primary-deep); color: var(--off-white)"
+      >
+        Cook mode
+      </a>
+    {/if}
+    <form method="POST" action="?/addToList" use:enhance>
+      <input type="hidden" name="target" value={target} />
+      <button
+        class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest"
+        style="border-color: var(--ink-accent); color: var(--ink-accent)"
+      >
+        {form?.added ? 'Added to the list' : 'Add to shopping list'}
+      </button>
+    </form>
     <a
       href="/ask?recipe={recipe.slug}"
       class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"

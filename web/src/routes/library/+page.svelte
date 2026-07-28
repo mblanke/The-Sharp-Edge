@@ -162,6 +162,17 @@
             <div class="font-mono-label flex items-baseline gap-2 text-[10.5px] uppercase tracking-widest">
               {#if r.page != null}
                 <span class="qty shrink-0 text-[12px]">p.{r.page}</span>
+                {#if r.source_path}
+                  <!-- Extracted text is a good index and a poor recipe: a line lost by
+                       the text layer is a step never cooked. Read it in the book. -->
+                  <a
+                    href="/book?path={encodeURIComponent(r.source_path)}&page={r.page}"
+                    target="_blank"
+                    rel="noopener"
+                    class="qty shrink-0 text-[12px] no-underline"
+                    style="color: var(--ink-accent)"
+                  >open page ↗</a>
+                {/if}
               {/if}
               {#if r.heading}
                 <span style="color: var(--accent)">{r.heading}</span>

@@ -57,7 +57,15 @@ async def _all(session: AsyncSession) -> list[ShoppingItem]:
 
 @router.get("", response_model=ShoppingListOut)
 async def get_list(session: AsyncSession = Depends(get_session)) -> ShoppingListOut:
+    """The list, already in walking order: fresh edges first, frozen last.
+
+    Sorted here rather than in each client so the aisle table has exactly one home.
+    It exists in Python and Swift (pinned to each other by shared/fixtures); a third
+    copy in TypeScript purely to sort a list would be the drift this project keeps
+    having to undo. Within an aisle, the order things were added is kept.
+    """
     items = await _all(session)
+    items.sort(key=lambda i: (aisle_rank(classify_aisle(i.name)), i.created_at))
     return ShoppingListOut(items=[_out(i) for i in items])
 
 
