@@ -59,6 +59,47 @@ export function speechSupported(): boolean {
 }
 
 /**
+ * Why dictation cannot run here, or null when it can.
+ *
+ * Browsers only grant microphone access in a *secure context* — HTTPS, or localhost.
+ * This app is served over plain HTTP on a Tailscale address, so the browser refuses
+ * and the Web Speech API reports the bare error code `not-allowed`. Checking up front
+ * means the button can explain itself instead of failing cryptically after a tap.
+ */
+export function speechBlockedReason(): string | null {
+  if (typeof window === 'undefined') return null;
+  if (!window.isSecureContext) {
+    return 'Browsers only allow the microphone over HTTPS. This app is served over ' +
+      'plain HTTP on your Tailscale address, so dictation is blocked here — use the ' +
+      'iPad app, which dictates on-device in four languages.';
+  }
+  if (!speechSupported()) {
+    return 'This browser has no speech recognition. Safari and Chrome do; Firefox does not.';
+  }
+  return null;
+}
+
+/** The Web Speech API returns bare codes like "not-allowed". Say what they mean. */
+export function explainSpeechError(code: string): string {
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'The browser blocked the microphone. Over plain HTTP it always will — ' +
+        'the iPad app dictates on-device instead.';
+    case 'no-speech':
+      return 'Nothing was heard. Try again, closer to the microphone.';
+    case 'audio-capture':
+      return 'No microphone was found.';
+    case 'network':
+      return "The browser's speech service could not be reached.";
+    case 'aborted':
+      return 'Dictation stopped.';
+    default:
+      return `Dictation stopped: ${code}`;
+  }
+}
+
+/**
  * Safari routes audio to Apple's speech service for every language — the on-device
  * guarantee the iOS app can make for en/fr/de does not apply in a browser. Say so
  * rather than implying otherwise.

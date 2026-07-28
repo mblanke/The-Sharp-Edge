@@ -3,7 +3,9 @@
   import {
     CAPTURE_LANGUAGES,
     WEB_SPEECH_NOTICE,
+    explainSpeechError,
     listen,
+    speechBlockedReason,
     speechSupported,
     splitUtterances,
     type CaptureLanguage,
@@ -31,6 +33,9 @@
   let formKey = $state(0);
 
   const supported = speechSupported();
+  // Checked up front so the buttons explain themselves rather than failing with a
+  // bare "not-allowed" after a tap. Over plain HTTP the browser always refuses.
+  const blocked = speechBlockedReason();
 
   function toggle(field: 'title' | 'category' | 'ingredients' | 'method') {
     if (listening === field) {
@@ -51,7 +56,7 @@
       (error) => {
         listening = null;
         handle = null;
-        if (error) captureError = `Dictation stopped: ${error}`;
+        if (error) captureError = explainSpeechError(error);
       }
     );
     if (!handle) {
@@ -145,7 +150,16 @@
         {/each}
       </div>
 
-      <p class="mt-2 text-[11.5px]" style="color: var(--faint)">{WEB_SPEECH_NOTICE}</p>
+      {#if blocked}
+        <p
+          class="mt-2 rounded-lg border p-3 text-[12.5px]"
+          style="border-color: var(--accent); color: var(--ink); background: var(--accent-wash)"
+        >
+          {blocked}
+        </p>
+      {:else}
+        <p class="mt-2 text-[11.5px]" style="color: var(--faint)">{WEB_SPEECH_NOTICE}</p>
+      {/if}
 
       {#each prompts as p (p.field)}
         <div class="mt-3 grid gap-1">
@@ -159,7 +173,7 @@
                 : 'var(--line)'}; color: {listening === p.field
                 ? 'var(--accent)'
                 : 'var(--ink-accent)'}"
-              disabled={!supported}
+              disabled={!supported || blocked !== null}
               onclick={() => toggle(p.field)}
             >
               {listening === p.field ? '■ stop' : '● speak'}
