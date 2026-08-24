@@ -10,6 +10,8 @@ const proxy: RequestHandler = async ({ params, request, url }) => {
   const headers = new Headers();
   const contentType = request.headers.get('content-type');
   if (contentType) headers.set('content-type', contentType);
+  const authorization = request.headers.get('authorization');
+  if (authorization) headers.set('authorization', authorization);
 
   const res = await fetch(target, {
     method: request.method,
@@ -30,3 +32,6 @@ const proxy: RequestHandler = async ({ params, request, url }) => {
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;
+export const PATCH = proxy;
+export const DELETE = proxy;
