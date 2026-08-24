@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import token_configured
+from app.config import settings
 from app.problems import install_problem_handlers
 from app.routers import ask, library, recipes
 
@@ -16,10 +17,11 @@ def create_app() -> FastAPI:
         logger.warning(
             "API_TOKEN is unset or still the placeholder — write routes will return 503"
         )
-    # Household app behind Tailscale; the web container and LAN clients are trusted.
+    # The web app talks through its same-origin proxy; browsers only need CORS
+    # for the app's own origins — never the whole tailnet.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origin_list,
         allow_methods=["*"],
         allow_headers=["*"],
     )

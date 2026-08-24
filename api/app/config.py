@@ -9,6 +9,16 @@ class Settings(BaseSettings):
     api_token: str = "change-me-long-random"
     anthropic_api_key: str = ""
 
+    # Browser origins allowed by CORS; the web app itself goes through its
+    # same-origin proxy, so this only needs the app's own base URL (plus any
+    # extra Tailscale/LAN hostnames, comma-separated in CORS_ORIGINS).
+    cors_origins: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        extra = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return list(dict.fromkeys([self.base_url, *extra]))
+
     # Atlas RAG stack (see CLAUDE.md §9 — retrieval and embedding are delegated)
     rag_api_url: str = "http://100.110.190.10:8099"
     rag_source_folder: str = "Cooking"
