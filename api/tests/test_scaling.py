@@ -1,8 +1,24 @@
 """Exhaustive fraction-table tests for CLAUDE.md §8. Mirrored in web/src/lib/scaling.test.ts."""
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.services.scaling import format_amount, scale_ingredients
+
+GOLDEN = json.loads(
+    (Path(__file__).parent / "fixtures" / "scaling_golden.json").read_text()
+)["cases"]
+
+
+@pytest.mark.parametrize(
+    "case", GOLDEN, ids=[f"{c['value']}{c['unit']}" for c in GOLDEN]
+)
+def test_golden_parity(case):
+    """Shared table with web/src/lib/scaling.golden.test.ts — proves the client
+    mirror and this canonical implementation agree row for row."""
+    assert format_amount(case["value"], case["unit"]) == case["expected"]
 
 # (value, unit, expected)
 FRACTION_TABLE = [

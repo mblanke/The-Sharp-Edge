@@ -10,6 +10,7 @@
   $effect.pre(() => {
     // reset when navigating between recipes
     target = data.recipe.base_yield;
+    serverDisplays = null;
   });
 
   const factor = $derived(target / recipe.base_yield);
@@ -18,8 +19,36 @@
   let flashing = $state(false);
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // The client mirror renders instantly; the server response is canonical
+  // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
+  let serverDisplays = $state<string[] | null>(null);
+  let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function reconcile(targetYield: number) {
+    clearTimeout(reconcileTimer);
+    if (targetYield === recipe.base_yield) return;
+    reconcileTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/recipes/${recipe.slug}/scale`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ target_yield: targetYield })
+        });
+        if (!res.ok) return;
+        const scaled = await res.json();
+        if (target === scaled.target_yield) {
+          serverDisplays = scaled.ingredients.map((i: { display: string }) => i.display);
+        }
+      } catch {
+        // offline or API down — the client mirror stays on screen
+      }
+    }, 300);
+  }
+
   function setTarget(next: number) {
     target = Math.min(maxYield, Math.max(1, next));
+    serverDisplays = null;
+    reconcile(target);
     flashing = true;
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => (flashing = false), 450);
@@ -129,7 +158,7 @@
           style="border-color: var(--line)"
         >
           <span class="qty min-w-[5.5ch] shrink-0 text-[14px]" class:flash={flashing}>
-            {scaledDisplay(ing.amount, ing.unit, factor)}
+            {serverDisplays?.[i] ?? scaledDisplay(ing.amount, ing.unit, factor)}
           </span>
           <span>{ing.name}</span>
         </li>
