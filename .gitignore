@@ -17,6 +17,11 @@ web/.svelte-kit/
 
 # db volumes / local data
 pgdata/
+api/.e2e/
+
+# playwright artifacts
+web/test-results/
+web/playwright-report/
 
 # archives & scratch
 *.zip

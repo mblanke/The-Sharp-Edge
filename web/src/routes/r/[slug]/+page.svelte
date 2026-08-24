@@ -7,6 +7,11 @@
   const recipe = $derived(data.recipe);
 
   let target = $state(0);
+  // The client mirror renders instantly; the server response is canonical
+  // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
+  let serverDisplays = $state<string[] | null>(null);
+  let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
+
   $effect.pre(() => {
     // reset when navigating between recipes
     target = data.recipe.base_yield;
@@ -18,11 +23,6 @@
 
   let flashing = $state(false);
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
-
-  // The client mirror renders instantly; the server response is canonical
-  // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
-  let serverDisplays = $state<string[] | null>(null);
-  let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
 
   function reconcile(targetYield: number) {
     clearTimeout(reconcileTimer);
