@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.db import Base, get_session
+from app.db import Base, get_session, get_sessionmaker
 from app.main import app
 
 TEST_TOKEN = "test-token-not-the-placeholder"
@@ -32,6 +32,7 @@ async def client(session_factory):
             yield session
 
     app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_sessionmaker] = lambda: session_factory
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c

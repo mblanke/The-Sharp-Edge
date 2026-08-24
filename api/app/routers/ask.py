@@ -4,10 +4,10 @@ import uuid
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from app.db import get_session
+from app.db import get_session, get_sessionmaker
 from app.models import Conversation, Message, Recipe
 from app.schemas.chat import AskRequest
 from app.services.atlas_rag import atlas_rag
@@ -49,7 +49,11 @@ async def _recipe_context(session: AsyncSession, slug: str | None) -> str:
 
 
 @router.post("/ask")
-async def ask(payload: AskRequest, session: AsyncSession = Depends(get_session)):
+async def ask(
+    payload: AskRequest,
+    session: AsyncSession = Depends(get_session),
+    session_factory: async_sessionmaker[AsyncSession] = Depends(get_sessionmaker),
+):
     # conversation setup + user message persisted before streaming starts
     if payload.conversation_id:
         conversation = (
@@ -113,15 +117,18 @@ async def ask(payload: AskRequest, session: AsyncSession = Depends(get_session))
                 }
                 for i, c in enumerate(chunks[:3])
             ]
-        session.add(
-            Message(
-                conversation_id=uuid.UUID(conversation_id),
-                role="assistant",
-                content=answer,
-                citations=citations,
+        # The request-scoped session can be torn down before the stream drains;
+        # persist on a session owned by the generator itself.
+        async with session_factory() as write_session:
+            write_session.add(
+                Message(
+                    conversation_id=uuid.UUID(conversation_id),
+                    role="assistant",
+                    content=answer,
+                    citations=citations,
+                )
             )
-        )
-        await session.commit()
+            await write_session.commit()
         sources = [
             {
                 "n": i + 1,
