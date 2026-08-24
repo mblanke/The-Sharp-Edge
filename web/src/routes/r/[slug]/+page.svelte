@@ -6,6 +6,12 @@
 
   const recipe = $derived(data.recipe);
 
+  // Version switcher — null shows the current version (marinade pattern, §5)
+  let selectedVersionId = $state<string | null>(null);
+  const shown = $derived(
+    data.versions.find((v) => v.id === selectedVersionId) ?? recipe.current_version
+  );
+
   let target = $state(0);
   // The client mirror renders instantly; the server response is canonical
   // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
@@ -16,6 +22,7 @@
     // reset when navigating between recipes
     target = data.recipe.base_yield;
     serverDisplays = null;
+    selectedVersionId = null;
   });
 
   const factor = $derived(target / recipe.base_yield);
@@ -26,7 +33,8 @@
 
   function reconcile(targetYield: number) {
     clearTimeout(reconcileTimer);
-    if (targetYield === recipe.base_yield) return;
+    // POST /scale operates on the current version; historical views stay client-side
+    if (targetYield === recipe.base_yield || !shown.is_current) return;
     reconcileTimer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/recipes/${recipe.slug}/scale`, {
@@ -102,6 +110,33 @@
     <p class="mt-1 text-[12.5px] italic" style="color: var(--faint)">source: {recipe.source}</p>
   {/if}
 
+  {#if data.versions.length > 1}
+    <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Versions">
+      {#each data.versions as v (v.id)}
+        <button
+          class="font-mono-label min-h-[44px] rounded-full border px-4 text-[11px] uppercase tracking-widest"
+          style={shown.id === v.id
+            ? 'background: var(--green-deep); border-color: var(--green-deep); color: #F4F3EC'
+            : 'border-color: var(--line); color: var(--faint)'}
+          onclick={() => {
+            selectedVersionId = v.is_current ? null : v.id;
+            serverDisplays = null;
+          }}
+        >
+          v{v.version}{v.label ? ` · ${v.label}` : ''}{v.is_current ? '' : ' (older)'}
+        </button>
+      {/each}
+    </div>
+    {#if !shown.is_current}
+      <p
+        class="font-mono-label mt-2 inline-block rounded-full border px-3 py-1.5 text-[10.5px] uppercase tracking-widest"
+        style="border-color: var(--copper); color: var(--copper)"
+      >
+        viewing an older version
+      </p>
+    {/if}
+  {/if}
+
   {#if !recipe.noscale}
     <div
       class="mt-4 flex items-center gap-3 rounded-2xl px-4 py-3"
@@ -136,7 +171,7 @@
     </div>
   {/if}
 
-  {#if recipe.current_version.ingredients.length}
+  {#if shown.ingredients.length}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
       style="border-color: var(--line); color: var(--green)"
@@ -144,8 +179,8 @@
       Ingredients
     </h3>
     <ul class="list-none p-0">
-      {#each recipe.current_version.ingredients as ing, i (i)}
-        {#if sectionChanged(recipe.current_version.ingredients, i)}
+      {#each shown.ingredients as ing, i (i)}
+        {#if sectionChanged(shown.ingredients, i)}
           <li
             class="font-mono-label pt-3 pb-1 text-[10.5px] uppercase tracking-widest"
             style="color: var(--copper)"
@@ -170,10 +205,10 @@
     class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
     style="border-color: var(--line); color: var(--green)"
   >
-    {recipe.current_version.ingredients.length ? 'Method' : 'The list'}
+    {shown.ingredients.length ? 'Method' : 'The list'}
   </h3>
   <ol class="list-none p-0" style="counter-reset: st">
-    {#each recipe.current_version.steps as step, i (i)}
+    {#each shown.steps as step, i (i)}
       <li class="relative py-2 pl-10 text-[15px]">
         <span
           class="font-mono-label absolute top-2 left-0 flex h-[26px] w-[26px] items-center justify-center rounded-full border text-[12px]"
@@ -188,7 +223,7 @@
     {/each}
   </ol>
 
-  {#if recipe.current_version.notes.length}
+  {#if shown.notes.length}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
       style="border-color: var(--line); color: var(--green)"
@@ -196,7 +231,7 @@
       Notes
     </h3>
     <ul class="mt-2 list-none rounded-xl border p-4" style="background: var(--card); border-color: var(--line)">
-      {#each recipe.current_version.notes as note, i (i)}
+      {#each shown.notes as note, i (i)}
         <li class="py-1 text-[13.5px]" style="color: var(--faint)">
           —
           {#each boldParts(note) as part, j (j)}

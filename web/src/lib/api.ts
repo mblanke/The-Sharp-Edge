@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import { problemDetail } from './problem';
-import type { RecipeFull, RecipeUpdate, RecipeCard } from './types';
+import type { RecipeFull, RecipeUpdate, RecipeCard, RecipeVersion } from './types';
 
 /** Server-side API client — load functions run in the web container and
  *  reach the api container over the compose network (API_URL). */
@@ -19,6 +19,10 @@ export const listRecipes = (fetchFn: typeof fetch) => get<RecipeCard[]>(fetchFn,
 
 export const getRecipe = (fetchFn: typeof fetch, slug: string) =>
   get<RecipeFull>(fetchFn, `/recipes/${encodeURIComponent(slug)}`);
+
+/** Full version history, newest first. */
+export const getVersions = (fetchFn: typeof fetch, slug: string) =>
+  get<RecipeVersion[]>(fetchFn, `/recipes/${encodeURIComponent(slug)}/versions`);
 
 /** Raised when the API rejects a write; `.detail` carries the problem+json message. */
 export class ApiError extends Error {

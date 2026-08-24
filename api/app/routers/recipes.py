@@ -19,7 +19,6 @@ from app.schemas.recipe import (
     ScaleRequest,
     ScaleResponse,
     VersionOut,
-    VersionSummary,
 )
 from app.services.scaling import scale_ingredients
 
@@ -86,10 +85,12 @@ async def get_recipe(slug: str, session: AsyncSession = Depends(get_session)):
     return _full(recipe)
 
 
-@router.get("/{slug}/versions", response_model=list[VersionSummary])
+@router.get("/{slug}/versions", response_model=list[VersionOut])
 async def list_versions(slug: str, session: AsyncSession = Depends(get_session)):
+    """Full version history, newest first — feeds the version switcher."""
     recipe = await _resolve(session, slug, with_versions=True)
-    return [VersionSummary.model_validate(v) for v in recipe.versions]
+    ordered = sorted(recipe.versions, key=lambda v: v.version, reverse=True)
+    return [VersionOut.model_validate(v) for v in ordered]
 
 
 @router.post("", response_model=RecipeFull, status_code=201, dependencies=[Depends(require_token)])

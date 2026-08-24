@@ -89,7 +89,13 @@ async def test_put_appends_version(client, auth):
     r = await client.get("/api/v1/recipes/goulash/versions")
     versions = r.json()
     assert len(versions) == 2
-    assert [v["is_current"] for v in versions] == [False, True]
+    # newest first, with full content for the version switcher
+    assert [v["version"] for v in versions] == [2, 1]
+    assert [v["is_current"] for v in versions] == [True, False]
+    assert [i["name"] for i in versions[1]["ingredients"]] == [
+        i["name"] for i in GOULASH["ingredients"]
+    ]
+    assert versions[0]["steps"][-1]["text"] == "Rest 10 minutes."
 
 
 async def test_scale_goulash_6_to_14(client, auth):
