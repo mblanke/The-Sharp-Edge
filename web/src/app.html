@@ -10,11 +10,27 @@
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <link rel="icon" href="%sveltekit.assets%/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts are self-hosted (static/fonts + lib/fonts.css); no external origins. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Work+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="%sveltekit.assets%/fonts/fraunces-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/work-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="%sveltekit.assets%/fonts/spline-sans-mono-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     %sveltekit.head%
   </head>
