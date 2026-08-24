@@ -26,7 +26,8 @@
   let busy = $state(false);
   let errorMsg = $state('');
   let conversationId = $state<string | null>(null);
-  let openSource = $state<number | null>(null);
+  // keyed "messageIndex:n" so a chip only opens its own message's panel
+  let openSource = $state<string | null>(null);
 
   async function send() {
     const q = question.trim();
@@ -147,14 +148,14 @@
                 <button
                   class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
                   style="border-color: var(--green); color: var(--green-deep)"
-                  onclick={() => (openSource = openSource === c.n ? null : c.n)}
+                  onclick={() => (openSource = openSource === `${i}:${c.n}` ? null : `${i}:${c.n}`)}
                 >
                   [{c.n}] {c.title ?? bookName(c.source_path)}{c.page != null ? ` · p.${c.page}` : ''}
                 </button>
               {/each}
             </div>
-            {#if openSource != null}
-              {@const src = msg.sources?.find((s) => s.n === openSource)}
+            {#if openSource?.startsWith(`${i}:`)}
+              {@const src = msg.sources?.find((s) => s.n === Number(openSource?.split(':')[1]))}
               {#if src}
                 <div class="mt-2 rounded-xl border p-3 text-[13px]" style="border-color: var(--line); color: var(--faint)">
                   <div class="font-mono-label mb-1 text-[10.5px] uppercase tracking-widest" style="color: var(--copper)">
