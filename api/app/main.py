@@ -1,12 +1,21 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import token_configured
 from app.problems import install_problem_handlers
 from app.routers import ask, library, recipes
+
+logger = logging.getLogger("sharp-edge")
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="The Sharp Edge API", version="0.1.0", docs_url="/api/docs")
+    if not token_configured():
+        logger.warning(
+            "API_TOKEN is unset or still the placeholder — write routes will return 503"
+        )
     # Household app behind Tailscale; the web container and LAN clients are trusted.
     app.add_middleware(
         CORSMiddleware,

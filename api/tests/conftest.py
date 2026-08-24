@@ -2,8 +2,17 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.config import settings
 from app.db import Base, get_session
 from app.main import app
+
+TEST_TOKEN = "test-token-not-the-placeholder"
+
+
+@pytest.fixture(autouse=True)
+def configured_token(monkeypatch):
+    """Auth fails closed on the placeholder token, so tests run with a real one."""
+    monkeypatch.setattr(settings, "api_token", TEST_TOKEN)
 
 
 @pytest.fixture
@@ -31,6 +40,4 @@ async def client(session_factory):
 
 @pytest.fixture
 def auth():
-    from app.config import settings
-
-    return {"Authorization": f"Bearer {settings.api_token}"}
+    return {"Authorization": f"Bearer {TEST_TOKEN}"}
