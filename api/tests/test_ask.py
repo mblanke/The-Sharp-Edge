@@ -68,6 +68,24 @@ async def test_ask_streams_and_cites(client, monkeypatch):
     assert "Under Pressure" in provider.calls[0]["messages"][-1]["content"]
 
 
+async def test_ask_without_markers_reports_ungrounded(client, monkeypatch):
+    provider = FakeProvider(tokens=("Braise ", "for 48 hours."))
+    events, _ = await ask_and_parse(
+        client, monkeypatch, {"question": "how long for short ribs?"}, provider
+    )
+    done = events[-1][1]
+    # no fabricated citations from unused chunks
+    assert done["citations"] == []
+    assert done["ungrounded"] is True
+
+
+async def test_ask_with_markers_is_grounded(client, monkeypatch):
+    events, _ = await ask_and_parse(client, monkeypatch, {"question": "short ribs?"})
+    done = events[-1][1]
+    assert done["citations"]
+    assert done["ungrounded"] is False
+
+
 async def test_ask_persists_conversation(client, monkeypatch):
     events, _ = await ask_and_parse(client, monkeypatch, {"question": "first question"})
     conversation_id = events[0][1]["conversation_id"]

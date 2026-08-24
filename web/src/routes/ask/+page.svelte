@@ -18,6 +18,7 @@
     content: string;
     citations?: Citation[];
     sources?: Source[];
+    ungrounded?: boolean;
   }
 
   let question = $state('');
@@ -55,7 +56,8 @@
           messages[idx] = {
             ...messages[idx],
             citations: p.citations as Citation[],
-            sources: p.sources as Source[]
+            sources: p.sources as Source[],
+            ungrounded: p.ungrounded as boolean
           };
         } else if (event === 'error') {
           errorMsg = String(p.detail ?? 'stream error');
@@ -130,6 +132,14 @@
             <div class="whitespace-pre-wrap">{msg.content}</div>
           {:else if busy && i === messages.length - 1}
             <div class="font-mono-label text-[12px]" style="color: var(--faint)">thinking…</div>
+          {/if}
+          {#if msg.ungrounded}
+            <div
+              class="font-mono-label mt-3 inline-block rounded-full border px-3 py-1.5 text-[10.5px] uppercase tracking-widest"
+              style="border-color: var(--copper); color: var(--copper)"
+            >
+              no citations — not grounded in the library
+            </div>
           {/if}
           {#if msg.citations?.length}
             <div class="mt-3 flex flex-wrap gap-2 border-t pt-3" style="border-color: var(--line)">

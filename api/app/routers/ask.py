@@ -104,19 +104,10 @@ async def ask(
             yield _sse("error", {"detail": str(exc)})
             return
         answer = "".join(answer_parts)
+        # No fabricated fallback: an answer without [n] markers reports itself as
+        # ungrounded rather than borrowing the top chunks' credibility.
         citations = extract_citations(answer, chunks)
-        if not citations and chunks:
-            # local models don't always emit [n] markers — fall back to the top sources used
-            citations = [
-                {
-                    "n": i + 1,
-                    "title": c.get("title"),
-                    "source_path": c.get("source_path"),
-                    "heading": c.get("heading"),
-                    "page": c.get("page"),
-                }
-                for i, c in enumerate(chunks[:3])
-            ]
+        ungrounded = bool(chunks) and not citations
         # The request-scoped session can be torn down before the stream drains;
         # persist on a session owned by the generator itself.
         async with session_factory() as write_session:
@@ -140,7 +131,7 @@ async def ask(
             }
             for i, c in enumerate(chunks)
         ]
-        yield _sse("done", {"citations": citations, "sources": sources})
+        yield _sse("done", {"citations": citations, "sources": sources, "ungrounded": ungrounded})
 
     return StreamingResponse(
         stream(),
