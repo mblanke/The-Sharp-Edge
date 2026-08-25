@@ -13,6 +13,7 @@ from app.schemas.chat import AskRequest
 from app.services.atlas_rag import atlas_rag
 from app.services.citations import SYSTEM_PROMPT, chunks_block, extract_citations
 from app.services.llm import get_provider
+from app.services.query_rewrite import standalone_query
 
 router = APIRouter(tags=["ask"])
 
@@ -76,8 +77,13 @@ async def ask(
     await session.commit()
     conversation_id = str(conversation.id)
 
+    provider = get_provider()
+
+    # Follow-ups retrieve on a standalone rewrite ("what about with lamb?" alone
+    # finds nothing). Local provider only — history can carry corpus text.
+    retrieval_query = await standalone_query(payload.question, history, provider)
     chunks = await atlas_rag.retrieve(
-        payload.question, top_k=payload.top_k, books=payload.scope.books or None
+        retrieval_query, top_k=payload.top_k, books=payload.scope.books or None
     )
     recipe_ctx = await _recipe_context(session, payload.scope.recipe_slug)
 
@@ -92,8 +98,6 @@ async def ask(
         + history
         + [{"role": "user", "content": user_content}]
     )
-
-    provider = get_provider()
 
     async def stream():
         yield _sse("meta", {"conversation_id": conversation_id, "chunks": len(chunks)})
