@@ -55,6 +55,68 @@ export class ApiError extends Error {
   }
 }
 
+// ---------------------------------------------------------------- meal plan
+
+export interface PlanEntry {
+  id: string;
+  date: string;
+  meal: 'breakfast' | 'lunch' | 'dinner';
+  scaled_yield: number;
+  recipe_slug: string;
+  recipe_title: string;
+  gf: boolean;
+}
+
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  amount: string;
+  checked: boolean;
+  recipe_id: string | null;
+}
+
+export interface WeekPlan {
+  week: string; // Monday
+  entries: PlanEntry[];
+  shopping: ShoppingItem[];
+}
+
+export const getWeekPlan = (fetchFn: typeof fetch, week?: string) =>
+  get<WeekPlan>(fetchFn, `/plan${week ? `?week=${week}` : ''}`);
+
+/** Authorized plan mutations — server-side only (token from env, like updateRecipe). */
+async function planWrite<T>(
+  fetchFn: typeof fetch,
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const res = await fetchFn(`${API_URL}/api/v1${path}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res.json() as Promise<T>;
+}
+
+export const planUpsert = (
+  fetchFn: typeof fetch,
+  entry: { date: string; meal: string; recipe_slug: string; scaled_yield?: number }
+) => planWrite<WeekPlan>(fetchFn, 'POST', '/plan', entry);
+
+export const planRemove = (fetchFn: typeof fetch, entryId: string) =>
+  planWrite<WeekPlan>(fetchFn, 'DELETE', `/plan/${entryId}`);
+
+export const planGenerateList = (fetchFn: typeof fetch, week: string) =>
+  planWrite<WeekPlan>(fetchFn, 'POST', `/plan/shopping-list?week=${week}`);
+
+export const planCheckItem = (fetchFn: typeof fetch, itemId: string, checked: boolean) =>
+  planWrite<ShoppingItem>(fetchFn, 'PATCH', `/plan/shopping-list/${itemId}`, { checked });
+
 /** PUT a new version (append-only, CLAUDE.md §6). Bearer token stays server-side;
  *  the browser never sees it — only call this from load/actions, never the client. */
 export async function updateRecipe(

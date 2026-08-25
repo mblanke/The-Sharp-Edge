@@ -17,6 +17,7 @@
       <a href="/" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Recipes</a>
       <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Library</a>
       <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Ask</a>
+      <a href="/plan" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Plan</a>
     </nav>
   </header>
 

@@ -26,7 +26,7 @@ export default defineConfig({
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { API_URL: 'http://127.0.0.1:8001' }
+      env: { API_URL: 'http://127.0.0.1:8001', API_TOKEN: 'e2e-token' }
     }
   ]
 });
