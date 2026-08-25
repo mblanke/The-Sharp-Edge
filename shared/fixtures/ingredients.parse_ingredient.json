@@ -692,6 +692,71 @@
         "unit": "tsp",
         "name": "zahăr"
       }
+    },
+    {
+      "id": "fr-centilitres",
+      "args": {
+        "line": "50 cl de lait",
+        "lang": "fr",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 500.0,
+        "unit": "ml",
+        "name": "de lait"
+      }
+    },
+    {
+      "id": "de-decilitres",
+      "args": {
+        "line": "2 dl Sahne",
+        "lang": "de",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 200.0,
+        "unit": "ml",
+        "name": "Sahne"
+      }
+    },
+    {
+      "id": "de-decilitres-spoken",
+      "args": {
+        "line": "zwei Deziliter Sahne",
+        "lang": "de",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 200.0,
+        "unit": "ml",
+        "name": "Sahne"
+      }
+    },
+    {
+      "id": "en-deciliters-spoken",
+      "args": {
+        "line": "three deciliters of stock",
+        "lang": "en",
+        "spoken": true
+      },
+      "expect": {
+        "amount": 300.0,
+        "unit": "ml",
+        "name": "stock"
+      }
+    },
+    {
+      "id": "en-decilitres",
+      "args": {
+        "line": "3 dl stock",
+        "lang": "en",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 300.0,
+        "unit": "ml",
+        "name": "stock"
+      }
     }
   ]
 }

@@ -31,7 +31,9 @@ enum IngredientParse {
         "ounce": "oz", "ounces": "oz", "oz": "oz",
         "g": "g", "gram": "g", "grams": "g",
         "kg": "kg", "kilogram": "kg", "kilograms": "kg",
-        "ml": "ml",
+        "ml": "ml", "millilitre": "ml", "millilitres": "ml", "milliliter": "ml", "milliliters": "ml",
+        "cl": "cl", "centilitre": "cl", "centilitres": "cl", "centiliter": "cl", "centiliters": "cl",
+        "dl": "dl", "decilitre": "dl", "decilitres": "dl", "deciliter": "dl", "deciliters": "dl",
         "l": "l", "liter": "l", "liters": "l", "litre": "l", "litres": "l",
         // Synthetic token. French *livre* and German *Pfund* are half-kilos, not pounds;
         // normaliseSpoken rewrites them to this so the conversion below catches them.
@@ -41,6 +43,8 @@ enum IngredientParse {
     /// Spec units are g/ml — convert metric multiples.
     static let metricFactor: [String: (String, Double)] = [
         "kg": ("g", 1000), "l": ("ml", 1000), "halfkilo": ("g", 500),
+        // European pages and dictation say centilitres/decilitres routinely
+        "cl": ("ml", 10), "dl": ("ml", 100),
     ]
 
     static let num = #"(?:\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)"#
@@ -183,6 +187,8 @@ enum IngredientParse {
                 ("kilograms", "kg"), ("kilogram", "kg"), ("kilos", "kg"), ("kilo", "kg"),
                 ("millilitres", "ml"), ("milliliters", "ml"),
                 ("millilitre", "ml"), ("milliliter", "ml"),
+                ("centilitres", "cl"), ("centiliters", "cl"), ("centilitre", "cl"), ("centiliter", "cl"),
+                ("decilitres", "dl"), ("deciliters", "dl"), ("decilitre", "dl"), ("deciliter", "dl"),
                 ("litres", "l"), ("liters", "l"), ("litre", "l"), ("liter", "l"),
             ],
             numbers: ones(enOnes, [("and a half", 0.5), ("and a quarter", 0.25),
@@ -212,6 +218,8 @@ enum IngredientParse {
                 ("grammes", "g"), ("gramme", "g"),
                 ("kilogrammes", "kg"), ("kilogramme", "kg"), ("kilos", "kg"), ("kilo", "kg"),
                 ("millilitres", "ml"), ("millilitre", "ml"),
+                ("centilitres", "cl"), ("centilitre", "cl"),
+                ("decilitres", "dl"), ("decilitre", "dl"),
                 ("litres", "l"), ("litre", "l"),
                 // A French *livre* is 500 g, not a pound.
                 ("livres", "halfkilo"), ("livre", "halfkilo"),
@@ -261,7 +269,7 @@ enum IngredientParse {
                 ("tassen", "cup"), ("tasse", "cup"), ("becher", "cup"),
                 ("gramm", "g"),
                 ("kilogramm", "kg"), ("kilo", "kg"),
-                ("milliliter", "ml"),
+                ("milliliter", "ml"), ("zentiliter", "cl"), ("deziliter", "dl"),
                 ("liter", "l"),
                 // A German *Pfund* is 500 g, not a pound.
                 ("pfund", "halfkilo"),

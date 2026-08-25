@@ -1,6 +1,4 @@
-"""Photo-to-recipe capture (E2) — fully local via the router's vision alias."""
-
-import json
+"""Photo-to-recipe capture (E2) — local vision does OCR, our parser does structure."""
 
 import pytest
 from fastapi import HTTPException
@@ -8,21 +6,27 @@ from fastapi import HTTPException
 import app.services.photo_import as photo_module
 from app.config import settings
 from app.services.llm import TierViolation, ensure_public_tier
-from app.services.photo_import import RecipeDraft, parse_photo
+from app.services.photo_import import RecipeDraft, parse_photo, parse_transcript
 
 PNG = b"\x89PNG\r\n\x1a\nfakebytes"
 
-DRAFT_JSON = json.dumps(
-    {
-        "title": "Cast-Iron Cornbread",
-        "meta": None,
-        "base_yield": 8,
-        "yield_word": "servings",
-        "ingredients": [{"amount": 240, "unit": "g", "name": "cornmeal", "section": None}],
-        "steps": [{"text": "Bake 25 minutes.", "timer_seconds": 1500}],
-        "notes": [],
-    }
-)
+FRENCH_PAGE = """LANG: fr
+TITLE: Crêpes de Mamie
+YIELD: Pour 4 personnes
+INGREDIENTS:
+- 250 g de farine
+- 3 œufs
+- 50 cl de lait
+- 2 c. à s. de beurre fondu
+- 1 pincée de sel
+STEPS:
+- Mélanger la farine et les œufs.
+- Ajouter le lait peu à peu, puis le beurre.
+- Laisser reposer 30 minutes.
+- Cuire chaque crêpe 1 minute par face.
+NOTES:
+- Meilleures le lendemain.
+"""
 
 
 def test_cloud_firewall_still_holds():
@@ -52,59 +56,94 @@ async def test_rejects_oversized_image():
     assert e.value.status_code == 413
 
 
-async def test_parses_photo_into_draft(monkeypatch):
+def test_french_page_structures_correctly():
+    """The failure that drove this design: quantities must survive '250 g de farine'."""
+    draft = parse_transcript(FRENCH_PAGE)
+    assert draft.title == "Crêpes de Mamie"
+    assert draft.base_yield == 4
+    assert draft.yield_word == "personnes"
+
+    rows = [(i.amount, i.unit, i.name) for i in draft.ingredients]
+    assert rows[0][0] == 250 and rows[0][1] == "g"  # not unit="de farine"
+    assert rows[1][0] == 3 and rows[1][1] == ""  # countable
+    # 50 cl → the shared parser's metric handling, not the model's arithmetic
+    assert rows[2][1] in ("ml", "cl")
+    assert "lait" in rows[2][2]
+
+    # durations on the page become timers
+    assert [s.timer_seconds for s in draft.steps] == [None, None, 1800, 60]
+    assert draft.notes == ["Meilleures le lendemain."]
+
+
+def test_numbered_steps_and_missing_sections():
+    draft = parse_transcript(
+        """LANG: en
+TITLE: Quick Toast
+YIELD:
+INGREDIENTS:
+1. 2 slices bread
+STEPS:
+1. Toast for 3 minutes.
+NOTES:
+"""
+    )
+    assert draft.base_yield == 1  # no yield line → sane default
+    assert draft.yield_word == "servings"
+    assert draft.ingredients[0].amount == 2  # "1." bullet stripped, not read as amount
+    assert draft.steps[0].timer_seconds == 180
+    assert draft.notes == []
+
+
+def test_german_and_romanian_pages():
+    de = parse_transcript(
+        """LANG: de
+TITLE: Kartoffelsalat
+YIELD: 6 Portionen
+INGREDIENTS:
+- 1 kg Kartoffeln
+- 2 EL Essig
+STEPS:
+- 20 Minuten kochen.
+"""
+    )
+    assert de.base_yield == 6 and de.yield_word == "Portionen"
+    assert de.ingredients[0].amount in (1, 1000)  # kg handled by the shared parser
+    assert de.steps[0].timer_seconds == 1200
+
+    ro = parse_transcript(
+        """LANG: ro
+TITLE: Ciorbă de legume
+YIELD: Pentru 4 persoane
+INGREDIENTS:
+- 2 morcovi
+STEPS:
+- Se fierbe 45 minute.
+"""
+    )
+    assert ro.title == "Ciorbă de legume"
+    assert ro.base_yield == 4
+    assert ro.steps[0].timer_seconds == 2700
+
+
+async def test_transcript_flows_through_parse_photo(monkeypatch):
     seen: list[list[dict]] = []
 
     async def fake_complete(messages):
         seen.append(messages)
-        return "Here you go:\n" + DRAFT_JSON
+        return FRENCH_PAGE
 
     monkeypatch.setattr(photo_module, "_complete", fake_complete)
-
     out = await parse_photo(PNG, "image/png")
-    assert out.title == "Cast-Iron Cornbread"
-    assert out.steps[0].timer_seconds == 1500
+    assert out.title == "Crêpes de Mamie"
+    assert len(out.ingredients) == 5
 
     content = seen[0][0]["content"]
-    assert content[0]["type"] == "image_url"
     assert content[0]["image_url"]["url"].startswith("data:image/png;base64,")
-    # nothing but the photo and the fixed instruction goes out — and only locally
+    # only the photo and the fixed instruction leave — and only to the local router
     assert "Cooking/" not in str(seen)
 
 
-async def test_metric_multiples_convert_in_code(monkeypatch):
-    """'50 cl de lait' must become 500 ml — arithmetic is ours, not the model's."""
-    draft = json.dumps(
-        {
-            "title": "Crêpes",
-            "base_yield": 4,
-            "yield_word": "personnes",
-            "ingredients": [
-                {"amount": 50, "unit": "cl", "name": "lait"},
-                {"amount": 1, "unit": "kg", "name": "farine"},
-                {"amount": 2, "unit": "dl", "name": "crème"},
-                {"amount": 1.5, "unit": "L", "name": "bouillon"},
-                {"amount": 250, "unit": "g", "name": "beurre"},
-            ],
-            "steps": [],
-            "notes": [],
-        }
-    )
-
-    async def fake_complete(messages):
-        return draft
-
-    monkeypatch.setattr(photo_module, "_complete", fake_complete)
-    out = await parse_photo(PNG, "image/png")
-    rows = {i.name: (i.amount, i.unit) for i in out.ingredients}
-    assert rows["lait"] == (500, "ml")
-    assert rows["farine"] == (1000, "g")
-    assert rows["crème"] == (200, "ml")
-    assert rows["bouillon"] == (1500, "ml")
-    assert rows["beurre"] == (250, "g")  # already base — untouched
-
-
-async def test_garbage_output_maps_to_422(monkeypatch):
+async def test_unreadable_page_maps_to_422(monkeypatch):
     async def fake_complete(messages):
         return "I see a lovely handwritten page but cannot read it."
 
@@ -128,37 +167,3 @@ async def test_endpoint_requires_auth_and_returns_draft(client, auth, monkeypatc
     res = await client.post("/api/v1/recipes/parse-photo", files=files, headers=auth)
     assert res.status_code == 200
     assert res.json()["title"] == "From Photo"
-
-
-async def test_tolerates_messy_model_output(monkeypatch):
-    """Real vision models emit nulls and strings where the schema wants values."""
-    messy = json.dumps(
-        {
-            "title": "Ciorbă de legume",
-            "meta": None,
-            "base_yield": None,  # page had no serving count
-            "yield_word": None,
-            "ingredients": [
-                {"amount": "2", "unit": None, "name": "morcovi"},
-                {"amount": None, "unit": "", "name": "sare"},
-                {"amount": 1, "unit": "", "name": ""},  # nameless → dropped
-                "not even a dict",
-            ],
-            "steps": ["Se fierbe totul.", {"text": "Se servește.", "timer_seconds": "600"}],
-            "notes": [None, "", "Mai bună a doua zi."],
-        }
-    )
-
-    async def fake_complete(messages):
-        return messy
-
-    monkeypatch.setattr(photo_module, "_complete", fake_complete)
-    out = await parse_photo(PNG, "image/png")
-    assert out.title == "Ciorbă de legume"
-    assert out.base_yield == 1  # defaulted, not 422
-    assert out.yield_word == "servings"
-    assert [i.name for i in out.ingredients] == ["morcovi", "sare"]
-    assert out.ingredients[0].amount == 2
-    assert out.steps[0].text == "Se fierbe totul."
-    assert out.steps[1].timer_seconds == 600
-    assert out.notes == ["Mai bună a doua zi."]

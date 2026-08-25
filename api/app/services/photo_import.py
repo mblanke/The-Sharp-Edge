@@ -2,21 +2,27 @@
 becomes a structured draft prefilled into the editor — never auto-saved.
 
 Fully local: the photo goes to the LiteLLM router's `vision` alias (a
-multimodal model on the GB10s) — nothing ever leaves the house, so there is
-no tier question at all. First call after idle can be slow while Ollama
-loads the vision model; the timeout allows for a cold start.
+multimodal model on the GB10s), so nothing ever leaves the house.
+
+The model does OCR only. Asking a small vision model for structured JSON was
+fast but sloppy ("250 g de farine" came back with unit "de farine" and no
+amount); asking a big one for JSON was accurate but took 48 s — too long for a
+phone on a kitchen counter. So the model transcribes the page as plain text,
+which it is good at, and services/ingredients.py — the same multilingual parser
+dictation uses — turns those lines into quantities. Structure comes from code
+that is tested, not from a model that is guessing.
 """
 
 import base64
-import json
 import logging
 import re
 
 import httpx
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.services.ingredients import LANGS, parse_ingredient
 
 logger = logging.getLogger("sharp-edge")
 
@@ -25,33 +31,21 @@ MAX_BYTES = 15 * 1024 * 1024
 TIMEOUT = 300.0  # cold model load on the GB10s can take minutes
 
 PROMPT = (
-    "This is a photo of a handwritten or printed recipe page from the user's own "
-    "notebook. The page may be in English, French, German, or Romanian — keep the "
-    "original language, do not translate. Transcribe it as JSON with keys: title, "
-    "meta (short subtitle or null), base_yield (int), yield_word, ingredients "
-    "(list of {amount, unit, name, section} — unit is one of g, kg, ml, cl, dl, "
-    "l, cup, tbsp, tsp, lb, oz, or empty for countable items; keep the amount "
-    "exactly as written on the page, never convert; map spoon/cup words: "
-    "c. à s./EL/lingură → tbsp, c. à c./TL/linguriță → tsp, tasse/Tasse/cană → "
-    "cup; amount 0 means 'to taste' / 'au goût' / 'nach Geschmack' / 'după gust'; "
-    "section null unless the page groups ingredients), steps (list of {text, "
-    "timer_seconds} — timer_seconds only for explicit durations, else null), "
-    "notes (list of strings). Keep the cook's own wording; leave anything "
-    "unreadable out rather than inventing it. Output ONLY the JSON."
+    "Transcribe this recipe page exactly as written. Keep the original language "
+    "(English, French, German or Romanian) — do not translate, do not convert "
+    "units, do not add anything that is not on the page. Use exactly this "
+    "layout:\n"
+    "LANG: <en|fr|de|ro>\n"
+    "TITLE: <the recipe name>\n"
+    "YIELD: <the servings line if the page states one, else blank>\n"
+    "INGREDIENTS:\n"
+    "- <one ingredient per line, exactly as written>\n"
+    "STEPS:\n"
+    "- <one step per line, exactly as written>\n"
+    "NOTES:\n"
+    "- <any remaining notes, one per line>\n"
+    "Leave a section empty if the page has none. Output only this text."
 )
-
-# Metric multiples come back as written; the app's unit set is g/ml (§5).
-_METRIC_FACTOR = {"kg": ("g", 1000), "l": ("ml", 1000), "cl": ("ml", 10), "dl": ("ml", 100)}
-
-
-def _normalize_units(draft: "RecipeDraft") -> "RecipeDraft":
-    for ing in draft.ingredients:
-        unit = ing.unit.strip().lower()
-        if unit in _METRIC_FACTOR:
-            base, factor = _METRIC_FACTOR[unit]
-            ing.amount *= factor
-            ing.unit = base
-    return draft
 
 
 class DraftIngredient(BaseModel):
@@ -75,53 +69,96 @@ class RecipeDraft(BaseModel):
     steps: list[DraftStep] = []
     notes: list[str] = []
 
-    @model_validator(mode="before")
-    @classmethod
-    def _tolerate_model_output(cls, data):
-        """Vision models emit null/strings where the schema wants values — a
-        page with no serving count comes back as base_yield: null. Coerce
-        rather than 422 on an otherwise-good read."""
-        if not isinstance(data, dict):
-            return data
-        for key, default in (("base_yield", 1), ("yield_word", "servings"),
-                             ("title", ""), ("ingredients", []), ("steps", []),
-                             ("notes", [])):
-            if data.get(key) is None:
-                data[key] = default
-        try:
-            data["base_yield"] = max(1, int(float(data["base_yield"])))
-        except (TypeError, ValueError):
-            data["base_yield"] = 1
-        # ingredient/step rows: drop unusable entries instead of failing the draft
-        rows = []
-        for ing in data.get("ingredients", []):
-            if not isinstance(ing, dict) or not str(ing.get("name") or "").strip():
-                continue
-            try:
-                ing["amount"] = float(ing.get("amount") or 0)
-            except (TypeError, ValueError):
-                ing["amount"] = 0
-            ing["unit"] = str(ing.get("unit") or "")
-            rows.append(ing)
-        data["ingredients"] = rows
-        steps = []
-        for step in data.get("steps", []):
-            if isinstance(step, str) and step.strip():
-                steps.append({"text": step})
-            elif isinstance(step, dict) and str(step.get("text") or "").strip():
-                ts = step.get("timer_seconds")
-                try:
-                    step["timer_seconds"] = int(float(ts)) if ts is not None else None
-                except (TypeError, ValueError):
-                    step["timer_seconds"] = None
-                steps.append(step)
-        data["steps"] = steps
-        data["notes"] = [str(n) for n in data.get("notes", []) if str(n or "").strip()]
-        return data
-
 
 def enabled() -> bool:
     return bool(settings.vision_model_alias)
+
+
+# ---------------------------------------------------------------- transcript
+
+_SECTIONS = ("ingredients", "steps", "notes")
+_BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*")
+# "Pour 4 personnes", "Serves 6", "4 Portionen", "Pentru 4 persoane"
+_YIELD = re.compile(r"(\d+)\s*([A-Za-zÀ-ÿ]+)?")
+_DURATION = re.compile(
+    r"(\d+)\s*(hours?|hrs?|heures?|stunden?|ore\b|h\b|"
+    r"minutes?|minuten?|mins?|min\b|minute\b|"
+    r"seconds?|secondes?|sekunden?|secs?|sec\b)",
+    re.I,
+)
+
+
+def _timer_seconds(text: str) -> int | None:
+    """First explicit duration in a step, in seconds — the same idea as the
+    editor's timer field, read off the page rather than typed."""
+    m = _DURATION.search(text)
+    if not m:
+        return None
+    value, unit = int(m.group(1)), m.group(2).lower()
+    if unit.startswith(("hour", "hr", "heure", "stunde", "ore", "h")):
+        return value * 3600
+    if unit.startswith(("min", "minut")):
+        return value * 60
+    return value
+
+
+def parse_transcript(text: str) -> RecipeDraft:
+    """The model's plain-text page → a draft, structured by our own parser."""
+    lang = "en"
+    title = ""
+    yield_line = ""
+    buckets: dict[str, list[str]] = {name: [] for name in _SECTIONS}
+    current: str | None = None
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        low = line.lower()
+        if low.startswith("lang:"):
+            value = line.split(":", 1)[1].strip().lower()[:2]
+            lang = value if value in LANGS else "en"
+            continue
+        if low.startswith("title:"):
+            title = line.split(":", 1)[1].strip()
+            continue
+        if low.startswith("yield:"):
+            yield_line = line.split(":", 1)[1].strip()
+            continue
+        matched = next((s for s in _SECTIONS if low.startswith(s + ":")), None)
+        if matched:
+            current = matched
+            continue
+        if current:
+            cleaned = _BULLET.sub("", line)
+            if cleaned:
+                buckets[current].append(cleaned)
+
+    base_yield, yield_word = 1, "servings"
+    if (m := _YIELD.search(yield_line)) is not None:
+        base_yield = max(1, int(m.group(1)))
+        yield_word = (m.group(2) or "servings").strip() or "servings"
+
+    ingredients: list[DraftIngredient] = []
+    for line in buckets["ingredients"]:
+        row = parse_ingredient(line, lang=lang)
+        if str(row.get("name") or "").strip():
+            ingredients.append(DraftIngredient(**row))
+
+    steps = [DraftStep(text=s, timer_seconds=_timer_seconds(s)) for s in buckets["steps"]]
+
+    return RecipeDraft(
+        title=title or "Untitled recipe",
+        meta=yield_line or None,
+        base_yield=base_yield,
+        yield_word=yield_word,
+        ingredients=ingredients,
+        steps=steps,
+        notes=buckets["notes"],
+    )
+
+
+# ---------------------------------------------------------------- transport
 
 
 async def _complete(messages: list[dict]) -> str:
@@ -137,10 +174,7 @@ async def _complete(messages: list[dict]) -> str:
                 json={
                     "model": settings.vision_model_alias,
                     "messages": messages,
-                    "max_tokens": 4000,
-                    # ollama passthrough: keep the vision model resident so the
-                    # retry (and the next cook) skips the cold load
-                    "keep_alive": "60m",
+                    "max_tokens": 2000,
                 },
             )
             res.raise_for_status()
@@ -161,7 +195,7 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
         raise HTTPException(413, "Image too large (15 MB max)")
 
     data_uri = f"data:{media_type};base64,{base64.standard_b64encode(image).decode('ascii')}"
-    raw = await _complete(
+    transcript = await _complete(
         [
             {
                 "role": "user",
@@ -172,12 +206,8 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
             }
         ]
     )
-    m = re.search(r"\{.*\}", raw, re.S)
-    if not m:
-        logger.warning("photo-import: no JSON in model output: %.400s", raw)
+    draft = parse_transcript(transcript)
+    if not draft.ingredients and not draft.steps:
+        logger.warning("photo-import: nothing usable in transcript: %.500s", transcript)
         raise HTTPException(422, "Could not read a recipe from that photo")
-    try:
-        return _normalize_units(RecipeDraft.model_validate(json.loads(m.group())))
-    except Exception as exc:
-        logger.warning("photo-import: draft rejected (%s): %.600s", exc, m.group())
-        raise HTTPException(422, "Could not read a recipe from that photo") from exc
+    return draft

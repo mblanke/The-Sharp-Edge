@@ -44,14 +44,20 @@ UNIT_MAP = {
     "ounce": "oz", "ounces": "oz", "oz": "oz",
     "g": "g", "gram": "g", "grams": "g",
     "kg": "kg", "kilogram": "kg", "kilograms": "kg",
-    "ml": "ml",
+    "ml": "ml", "millilitre": "ml", "millilitres": "ml", "milliliter": "ml", "milliliters": "ml",
+    "cl": "cl", "centilitre": "cl", "centilitres": "cl", "centiliter": "cl", "centiliters": "cl",
+    "dl": "dl", "decilitre": "dl", "decilitres": "dl", "deciliter": "dl", "deciliters": "dl",
     "l": "l", "liter": "l", "liters": "l", "litre": "l", "litres": "l",
     # Synthetic token. French *livre* and German *Pfund* are half-kilos, not pounds;
     # normalise_spoken() rewrites them to this so the conversion below catches them.
     "halfkilo": "halfkilo",
 }
 # spec units are g/ml — convert metric multiples
-METRIC_FACTOR = {"kg": ("g", 1000), "l": ("ml", 1000), "halfkilo": ("g", 500)}
+METRIC_FACTOR = {
+    "kg": ("g", 1000), "l": ("ml", 1000), "halfkilo": ("g", 500),
+    # European pages and dictation say centilitres/decilitres routinely
+    "cl": ("ml", 10), "dl": ("ml", 100),
+}
 
 NUM = r"(?:\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)"
 RANGE_SEP = r"(?:–|—|-|\s+to\s+)"
@@ -179,6 +185,8 @@ LEXICONS: dict[str, Lexicon] = {
             "grams": "g", "gram": "g",
             "kilograms": "kg", "kilogram": "kg", "kilos": "kg", "kilo": "kg",
             "millilitres": "ml", "milliliters": "ml", "millilitre": "ml", "milliliter": "ml",
+            "centilitres": "cl", "centiliters": "cl", "centilitre": "cl", "centiliter": "cl",
+            "decilitres": "dl", "deciliters": "dl", "decilitre": "dl", "deciliter": "dl",
             "litres": "l", "liters": "l", "litre": "l", "liter": "l",
         },
         numbers={
@@ -209,6 +217,8 @@ LEXICONS: dict[str, Lexicon] = {
             "grammes": "g", "gramme": "g",
             "kilogrammes": "kg", "kilogramme": "kg", "kilos": "kg", "kilo": "kg",
             "millilitres": "ml", "millilitre": "ml",
+            "centilitres": "cl", "centilitre": "cl",
+            "decilitres": "dl", "decilitre": "dl",
             "litres": "l", "litre": "l",
             # A French *livre* is 500 g, not a pound.
             "livres": "halfkilo", "livre": "halfkilo",
@@ -255,6 +265,7 @@ LEXICONS: dict[str, Lexicon] = {
             "gramm": "g",
             "kilogramm": "kg", "kilo": "kg",
             "milliliter": "ml",
+            "zentiliter": "cl", "deziliter": "dl",
             "liter": "l",
             # A German *Pfund* is 500 g, not a pound.
             "pfund": "halfkilo",

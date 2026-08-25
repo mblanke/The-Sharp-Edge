@@ -328,6 +328,12 @@ PARSE_INPUTS = [
     ("spoken-ro-praf-is-zero", "un praf de sare", "ro", True),
     ("spoken-ro-dupa-gust-is-zero", "piper după gust", "ro", True),
     ("spoken-ro-cedilla-spelling-still-matches", "două linguriţe de zahăr", "ro", True),
+    # Centilitres and decilitres: written on European pages, said in dictation.
+    ("fr-centilitres", "50 cl de lait", "fr", False),
+    ("de-decilitres", "2 dl Sahne", "de", False),
+    ("de-decilitres-spoken", "zwei Deziliter Sahne", "de", True),
+    ("en-deciliters-spoken", "three deciliters of stock", "en", True),
+    ("en-decilitres", "3 dl stock", "en", False),
 ]
 
 NORMALISE_SPOKEN_INPUTS = [
