@@ -23,14 +23,17 @@ TIMEOUT = 300.0  # cold model load on the GB10s can take minutes
 
 PROMPT = (
     "This is a photo of a handwritten or printed recipe page from the user's own "
-    "notebook. Transcribe it as JSON with keys: title, meta (short subtitle or "
-    "null), base_yield (int), yield_word, ingredients (list of {amount, unit, "
-    "name, section} — units only g, ml, cup, tbsp, tsp, lb, oz, or empty for "
-    "countable items; amount 0 means 'to taste'; section null unless the page "
-    "groups ingredients), steps (list of {text, timer_seconds} — timer_seconds "
-    "only for explicit durations, else null), notes (list of strings). Keep the "
-    "cook's own wording; leave anything unreadable out rather than inventing it. "
-    "Output ONLY the JSON."
+    "notebook. The page may be in English, French, German, or Romanian — keep the "
+    "original language, do not translate. Transcribe it as JSON with keys: title, "
+    "meta (short subtitle or null), base_yield (int), yield_word, ingredients "
+    "(list of {amount, unit, name, section} — units only g, ml, cup, tbsp, tsp, "
+    "lb, oz, or empty for countable items; map localized units: c. à s./EL/lingură "
+    "→ tbsp, c. à c./TL/linguriță → tsp, tasse/Tasse/cană → cup, kg → g ×1000, "
+    "l/L → ml ×1000; amount 0 means 'to taste' / 'au goût' / 'nach Geschmack' / "
+    "'după gust'; section null unless the page groups ingredients), steps (list of "
+    "{text, timer_seconds} — timer_seconds only for explicit durations, else "
+    "null), notes (list of strings). Keep the cook's own wording; leave anything "
+    "unreadable out rather than inventing it. Output ONLY the JSON."
 )
 
 
