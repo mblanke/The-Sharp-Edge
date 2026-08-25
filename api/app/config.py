@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:3000"
     api_token: str = "change-me-long-random"
     anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-5"  # photo import (public tier only)
 
     # Browser origins allowed by CORS; the web app itself goes through its
     # same-origin proxy, so this only needs the app's own base URL (plus any

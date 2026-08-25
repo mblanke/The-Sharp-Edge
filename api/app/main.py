@@ -35,7 +35,9 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/healthz")
     async def healthz():
-        return {"status": "ok"}
+        from app.services.photo_import import enabled as photo_import_enabled
+
+        return {"status": "ok", "photo_import": photo_import_enabled()}
 
     return app
 

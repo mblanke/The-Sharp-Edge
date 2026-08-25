@@ -19,6 +19,16 @@ class TierViolation(RuntimeError):
     """Private-tier content routed toward a cloud provider."""
 
 
+def ensure_public_tier(*, has_corpus_chunks: bool) -> None:
+    """Hard firewall for any cloud-bound request: corpus chunks never leave the
+    local deployment (CLAUDE.md §9). Call sites state their capability
+    explicitly; unit tests prove the refusal."""
+    if has_corpus_chunks:
+        raise TierViolation(
+            "Corpus chunks are private-tier and never leave the local deployment"
+        )
+
+
 class LLMProvider(Protocol):
     async def stream_chat(
         self, messages: list[dict], *, has_corpus_chunks: bool
@@ -79,10 +89,7 @@ class AnthropicProvider:
     async def stream_chat(
         self, messages: list[dict], *, has_corpus_chunks: bool = False
     ) -> AsyncIterator[str]:
-        if has_corpus_chunks:
-            raise TierViolation(
-                "Corpus chunks are private-tier and never leave the local deployment"
-            )
+        ensure_public_tier(has_corpus_chunks=has_corpus_chunks)
         raise HTTPException(501, "Anthropic provider not enabled; local cluster handles /ask")
         yield ""  # pragma: no cover — makes this an async generator
 

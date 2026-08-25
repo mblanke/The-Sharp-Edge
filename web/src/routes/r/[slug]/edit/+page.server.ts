@@ -1,10 +1,20 @@
+import { env } from '$env/dynamic/private';
 import { fail, redirect } from '@sveltejs/kit';
 import { ApiError, getRecipe, updateRecipe } from '$lib/api';
 import type { RecipeUpdate } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
+const API_URL = env.API_URL ?? 'http://localhost:8000';
+
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  return { recipe: await getRecipe(fetch, params.slug) };
+  let photoImport = false;
+  try {
+    const res = await fetch(`${API_URL}/api/v1/healthz`);
+    if (res.ok) photoImport = Boolean((await res.json()).photo_import);
+  } catch {
+    // API down — editor still loads
+  }
+  return { recipe: await getRecipe(fetch, params.slug), photoImport };
 };
 
 export const actions: Actions = {
@@ -34,5 +44,31 @@ export const actions: Actions = {
 
     // Success: PUT appended a new current version. Back to the recipe view.
     throw redirect(303, `/r/${params.slug}`);
+  },
+
+  photo: async ({ request, fetch }) => {
+    const form = await request.formData();
+    const photo = form.get('photo');
+    if (!(photo instanceof File) || photo.size === 0) {
+      return fail(400, { message: 'Choose a photo first' });
+    }
+    const upstream = new FormData();
+    upstream.append('photo', photo, photo.name);
+    const res = await fetch(`${API_URL}/api/v1/recipes/parse-photo`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${env.API_TOKEN ?? ''}` },
+      body: upstream
+    });
+    if (!res.ok) {
+      const detail = await res
+        .json()
+        .then((b: { detail?: string }) => b.detail)
+        .catch(() => null);
+      return fail(res.status >= 500 ? 502 : res.status, {
+        message: detail ?? `photo import failed (${res.status})`
+      });
+    }
+    // draft lands in `form.draft`; the editor prefills from it — nothing saved yet
+    return { draft: await res.json() };
   }
 };

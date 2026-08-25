@@ -20,7 +20,9 @@ GOULASH = {
 async def test_healthz(client):
     r = await client.get("/api/v1/healthz")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["photo_import"] in (True, False)
 
 
 async def test_create_requires_auth(client):

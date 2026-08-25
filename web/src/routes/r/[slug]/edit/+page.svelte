@@ -32,6 +32,33 @@
     newTag = '';
   }
 
+  // photo import: a returned draft prefills the fields — nothing saved until
+  // the cook reviews and hits Save
+  interface PhotoDraft {
+    title?: string;
+    meta?: string | null;
+    base_yield?: number;
+    yield_word?: string;
+    ingredients?: Ingredient[];
+    steps?: Step[];
+    notes?: string[];
+  }
+  let photoBusy = $state(false);
+  let appliedDraft: unknown = null;
+  $effect(() => {
+    const draft = form && 'draft' in form ? (form.draft as PhotoDraft) : null;
+    if (!draft || draft === appliedDraft) return;
+    appliedDraft = draft;
+    title = draft.title ?? title;
+    if (draft.meta) meta = draft.meta;
+    base_yield = draft.base_yield ?? base_yield;
+    yield_word = draft.yield_word ?? yield_word;
+    if (draft.ingredients?.length) ingredients = draft.ingredients.map((i) => ({ ...i }));
+    if (draft.steps?.length) steps = draft.steps.map((s) => ({ ...s }));
+    if (draft.notes?.length) notes = [...draft.notes];
+    label = label || 'from photo';
+  });
+
   let saving = $state(false);
 
   // --- list helpers ---
@@ -93,6 +120,41 @@
 <svelte:head>
   <title>Edit {recipe.title} — The Sharp Edge</title>
 </svelte:head>
+
+{#if data.photoImport}
+  <form
+    method="POST"
+    action="?/photo"
+    enctype="multipart/form-data"
+    class="pt-7"
+    use:enhance={() => {
+      photoBusy = true;
+      return async ({ update }) => {
+        await update({ reset: false });
+        photoBusy = false;
+      };
+    }}
+  >
+    <label
+      class="font-mono-label inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full border px-5 text-[11px] uppercase tracking-widest"
+      style="border-color: var(--copper); color: var(--copper)"
+    >
+      {photoBusy ? 'reading the page…' : '📷 import from photo'}
+      <input
+        type="file"
+        name="photo"
+        accept="image/*"
+        capture="environment"
+        class="hidden"
+        disabled={photoBusy}
+        onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
+      />
+    </label>
+    <span class="ml-2 text-[12px]" style="color: var(--faint)">
+      a page from your notebook becomes a draft — review before saving
+    </span>
+  </form>
+{/if}
 
 <form
   method="POST"

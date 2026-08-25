@@ -1,7 +1,7 @@
 import io
 
 import qrcode
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from qrcode.constants import ERROR_CORRECT_H
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -216,6 +216,16 @@ async def scale_recipe(slug: str, payload: ScaleRequest, session: AsyncSession =
         yield_word=recipe.yield_word,
         ingredients=scaled,
     )
+
+
+@router.post("/parse-photo", dependencies=[Depends(require_token)])
+async def parse_photo_endpoint(photo: UploadFile):
+    """Owner's notebook photo → structured draft for the editor (E2). Never
+    auto-saves; never accepts library content. Cloud call is public-tier only."""
+    from app.services.photo_import import parse_photo
+
+    draft = await parse_photo(await photo.read(), photo.content_type or "")
+    return draft
 
 
 @router.get("/{slug}/sessions", response_model=list[CookSessionOut])
