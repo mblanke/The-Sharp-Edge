@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "function": "split_run_on",
+  "note": "Speech recognition does not punctuate, so quantities are the boundary. Without this a dictated recipe lands as a single ingredient.",
+  "cases": [
+    {
+      "id": "a-dictated-run-of-three",
+      "args": {
+        "line": "two pounds beef chuck three onions four cloves of garlic",
+        "lang": "en"
+      },
+      "expect": [
+        "two pounds beef chuck",
+        "three onions",
+        "four cloves of garlic"
+      ]
+    },
+    {
+      "id": "digits-run",
+      "args": {
+        "line": "2 lb beef chuck 3 onions 4 cloves garlic",
+        "lang": "en"
+      },
+      "expect": [
+        "2 lb beef chuck",
+        "3 onions",
+        "4 cloves garlic"
+      ]
+    },
+    {
+      "id": "mixed-fraction-stays-whole",
+      "args": {
+        "line": "1 1/2 cups flour 1 tsp salt",
+        "lang": "en"
+      },
+      "expect": [
+        "1 1/2 cups flour",
+        "1 tsp salt"
+      ]
+    },
+    {
+      "id": "range-stays-whole",
+      "args": {
+        "line": "2 to 3 cloves garlic 1 onion diced",
+        "lang": "en"
+      },
+      "expect": [
+        "2 to 3 cloves garlic",
+        "1 onion diced"
+      ]
+    },
+    {
+      "id": "hyphenated-measurement-stays-whole",
+      "args": {
+        "line": "2 lb beef chuck cut into 1-inch cubes",
+        "lang": "en"
+      },
+      "expect": [
+        "2 lb beef chuck cut into 1-inch cubes"
+      ]
+    },
+    {
+      "id": "cm-measurement-stays-whole",
+      "args": {
+        "line": "1 kg potatoes cut into 2 cm dice",
+        "lang": "en"
+      },
+      "expect": [
+        "1 kg potatoes cut into 2 cm dice"
+      ]
+    },
+    {
+      "id": "single-ingredient-is-not-split",
+      "args": {
+        "line": "2 lb beef chuck, cubed",
+        "lang": "en"
+      },
+      "expect": [
+        "2 lb beef chuck, cubed"
+      ]
+    },
+    {
+      "id": "empty-line",
+      "args": {
+        "line": "",
+        "lang": "en"
+      },
+      "expect": []
+    },
+    {
+      "id": "no-quantities-at-all",
+      "args": {
+        "line": "salt and pepper to taste",
+        "lang": "en"
+      },
+      "expect": [
+        "salt and pepper to taste"
+      ]
+    },
+    {
+      "id": "french-run",
+      "args": {
+        "line": "deux cuillères à soupe d'huile trois oignons",
+        "lang": "fr"
+      },
+      "expect": [
+        "deux cuillères à soupe d'huile",
+        "trois oignons"
+      ]
+    },
+    {
+      "id": "german-run",
+      "args": {
+        "line": "zwei Esslöffel Öl drei Zwiebeln",
+        "lang": "de"
+      },
+      "expect": [
+        "zwei Esslöffel Öl",
+        "drei Zwiebeln"
+      ]
+    },
+    {
+      "id": "romanian-run",
+      "args": {
+        "line": "două linguri de ulei trei cepe",
+        "lang": "ro"
+      },
+      "expect": [
+        "două linguri de ulei",
+        "trei cepe"
+      ]
+    },
+    {
+      "id": "real-cookie-dictation",
+      "args": {
+        "line": "two and a quarter cups flour one teaspoon baking soda one teaspoon salt one cup butter three quarters cup sugar two eggs two cups chocolate chips",
+        "lang": "en"
+      },
+      "expect": [
+        "two and a quarter cups flour",
+        "one teaspoon baking soda",
+        "one teaspoon salt",
+        "one cup butter",
+        "three quarters cup sugar",
+        "two eggs",
+        "two cups chocolate chips"
+      ]
+    }
+  ]
+}

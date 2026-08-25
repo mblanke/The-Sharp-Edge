@@ -13,8 +13,16 @@ import argparse
 import asyncio
 import re
 import sys
-from fractions import Fraction
 from pathlib import Path
+
+# The ingredient parser lives with the API so the /parse endpoints and this script
+# share one implementation. Inside the container `app` is installed; from a checkout
+# it sits next to us in api/.
+try:
+    from app.services.ingredients import parse_ingredient
+except ModuleNotFoundError:  # pragma: no cover - checkout convenience only
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api"))
+    from app.services.ingredients import parse_ingredient
 
 DEFAULT_MASTER = Path(__file__).resolve().parent / "recipes-master.md"
 
@@ -106,21 +114,6 @@ MANIFEST: list[dict] = [
          base=1, yield_word="card", noscale=True, gf=False,
          meta="Kitchen & grill reference"),
 ]
-
-# ---------------------------------------------------------------- amount parsing
-# Shared with the app's URL importer — single implementation in the api package.
-
-from app.services.ingredient_parse import (  # noqa: E402
-    METRIC_FACTOR,  # noqa: F401  (kept for import compatibility)
-    NUM,
-    RANGE_SEP,
-    UNIT_MAP,  # noqa: F401
-    _convert,  # noqa: F401
-    _norm_unit,  # noqa: F401
-    _num,
-    parse_ingredient,
-)
-
 
 # ---------------------------------------------------------------- master parsing
 

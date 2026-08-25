@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "function": "normalise_name",
+  "note": "The merge key: everything before the first comma, folded and de-pluralised.",
+  "cases": [
+    {
+      "id": "preparation-after-a-comma-is-dropped",
+      "args": {
+        "name": "beef chuck, cut into 1-inch cubes"
+      },
+      "expect": "beef chuck"
+    },
+    {
+      "id": "case-is-folded",
+      "args": {
+        "name": "Sweet Hungarian Paprika"
+      },
+      "expect": "sweet hungarian paprika"
+    },
+    {
+      "id": "parentheticals-are-dropped",
+      "args": {
+        "name": "sweet Hungarian paprika (certified GF)"
+      },
+      "expect": "sweet hungarian paprika"
+    },
+    {
+      "id": "accents-are-folded",
+      "args": {
+        "name": "jalapeño"
+      },
+      "expect": "jalapeno"
+    },
+    {
+      "id": "accents-in-french",
+      "args": {
+        "name": "crème fraîche"
+      },
+      "expect": "creme fraiche"
+    },
+    {
+      "id": "plural-is-stripped",
+      "args": {
+        "name": "yellow onions"
+      },
+      "expect": "yellow onion"
+    },
+    {
+      "id": "singular-is-left-alone",
+      "args": {
+        "name": "yellow onion"
+      },
+      "expect": "yellow onion"
+    },
+    {
+      "id": "asparagus-is-not-a-plural",
+      "args": {
+        "name": "asparagus"
+      },
+      "expect": "asparagus"
+    },
+    {
+      "id": "molasses-is-not-a-plural",
+      "args": {
+        "name": "molasses"
+      },
+      "expect": "molasses"
+    },
+    {
+      "id": "swiss-chard-is-not-a-plural",
+      "args": {
+        "name": "Swiss chard"
+      },
+      "expect": "swiss chard"
+    },
+    {
+      "id": "couscous-is-not-a-plural",
+      "args": {
+        "name": "couscous"
+      },
+      "expect": "couscous"
+    },
+    {
+      "id": "hummus-is-not-a-plural",
+      "args": {
+        "name": "hummus"
+      },
+      "expect": "hummus"
+    },
+    {
+      "id": "capers-stay-capers",
+      "args": {
+        "name": "capers"
+      },
+      "expect": "capers"
+    },
+    {
+      "id": "oats-stay-oats",
+      "args": {
+        "name": "oats"
+      },
+      "expect": "oats"
+    },
+    {
+      "id": "four-letters-is-long-enough-to-depluralise",
+      "args": {
+        "name": "figs"
+      },
+      "expect": "fig"
+    },
+    {
+      "id": "three-letter-words-keep-their-s",
+      "args": {
+        "name": "gas"
+      },
+      "expect": "gas"
+    },
+    {
+      "id": "double-s-is-kept",
+      "args": {
+        "name": "watercress"
+      },
+      "expect": "watercress"
+    },
+    {
+      "id": "us-ending-is-kept",
+      "args": {
+        "name": "citrus"
+      },
+      "expect": "citrus"
+    },
+    {
+      "id": "is-ending-is-kept",
+      "args": {
+        "name": "orzo is"
+      },
+      "expect": "orzo is"
+    },
+    {
+      "id": "punctuation-is-stripped",
+      "args": {
+        "name": "all-purpose flour"
+      },
+      "expect": "all purpose flour"
+    },
+    {
+      "id": "digits-survive",
+      "args": {
+        "name": "00 flour"
+      },
+      "expect": "00 flour"
+    },
+    {
+      "id": "whitespace-is-collapsed",
+      "args": {
+        "name": "  olive    oil  "
+      },
+      "expect": "olive oil"
+    },
+    {
+      "id": "empty-string",
+      "args": {
+        "name": ""
+      },
+      "expect": ""
+    },
+    {
+      "id": "comma-first",
+      "args": {
+        "name": ", diced"
+      },
+      "expect": ""
+    },
+    {
+      "id": "romanian-diacritics",
+      "args": {
+        "name": "vișinată"
+      },
+      "expect": "visinata"
+    },
+    {
+      "id": "german-sharp-s",
+      "args": {
+        "name": "Weißwein"
+      },
+      "expect": "wei wein"
+    }
+  ]
+}

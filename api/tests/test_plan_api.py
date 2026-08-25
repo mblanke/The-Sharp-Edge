@@ -40,7 +40,7 @@ async def test_week_starts_empty_and_normalizes_to_monday(client):
     assert res.status_code == 200
     body = res.json()
     assert body["week"] == "2026-08-24"  # Monday of that week
-    assert body["entries"] == [] and body["shopping"] == []
+    assert body["entries"] == []
 
 
 async def test_upsert_replaces_slot_and_requires_auth(client, auth):
@@ -74,7 +74,8 @@ async def test_unknown_recipe_404(client, auth):
     assert res.status_code == 404
 
 
-async def test_shopping_list_merges_across_recipes(client, auth):
+async def test_week_pushes_into_the_running_shopping_list(client, auth):
+    """The plan feeds the one running list the iPad app shares (/shopping)."""
     await _seed(client, auth)
     for entry in (
         {"date": "2026-08-25", "meal": "dinner", "recipe_slug": "plan-goulash", "scaled_yield": 12},
@@ -84,37 +85,62 @@ async def test_shopping_list_merges_across_recipes(client, auth):
 
     res = await client.post("/api/v1/plan/shopping-list", params={"week": "2026-08-25"}, headers=auth)
     assert res.status_code == 200
-    shopping = {s["name"]: s for s in res.json()["shopping"]}
+    def by_prefix(items, prefix):
+        return next(i for i in items if i["name"].startswith(prefix))
+
+    items = res.json()["items"]
 
     # goulash at 2×: 6 onions + salad 1 onion = 7, merged despite prep clauses
-    assert shopping["yellow onions"]["amount"] == "7"
-    assert shopping["yellow onions"]["recipe_id"] is None  # cross-recipe merge
+    # (the merge keys on the singularised head; the first-seen name is displayed)
+    onions = by_prefix(items, "yellow onion")
+    assert onions["display"] == "7"
+    assert sorted(onions["recipes"]) == ["plan-goulash", "plan-salad"]
     # beef only from goulash → provenance kept
-    assert shopping["beef chuck"]["amount"] == "4 lb"
-    assert shopping["beef chuck"]["recipe_id"] is not None
-    # measured salt absorbs the salad's to-taste row
-    assert shopping["salt"]["amount"] == "3 tsp"
-    assert all(not s["checked"] for s in shopping.values())
+    beef = by_prefix(items, "beef chuck")
+    assert beef["display"] == "4 lb"
+    assert beef["recipes"] == ["plan-goulash"]
+    # to-taste rows never join the list; measured salt is the goulash's 2× only
+    assert by_prefix(items, "salt")["display"] == "3 tsp"
+    # the same list is what /shopping serves
+    listed = (await client.get("/api/v1/shopping")).json()["items"]
+    for prefix in ("yellow onion", "beef chuck", "salt"):
+        assert by_prefix(listed, prefix)
 
 
-async def test_check_and_delete_flow(client, auth):
+async def test_push_merges_into_existing_lines_and_keeps_checked(client, auth):
+    await _seed(client, auth)
+    # the running list already has onions from an earlier add, checked off
+    await client.post(
+        "/api/v1/shopping/add", json={"slug": "plan-salad"}, headers=auth
+    )
+    onion = next(
+        i for i in (await client.get("/api/v1/shopping")).json()["items"]
+        if i["name"].startswith("yellow onion")
+    )
+    await client.patch(f"/api/v1/shopping/{onion['id']}", json={"checked": True}, headers=auth)
+
+    await client.post(
+        "/api/v1/plan",
+        json={"date": "2026-08-25", "meal": "dinner", "recipe_slug": "plan-goulash"},
+        headers=auth,
+    )
+    res = await client.post("/api/v1/plan/shopping-list", params={"week": "2026-08-24"}, headers=auth)
+    onions = next(i for i in res.json()["items"] if i["name"].startswith("yellow onion"))
+    # 1 (already there) + 3 (goulash at base) = 4, still one line, checked survives
+    assert onions["display"] == "4"
+    assert onions["checked"] is True
+
+
+async def test_remove_entry_and_empty_week_push(client, auth):
     await _seed(client, auth)
     await client.post(
         "/api/v1/plan",
         json={"date": "2026-08-25", "meal": "dinner", "recipe_slug": "plan-salad"},
         headers=auth,
     )
-    res = await client.post("/api/v1/plan/shopping-list", params={"week": "2026-08-24"}, headers=auth)
-    item = res.json()["shopping"][0]
-
-    res = await client.patch(
-        f"/api/v1/plan/shopping-list/{item['id']}", json={"checked": True}, headers=auth
-    )
-    assert res.json()["checked"] is True
-
-    # remove the plan entry; regenerating clears the list
     entry_id = (await client.get("/api/v1/plan", params={"week": "2026-08-24"})).json()["entries"][0]["id"]
     res = await client.delete(f"/api/v1/plan/{entry_id}", headers=auth)
     assert res.json()["entries"] == []
+    # pushing an empty week is a no-op on the (empty) running list
     res = await client.post("/api/v1/plan/shopping-list", params={"week": "2026-08-24"}, headers=auth)
-    assert res.json()["shopping"] == []
+    assert res.json()["items"] == []

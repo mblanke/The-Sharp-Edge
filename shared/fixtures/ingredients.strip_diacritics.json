@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "function": "strip_diacritics",
+  "note": "Parsing folds harder than the shopping list does: cedilla forms are mapped to comma-below first, and ß becomes ss (NFKD leaves it alone).",
+  "cases": [
+    {
+      "id": "romanian-comma-below",
+      "args": {
+        "text": "Vișinată"
+      },
+      "expect": "Visinata"
+    },
+    {
+      "id": "romanian-cedilla-legacy",
+      "args": {
+        "text": "Vişinată"
+      },
+      "expect": "Visinata"
+    },
+    {
+      "id": "french-accents",
+      "args": {
+        "text": "Crème Brûlée"
+      },
+      "expect": "Creme Brulee"
+    },
+    {
+      "id": "german-sharp-s-becomes-ss",
+      "args": {
+        "text": "Weißwein"
+      },
+      "expect": "Weisswein"
+    },
+    {
+      "id": "german-capital-sharp-s",
+      "args": {
+        "text": "STRAẞE"
+      },
+      "expect": "STRASSE"
+    },
+    {
+      "id": "t-comma-below",
+      "args": {
+        "text": "Constanța"
+      },
+      "expect": "Constanta"
+    },
+    {
+      "id": "plain-ascii-is-unchanged",
+      "args": {
+        "text": "beef chuck"
+      },
+      "expect": "beef chuck"
+    }
+  ]
+}

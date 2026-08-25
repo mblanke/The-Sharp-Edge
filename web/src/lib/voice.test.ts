@@ -1,43 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { parseCommand } from './voice';
+import { CAPTURE_LANGUAGES, speechTag, splitUtterances } from './voice';
 
-const INGS = [
-  { amount: 2, unit: 'lb', name: 'beef chuck, cut into 1-inch cubes' },
-  { amount: 3, unit: 'tbsp', name: 'sweet Hungarian paprika (certified GF)' },
-  { amount: 1.5, unit: 'tsp', name: 'salt' },
-  { amount: 3, unit: 'cup', name: 'beef broth (certified GF)' }
-];
-
-describe('parseCommand', () => {
-  it('navigation', () => {
-    expect(parseCommand('next', INGS)).toEqual({ type: 'next' });
-    expect(parseCommand('okay next step please', INGS)).toEqual({ type: 'next' });
-    expect(parseCommand('go back', INGS)).toEqual({ type: 'back' });
-    expect(parseCommand('repeat that', INGS)).toEqual({ type: 'repeat' });
+describe('splitUtterances', () => {
+  it('turns a continuous take into one line per item', () => {
+    expect(splitUtterances('200 grams of butter. two eggs. a pinch of salt')).toEqual([
+      '200 grams of butter',
+      'two eggs',
+      'a pinch of salt'
+    ]);
   });
 
-  it('timer control', () => {
-    expect(parseCommand('start the timer', INGS)).toEqual({ type: 'timer-start' });
-    expect(parseCommand('timer start', INGS)).toEqual({ type: 'timer-start' });
-    expect(parseCommand('pause the timer', INGS)).toEqual({ type: 'timer-pause' });
-    expect(parseCommand('reset timer', INGS)).toEqual({ type: 'timer-reset' });
+  it('treats newlines as breaks too', () => {
+    expect(splitUtterances('one\ntwo\nthree')).toEqual(['one', 'two', 'three']);
   });
 
-  it('how much resolves the right ingredient', () => {
-    expect(parseCommand('how much paprika', INGS)).toEqual({ type: 'how-much', ingredient: 1 });
-    expect(parseCommand('how much salt do I need', INGS)).toEqual({ type: 'how-much', ingredient: 2 });
-    // "beef broth" beats "beef chuck" on keyword overlap
-    expect(parseCommand('how much beef broth', INGS)).toEqual({ type: 'how-much', ingredient: 3 });
+  it('drops empty fragments from trailing or doubled punctuation', () => {
+    expect(splitUtterances('one.. two.  ')).toEqual(['one', 'two']);
   });
 
-  it('unknown ingredient and noise return null', () => {
-    expect(parseCommand('how much unicorn dust', INGS)).toBeNull();
-    expect(parseCommand('la la la', INGS)).toBeNull();
-    expect(parseCommand('', INGS)).toBeNull();
+  it('keeps content that has no punctuation at all', () => {
+    expect(splitUtterances('zweieinhalb Esslöffel Paprikapulver')).toEqual([
+      'zweieinhalb Esslöffel Paprikapulver'
+    ]);
   });
 
-  it('timer phrasing does not trigger navigation', () => {
-    // "stop the timer" contains no nav word; ensure precedence ordering holds
-    expect(parseCommand('stop the timer', INGS)).toEqual({ type: 'timer-pause' });
+  it('returns nothing for empty input', () => {
+    expect(splitUtterances('   ')).toEqual([]);
+  });
+});
+
+describe('speechTag', () => {
+  it('maps every capture language to a BCP-47 tag', () => {
+    expect(speechTag('en')).toBe('en-US');
+    expect(speechTag('fr')).toBe('fr-FR');
+    expect(speechTag('de')).toBe('de-DE');
+    expect(speechTag('ro')).toBe('ro-RO');
+  });
+
+  it('covers the whole language list', () => {
+    for (const l of CAPTURE_LANGUAGES) expect(speechTag(l.code)).toBe(l.tag);
   });
 });

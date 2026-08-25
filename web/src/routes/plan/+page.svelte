@@ -144,49 +144,33 @@
     {/each}
   </div>
 
-  <!-- shopping list -->
+  <!-- shopping hand-off: one running list, shared with the iPad app -->
   <div class="mt-8 flex items-center justify-between border-b pb-1" style="border-color: var(--line)">
     <h3 class="font-mono-label text-xs uppercase tracking-widest" style="color: var(--green)">
-      Shopping list
+      Shopping
     </h3>
-    <form method="POST" action="?/generate" use:enhance>
-      <input type="hidden" name="week" value={plan.week} />
-      <button
-        class="font-mono-label min-h-[44px] rounded-full px-5 text-[11px] uppercase tracking-widest"
-        style="background: var(--green-deep); color: #F4F3EC"
-        data-testid="generate-list"
+    <div class="flex items-center gap-2">
+      <a
+        href="/shopping"
+        class="font-mono-label min-h-[44px] rounded-full border px-4 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+        style="border-color: var(--line); color: var(--green-deep)"
       >
-        generate from plan
-      </button>
-    </form>
+        open the list
+      </a>
+      <form method="POST" action="?/generate" use:enhance>
+        <input type="hidden" name="week" value={plan.week} />
+        <button
+          class="font-mono-label min-h-[44px] rounded-full px-5 text-[11px] uppercase tracking-widest"
+          style="background: var(--green-deep); color: #F4F3EC"
+          data-testid="generate-list"
+        >
+          add week to list
+        </button>
+      </form>
+    </div>
   </div>
-
-  {#if plan.shopping.length === 0}
-    <p class="mt-3 text-[13.5px]" style="color: var(--faint)">
-      No list yet — plan some meals, then generate.
-    </p>
-  {:else}
-    <ul class="mt-2 list-none p-0" data-testid="shopping-list">
-      {#each plan.shopping as item (item.id)}
-        <li class="border-b border-dashed" style="border-color: var(--line)">
-          <form method="POST" action="?/check" use:enhance>
-            <input type="hidden" name="item_id" value={item.id} />
-            <input type="hidden" name="checked" value={String(!item.checked)} />
-            <button class="flex min-h-[48px] w-full items-center gap-3 py-2 text-left">
-              <span
-                class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[13px]"
-                style="border-color: {item.checked ? 'var(--green)' : 'var(--line)'}; background: {item.checked ? 'var(--green)' : 'transparent'}; color: #F4F3EC"
-              >
-                {item.checked ? '✓' : ''}
-              </span>
-              <span class="qty min-w-[7ch] shrink-0 text-[14px]" style="color: var(--green-deep)">{item.amount}</span>
-              <span class="text-[15px]" style="color: {item.checked ? 'var(--faint)' : 'var(--ink)'}; text-decoration: {item.checked ? 'line-through' : 'none'}">
-                {item.name}
-              </span>
-            </button>
-          </form>
-        </li>
-      {/each}
-    </ul>
-  {/if}
+  <p class="mt-2 text-[12.5px]" style="color: var(--faint)">
+    Adds every planned recipe at its scale to the running list — quantities merge into
+    existing lines, and the same list shows up in the iPad app.
+  </p>
 </section>

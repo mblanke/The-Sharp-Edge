@@ -157,10 +157,60 @@ async def get_recipe(slug: str, session: AsyncSession = Depends(get_session)):
 
 @router.get("/{slug}/versions", response_model=list[VersionOut])
 async def list_versions(slug: str, session: AsyncSession = Depends(get_session)):
-    """Full version history, newest first — feeds the version switcher."""
+    """Full version history, oldest first — the order the iOS app relies on;
+    the web switcher re-sorts newest-first client-side."""
     recipe = await _resolve(session, slug, with_versions=True)
-    ordered = sorted(recipe.versions, key=lambda v: v.version, reverse=True)
+    ordered = sorted(recipe.versions, key=lambda v: v.version)
     return [VersionOut.model_validate(v) for v in ordered]
+
+
+@router.get("/{slug}/versions/{version}", response_model=VersionOut)
+async def get_version(slug: str, version: int, session: AsyncSession = Depends(get_session)):
+    """The full body of one past version.
+
+    /versions returns metadata only, so until now an old version existed in the
+    database but could not be read back — the append-only history was write-only,
+    and the version switcher had nothing to switch to.
+    """
+    recipe = await _resolve(session, slug, with_versions=True)
+    match = next((v for v in recipe.versions if v.version == version), None)
+    if match is None:
+        raise HTTPException(404, f"Recipe '{slug}' has no version {version}")
+    return VersionOut.model_validate(match)
+
+
+@router.post("/{slug}/versions/{version}/restore", response_model=RecipeFull,
+             dependencies=[Depends(require_token)])
+async def restore_version(slug: str, version: int, session: AsyncSession = Depends(get_session)):
+    """Bring a past version back as a new current version.
+
+    Append-only, like every other write: restoring v1 over v6 creates v7 with v1's
+    contents. Nothing is destroyed, so a restore is itself undoable — which is the
+    whole point of keeping the history.
+    """
+    recipe = await _resolve(session, slug, with_versions=True)
+    source = next((v for v in recipe.versions if v.version == version), None)
+    if source is None:
+        raise HTTPException(404, f"Recipe '{slug}' has no version {version}")
+    if source.is_current:
+        return _full(recipe)
+
+    next_number = max(v.version for v in recipe.versions) + 1
+    # Snapshot the body before flipping flags — `source` stays attached to the
+    # session and the collection is about to be mutated underneath it.
+    ingredients, steps, notes = source.ingredients, source.steps, source.notes
+    label = source.label or f"restored v{source.version}"
+    for v in recipe.versions:
+        v.is_current = False
+    # Append through the relationship, as update_recipe does. Adding a standalone row
+    # leaves recipe.versions stale, and _full() then finds no current version.
+    recipe.versions.append(
+        RecipeVersion(version=next_number, label=label, ingredients=ingredients,
+                      steps=steps, notes=notes, is_current=True)
+    )
+    await session.commit()
+    await session.refresh(recipe, ["versions"])
+    return _full(recipe)
 
 
 @router.post("", response_model=RecipeFull, status_code=201, dependencies=[Depends(require_token)])
@@ -385,7 +435,7 @@ async def recipe_qr(slug: str, session: AsyncSession = Depends(get_session)):
     qr = qrcode.QRCode(error_correction=ERROR_CORRECT_H, box_size=8, border=2)
     qr.add_data(f"{settings.base_url.rstrip('/')}/r/{recipe.slug}")
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#20241E", back_color="white")
+    img = qr.make_image(fill_color="#14161C", back_color="white")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return Response(content=buf.getvalue(), media_type="image/png")

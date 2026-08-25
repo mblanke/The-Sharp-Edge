@@ -1,13 +1,5 @@
-import { fail } from '@sveltejs/kit';
-import {
-  ApiError,
-  getWeekPlan,
-  listRecipes,
-  planCheckItem,
-  planGenerateList,
-  planRemove,
-  planUpsert
-} from '$lib/api';
+import { fail, redirect } from '@sveltejs/kit';
+import { ApiError, getWeekPlan, listRecipes, planPushToShopping, planRemove, planUpsert } from '$lib/api';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
@@ -45,16 +37,13 @@ export const actions: Actions = {
     const form = await request.formData();
     return guarded(() => planRemove(fetch, asString(form.get('entry_id'))).then(() => ({ ok: true })));
   },
+  // Pushes the week into the running shopping list (the one iOS shares), then
+  // lands on it — the list page owns aisles, check-offs, and the share-sheet text.
   generate: async ({ request, fetch }) => {
     const form = await request.formData();
-    return guarded(() => planGenerateList(fetch, asString(form.get('week'))).then(() => ({ ok: true })));
-  },
-  check: async ({ request, fetch }) => {
-    const form = await request.formData();
-    return guarded(() =>
-      planCheckItem(fetch, asString(form.get('item_id')), form.get('checked') === 'true').then(() => ({
-        ok: true
-      }))
-    );
+    const week = asString(form.get('week'));
+    const result = await guarded(() => planPushToShopping(fetch, week));
+    if (result && 'items' in result) throw redirect(303, '/shopping');
+    return result;
   }
 };

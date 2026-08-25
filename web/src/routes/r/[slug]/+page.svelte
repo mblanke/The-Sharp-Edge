@@ -3,7 +3,7 @@
   import { scaledDisplay } from '$lib/scaling';
   import type { Ingredient } from '$lib/types';
 
-  let { data } = $props();
+  let { data, form } = $props();
 
   let illuminating = $state(false);
   let openNote = $state<number | null>(null); // step_index of the expanded margin note
@@ -306,6 +306,18 @@
       >
         ▶ Cook
       </a>
+    {/if}
+    {#if !recipe.noscale}
+      <form method="POST" action="?/addToList" use:enhance>
+        <input type="hidden" name="target" value={target} />
+        <button
+          class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest"
+          style="border-color: var(--green); color: var(--green-deep)"
+          data-testid="add-to-list"
+        >
+          {form && 'added' in form && form.added ? '✓ on the list' : '+ shopping list'}
+        </button>
+      </form>
     {/if}
     <a
       href="/ask?recipe={recipe.slug}"

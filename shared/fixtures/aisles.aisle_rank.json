@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "function": "aisle_rank",
+  "note": "Walking order: fresh edges first, frozen last, unknown after everything.",
+  "cases": [
+    {
+      "id": "produce",
+      "args": {
+        "aisle": "Produce"
+      },
+      "expect": 0
+    },
+    {
+      "id": "meat-and-fish",
+      "args": {
+        "aisle": "Meat & fish"
+      },
+      "expect": 1
+    },
+    {
+      "id": "dairy-and-eggs",
+      "args": {
+        "aisle": "Dairy & eggs"
+      },
+      "expect": 2
+    },
+    {
+      "id": "bakery",
+      "args": {
+        "aisle": "Bakery"
+      },
+      "expect": 3
+    },
+    {
+      "id": "pantry",
+      "args": {
+        "aisle": "Pantry"
+      },
+      "expect": 4
+    },
+    {
+      "id": "herbs-and-spices",
+      "args": {
+        "aisle": "Herbs & spices"
+      },
+      "expect": 5
+    },
+    {
+      "id": "frozen",
+      "args": {
+        "aisle": "Frozen"
+      },
+      "expect": 6
+    },
+    {
+      "id": "other",
+      "args": {
+        "aisle": "Other"
+      },
+      "expect": 7
+    },
+    {
+      "id": "nonsense",
+      "args": {
+        "aisle": "nonsense"
+      },
+      "expect": 8
+    }
+  ]
+}

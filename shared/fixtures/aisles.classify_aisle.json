@@ -1,0 +1,329 @@
+{
+  "version": 1,
+  "function": "classify_aisle",
+  "note": "Wrong aisle is worse than no aisle, so anything unknown must stay 'Other'.",
+  "cases": [
+    {
+      "id": "beef-chuck",
+      "args": {
+        "name": "beef chuck, cut into 1-inch cubes"
+      },
+      "expect": "Meat & fish"
+    },
+    {
+      "id": "ground-pork",
+      "args": {
+        "name": "ground pork"
+      },
+      "expect": "Meat & fish"
+    },
+    {
+      "id": "salmon-fillets",
+      "args": {
+        "name": "salmon fillets, 170–200 g each"
+      },
+      "expect": "Meat & fish"
+    },
+    {
+      "id": "yellow-onions",
+      "args": {
+        "name": "yellow onions, diced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "garlic-cloves-are-produce-not-the-spice",
+      "args": {
+        "name": "garlic cloves, minced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "garlic-powder-is-a-spice",
+      "args": {
+        "name": "garlic powder"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "ground-cloves-are-a-spice",
+      "args": {
+        "name": "ground cloves"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "nutmeg-is-not-a-nut",
+      "args": {
+        "name": "freshly grated nutmeg"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "coconut-milk-is-not-a-nut",
+      "args": {
+        "name": "coconut milk"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "butternut-is-not-a-nut",
+      "args": {
+        "name": "butternut squash"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "walnuts-are-pantry",
+      "args": {
+        "name": "chopped walnuts"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "fresh-ginger-is-produce",
+      "args": {
+        "name": "fresh ginger, grated"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "ground-ginger-is-a-spice",
+      "args": {
+        "name": "ground ginger"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "green-onions-are-produce",
+      "args": {
+        "name": "green onions, sliced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "jalapeno-minced-is-not-mince",
+      "args": {
+        "name": "jalapeño, seeded and minced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "potatoes",
+      "args": {
+        "name": "Yukon Gold potatoes, cubed"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "bell-peppers",
+      "args": {
+        "name": "red bell peppers, diced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "cucumber",
+      "args": {
+        "name": "English cucumber, grated and squeezed dry"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "limes",
+      "args": {
+        "name": "limes, juiced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "lime-zested",
+      "args": {
+        "name": "lime, zested"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "heavy-cream",
+      "args": {
+        "name": "heavy cream"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "feta",
+      "args": {
+        "name": "block feta in brine, cubed or crumbled"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "egg",
+      "args": {
+        "name": "1 large egg"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "whole-milk-is-dairy",
+      "args": {
+        "name": "whole milk"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "baguette",
+      "args": {
+        "name": "baguette, sliced"
+      },
+      "expect": "Bakery"
+    },
+    {
+      "id": "croutons",
+      "args": {
+        "name": "brioche croutons"
+      },
+      "expect": "Bakery"
+    },
+    {
+      "id": "paprika",
+      "args": {
+        "name": "sweet Hungarian paprika (certified GF)"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "caraway",
+      "args": {
+        "name": "caraway seeds, crushed"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "bay-leaves",
+      "args": {
+        "name": "bay leaves"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "salt-and-pepper",
+      "args": {
+        "name": "flaky salt and black pepper"
+      },
+      "expect": "Herbs & spices"
+    },
+    {
+      "id": "beef-broth",
+      "args": {
+        "name": "beef broth (certified GF)"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "tomato-paste",
+      "args": {
+        "name": "tomato paste"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "canned-tomatoes-are-pantry",
+      "args": {
+        "name": "canned diced tomatoes"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "fresh-tomatoes-are-produce",
+      "args": {
+        "name": "tomatoes, diced"
+      },
+      "expect": "Produce"
+    },
+    {
+      "id": "tamari",
+      "args": {
+        "name": "GF tamari"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "vinegar",
+      "args": {
+        "name": "red wine vinegar"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "flour",
+      "args": {
+        "name": "all-purpose flour"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "brown-sugar",
+      "args": {
+        "name": "brown sugar, packed"
+      },
+      "expect": "Pantry"
+    },
+    {
+      "id": "frozen-peas",
+      "args": {
+        "name": "frozen peas"
+      },
+      "expect": "Frozen"
+    },
+    {
+      "id": "accents-do-not-matter",
+      "args": {
+        "name": "Crème fraîche"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "shouting-does-not-matter",
+      "args": {
+        "name": "CREME FRAICHE"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "gruyere",
+      "args": {
+        "name": "Gruyère cheese"
+      },
+      "expect": "Dairy & eggs"
+    },
+    {
+      "id": "unknown-is-not-guessed-at",
+      "args": {
+        "name": "Pre-Hy"
+      },
+      "expect": "Other"
+    },
+    {
+      "id": "another-unknown",
+      "args": {
+        "name": "Ultra-Tex"
+      },
+      "expect": "Other"
+    },
+    {
+      "id": "empty-is-other",
+      "args": {
+        "name": ""
+      },
+      "expect": "Other"
+    },
+    {
+      "id": "head-says-nothing-falls-back",
+      "args": {
+        "name": "tin of San Marzano tomatoes, drained"
+      },
+      "expect": "Pantry"
+    }
+  ]
+}

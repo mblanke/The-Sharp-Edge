@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "function": "format_amount",
+  "note": "CLAUDE.md §8. Kitchen fractions as unicode glyphs; 0.75 is a bug, ¾ is correct.",
+  "cases": [
+    {
+      "id": "zero-is-an-em-dash",
+      "args": {
+        "value": 0,
+        "unit": ""
+      },
+      "expect": "—"
+    },
+    {
+      "id": "zero-with-a-unit-is-still-an-em-dash",
+      "args": {
+        "value": 0,
+        "unit": "g"
+      },
+      "expect": "—"
+    },
+    {
+      "id": "grams-are-integers",
+      "args": {
+        "value": 12.4,
+        "unit": "g"
+      },
+      "expect": "12 g"
+    },
+    {
+      "id": "grams-round-half-up",
+      "args": {
+        "value": 12.5,
+        "unit": "g"
+      },
+      "expect": "13 g"
+    },
+    {
+      "id": "ml-are-integers",
+      "args": {
+        "value": 7.6,
+        "unit": "ml"
+      },
+      "expect": "8 ml"
+    },
+    {
+      "id": "metric-just-below-the-rounding-boundary",
+      "args": {
+        "value": 199,
+        "unit": "g"
+      },
+      "expect": "199 g"
+    },
+    {
+      "id": "metric-at-the-rounding-boundary",
+      "args": {
+        "value": 200,
+        "unit": "g"
+      },
+      "expect": "200 g"
+    },
+    {
+      "id": "metric-above-the-boundary-rounds-to-5",
+      "args": {
+        "value": 203,
+        "unit": "g"
+      },
+      "expect": "205 g"
+    },
+    {
+      "id": "metric-above-the-boundary-rounds-down",
+      "args": {
+        "value": 202,
+        "unit": "g"
+      },
+      "expect": "200 g"
+    },
+    {
+      "id": "metric-large",
+      "args": {
+        "value": 953.592,
+        "unit": "g"
+      },
+      "expect": "955 g"
+    },
+    {
+      "id": "ml-above-the-boundary",
+      "args": {
+        "value": 237,
+        "unit": "ml"
+      },
+      "expect": "235 ml"
+    },
+    {
+      "id": "eighth",
+      "args": {
+        "value": 0.125,
+        "unit": "cup"
+      },
+      "expect": "⅛ cup"
+    },
+    {
+      "id": "quarter",
+      "args": {
+        "value": 0.25,
+        "unit": "cup"
+      },
+      "expect": "¼ cup"
+    },
+    {
+      "id": "third",
+      "args": {
+        "value": 0.3333333333333333,
+        "unit": "cup"
+      },
+      "expect": "⅓ cup"
+    },
+    {
+      "id": "three-eighths",
+      "args": {
+        "value": 0.375,
+        "unit": "cup"
+      },
+      "expect": "⅜ cup"
+    },
+    {
+      "id": "half",
+      "args": {
+        "value": 0.5,
+        "unit": "tbsp"
+      },
+      "expect": "½ tbsp"
+    },
+    {
+      "id": "five-eighths",
+      "args": {
+        "value": 0.625,
+        "unit": "cup"
+      },
+      "expect": "⅝ cup"
+    },
+    {
+      "id": "two-thirds",
+      "args": {
+        "value": 0.6666666666666666,
+        "unit": "cup"
+      },
+      "expect": "⅔ cup"
+    },
+    {
+      "id": "three-quarters",
+      "args": {
+        "value": 0.75,
+        "unit": "cup"
+      },
+      "expect": "¾ cup"
+    },
+    {
+      "id": "seven-eighths",
+      "args": {
+        "value": 0.875,
+        "unit": "cup"
+      },
+      "expect": "⅞ cup"
+    },
+    {
+      "id": "whole-number-keeps-no-fraction",
+      "args": {
+        "value": 2,
+        "unit": "cup"
+      },
+      "expect": "2 cup"
+    },
+    {
+      "id": "mixed-number",
+      "args": {
+        "value": 1.125,
+        "unit": "cup"
+      },
+      "expect": "1 ⅛ cup"
+    },
+    {
+      "id": "mixed-number-two-and-a-half",
+      "args": {
+        "value": 2.5,
+        "unit": "tsp"
+      },
+      "expect": "2 ½ tsp"
+    },
+    {
+      "id": "countable-has-no-unit",
+      "args": {
+        "value": 3,
+        "unit": ""
+      },
+      "expect": "3"
+    },
+    {
+      "id": "countable-fraction",
+      "args": {
+        "value": 1.5,
+        "unit": ""
+      },
+      "expect": "1 ½"
+    },
+    {
+      "id": "nearest-fraction-rounds",
+      "args": {
+        "value": 0.24,
+        "unit": "cup"
+      },
+      "expect": "¼ cup"
+    },
+    {
+      "id": "nearest-fraction-rounds-up",
+      "args": {
+        "value": 0.76,
+        "unit": "cup"
+      },
+      "expect": "¾ cup"
+    },
+    {
+      "id": "tiny-amount-does-not-vanish",
+      "args": {
+        "value": 0.05,
+        "unit": "tsp"
+      },
+      "expect": "pinch"
+    },
+    {
+      "id": "lb-uses-fractions-not-decimals",
+      "args": {
+        "value": 2.25,
+        "unit": "lb"
+      },
+      "expect": "2 ¼ lb"
+    },
+    {
+      "id": "oz-uses-fractions",
+      "args": {
+        "value": 1.75,
+        "unit": "oz"
+      },
+      "expect": "1 ¾ oz"
+    }
+  ]
+}

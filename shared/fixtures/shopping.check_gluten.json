@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "function": "check_gluten",
+  "note": "GF is load-bearing (CLAUDE.md §1). A missing term here is a bad week.",
+  "cases": [
+    {
+      "id": "paprika-hides-gluten",
+      "args": {
+        "name": "sweet Hungarian paprika (certified GF)"
+      },
+      "expect": true
+    },
+    {
+      "id": "broth-hides-gluten",
+      "args": {
+        "name": "beef broth"
+      },
+      "expect": true
+    },
+    {
+      "id": "stock-hides-gluten",
+      "args": {
+        "name": "chicken stock"
+      },
+      "expect": true
+    },
+    {
+      "id": "bouillon-hides-gluten",
+      "args": {
+        "name": "chicken bouillon"
+      },
+      "expect": true
+    },
+    {
+      "id": "tomato-paste-hides-gluten",
+      "args": {
+        "name": "tomato paste"
+      },
+      "expect": true
+    },
+    {
+      "id": "soy-sauce-hides-gluten",
+      "args": {
+        "name": "soy sauce"
+      },
+      "expect": true
+    },
+    {
+      "id": "tamari-hides-gluten",
+      "args": {
+        "name": "GF tamari"
+      },
+      "expect": true
+    },
+    {
+      "id": "worcestershire-hides-gluten",
+      "args": {
+        "name": "Worcestershire sauce"
+      },
+      "expect": true
+    },
+    {
+      "id": "hoisin-hides-gluten",
+      "args": {
+        "name": "hoisin sauce"
+      },
+      "expect": true
+    },
+    {
+      "id": "oyster-sauce-hides-gluten",
+      "args": {
+        "name": "oyster sauce"
+      },
+      "expect": true
+    },
+    {
+      "id": "miso-hides-gluten",
+      "args": {
+        "name": "white miso"
+      },
+      "expect": true
+    },
+    {
+      "id": "malt-hides-gluten",
+      "args": {
+        "name": "malt vinegar"
+      },
+      "expect": true
+    },
+    {
+      "id": "vinegar-hides-gluten",
+      "args": {
+        "name": "red wine vinegar"
+      },
+      "expect": true
+    },
+    {
+      "id": "mustard-hides-gluten",
+      "args": {
+        "name": "Dijon mustard"
+      },
+      "expect": true
+    },
+    {
+      "id": "curry-powder-hides-gluten",
+      "args": {
+        "name": "curry powder"
+      },
+      "expect": true
+    },
+    {
+      "id": "spice-blend-hides-gluten",
+      "args": {
+        "name": "cajun spice blend"
+      },
+      "expect": true
+    },
+    {
+      "id": "seasoning-hides-gluten",
+      "args": {
+        "name": "italian seasoning"
+      },
+      "expect": true
+    },
+    {
+      "id": "gravy-hides-gluten",
+      "args": {
+        "name": "gravy granules"
+      },
+      "expect": true
+    },
+    {
+      "id": "sausage-hides-gluten",
+      "args": {
+        "name": "italian sausage"
+      },
+      "expect": true
+    },
+    {
+      "id": "bacon-hides-gluten",
+      "args": {
+        "name": "smoked bacon"
+      },
+      "expect": true
+    },
+    {
+      "id": "imitation-crab-hides-gluten",
+      "args": {
+        "name": "imitation crab"
+      },
+      "expect": true
+    },
+    {
+      "id": "surimi-hides-gluten",
+      "args": {
+        "name": "surimi sticks"
+      },
+      "expect": true
+    },
+    {
+      "id": "oats-hide-gluten",
+      "args": {
+        "name": "rolled oats"
+      },
+      "expect": true
+    },
+    {
+      "id": "onions-are-safe",
+      "args": {
+        "name": "yellow onions"
+      },
+      "expect": false
+    },
+    {
+      "id": "carrots-are-safe",
+      "args": {
+        "name": "carrots"
+      },
+      "expect": false
+    },
+    {
+      "id": "heavy-cream-is-safe",
+      "args": {
+        "name": "heavy cream"
+      },
+      "expect": false
+    },
+    {
+      "id": "butter-is-safe",
+      "args": {
+        "name": "unsalted butter"
+      },
+      "expect": false
+    },
+    {
+      "id": "garlic-is-safe",
+      "args": {
+        "name": "garlic cloves"
+      },
+      "expect": false
+    }
+  ]
+}

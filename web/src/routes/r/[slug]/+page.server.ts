@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { fail } from '@sveltejs/kit';
-import { getCookSessions, getRecipe, getVersions } from '$lib/api';
+import { addRecipeToShopping, getCookSessions, getRecipe, getVersions } from '$lib/api';
 import type { Actions, PageServerLoad } from './$types';
 
 const API_URL = env.API_URL ?? 'http://localhost:8000';
@@ -26,7 +26,8 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
   ]);
   return {
     recipe,
-    versions,
+    // API order is oldest-first (the iOS contract); the switcher shows newest first
+    versions: [...versions].sort((a, b) => b.version - a.version),
     lastCooked: sessions[0] ?? null,
     annotated: Boolean(annotations.annotated),
     annotations: (annotations.annotations ?? []) as Annotation[]
@@ -34,6 +35,14 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 };
 
 export const actions: Actions = {
+  // A write, so the bearer token stays server-side — the same rule the editor follows.
+  addToList: async ({ fetch, params, request }) => {
+    const data = await request.formData();
+    const target = Number(data.get('target')) || null;
+    await addRecipeToShopping(fetch, params.slug, target);
+    return { added: true };
+  },
+
   illuminate: async ({ fetch, params }) => {
     const res = await fetch(
       `${API_URL}/api/v1/recipes/${encodeURIComponent(params.slug)}/annotate`,

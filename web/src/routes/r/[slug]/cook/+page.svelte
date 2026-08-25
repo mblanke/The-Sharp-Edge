@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { chime, createCountdown, formatDuration, matchIngredients, type Countdown } from '$lib/cook';
-  import { listen, parseCommand, speak, type VoiceListener } from '$lib/voice';
+  import { listen, parseCommand, speak, type VoiceListener } from '$lib/voice-control';
   import { keepAwake, type WakeLockHandle } from '$lib/wakelock';
 
   let { data } = $props();

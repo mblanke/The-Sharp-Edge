@@ -1,6 +1,6 @@
 from app.models.annotation import RecipeAnnotation
 from app.models.chat import Conversation, Message
-from app.models.plan import CookSession, MealPlan, ShoppingItem
+from app.models.plan import CookSession, MealPlan
 from app.models.recipe import (
     NotebookPage,
     Recipe,
@@ -9,6 +9,7 @@ from app.models.recipe import (
     Redirect,
     Tag,
 )
+from app.models.shopping import ShoppingItem
 
 __all__ = [
     "Recipe",

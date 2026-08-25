@@ -25,10 +25,20 @@ services:
         condition: service_healthy
     volumes:
       - ./seed:/seed:ro
+      # Read-only view of the cookbook shelf so /library can list what Atlas has
+      # ingested. Optional — LIBRARY_DIR empty just yields an empty book list.
+      - ${LIBRARY_HOST_DIR:-/mnt/media/References/Cooking}:/mnt/references/Cooking:ro
     ports:
       - "8010:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      # rag-api (:8099) and llm-router (:4000) live in the Atlas ai-stack. Reaching
+      # them via the host's Tailscale IP times out from inside a container — the
+      # bridge has no route back to tailscale0 — so join their network and address
+      # them by container name, as CLAUDE.md §9 anticipates.
+      - ai-stack
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   web:
@@ -41,6 +51,13 @@ services:
       - api
     ports:
       - "3010:3000"
+
+networks:
+  default:
+  # Created by the Atlas ai-stack; not managed here.
+  ai-stack:
+    external: true
+    name: ${AI_STACK_NETWORK:-ai-stack_ai}
 
 volumes:
   pgdata:

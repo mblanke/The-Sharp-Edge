@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
+<title>The Sharp Edge — palette options</title>
+
+<style>
+  :root {
+    --page-bg: #f7f6f3;
+    --page-card: #ffffff;
+    --page-ink: #1b1c20;
+    --page-faint: #63656d;
+    --page-rule: #dedcd6;
+    --page-accent: #6b4f2a;
+
+    --display: 'Iowan Old Style', 'Hoefler Text', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+    --body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #15161a;
+      --page-card: #1d1f24;
+      --page-ink: #e7e6e2;
+      --page-faint: #9b9ca3;
+      --page-rule: #32343a;
+      --page-accent: #c9a97a;
+    }
+  }
+  :root[data-theme='dark'] {
+    --page-bg: #15161a;
+    --page-card: #1d1f24;
+    --page-ink: #e7e6e2;
+    --page-faint: #9b9ca3;
+    --page-rule: #32343a;
+    --page-accent: #c9a97a;
+  }
+  :root[data-theme='light'] {
+    --page-bg: #f7f6f3;
+    --page-card: #ffffff;
+    --page-ink: #1b1c20;
+    --page-faint: #63656d;
+    --page-rule: #dedcd6;
+    --page-accent: #6b4f2a;
+  }
+
+  body {
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: var(--body);
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 20px 72px;
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; }
+
+  /* ---- page header ---- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 56px 0 20px;
+    border-bottom: 1px solid var(--page-rule);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--page-accent);
+    margin: 0;
+  }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(28px, 4.6vw, 42px);
+    line-height: 1.12;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .lede {
+    max-width: 62ch;
+    font-size: 16px;
+    color: var(--page-faint);
+    margin: 0;
+  }
+
+  .note {
+    max-width: 68ch;
+    font-size: 14px;
+    color: var(--page-faint);
+    margin: 18px 0 0;
+  }
+  .note strong { color: var(--page-ink); font-weight: 600; }
+
+  /* ---- palette grid ---- */
+  .options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding-top: 36px;
+  }
+  @media (min-width: 1080px) {
+    .options { grid-template-columns: repeat(3, 1fr); gap: 26px; }
+  }
+
+  .option {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--page-card);
+    border: 1px solid var(--page-rule);
+    border-radius: 4px;
+    padding: 22px;
+  }
+
+  .option-head { display: flex; flex-direction: column; gap: 6px; }
+  .option-name {
+    font-family: var(--display);
+    font-size: 23px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .option-why {
+    font-size: 14px;
+    color: var(--page-faint);
+    margin: 0;
+  }
+
+  /* ---- token strip ---- */
+  .tokens {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--page-rule);
+    border: 1px solid var(--page-rule);
+  }
+  .token {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+    min-height: 76px;
+    padding: 8px 8px 7px;
+  }
+  .token-name {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    opacity: 0.9;
+  }
+  .token-hex {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- the app mock: identical markup in all three, only vars differ ---- */
+  .mock {
+    border: 1px solid var(--page-rule);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 18px 16px 20px;
+    font-size: 15px;
+    color-scheme: light;
+  }
+  .mock .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+  }
+  .mock h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 25px;
+    line-height: 1.14;
+    margin: 4px 0 0;
+    text-wrap: balance;
+  }
+  .gf {
+    display: inline-block;
+    vertical-align: middle;
+    transform: translateY(-3px);
+    margin-left: 7px;
+    background: var(--primary);
+    color: var(--off-white);
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border-radius: 999px;
+    padding: 4px 9px;
+  }
+  .mock .meta {
+    font-size: 13px;
+    color: var(--faint);
+    margin: 5px 0 0;
+  }
+
+  .scaler {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary-deep);
+    color: var(--off-white);
+    border-radius: 15px;
+    padding: 10px 13px;
+    margin-top: 15px;
+  }
+  .scaler .lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    opacity: 0.8;
+  }
+  .step-btn {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--btn-ghost);
+    color: var(--off-white);
+    font-size: 18px;
+    line-height: 1;
+    cursor: default;
+  }
+  .scaler .n {
+    font-family: var(--display);
+    font-size: 22px;
+    min-width: 2ch;
+    text-align: center;
+  }
+  .scaler .unit { font-size: 12px; opacity: 0.8; }
+  .base-pill {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border: 1px solid var(--btn-outline);
+    color: var(--off-white);
+    border-radius: 999px;
+    padding: 6px 10px;
+  }
+
+  .sec {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--primary);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 4px;
+    margin: 20px 0 0;
+  }
+
+  .ings { list-style: none; margin: 0; padding: 0; }
+  .ings li {
+    display: flex;
+    align-items: baseline;
+    gap: 11px;
+    border-bottom: 1px dashed var(--line);
+    padding: 7px 0;
+    font-size: 14.5px;
+  }
+  .qty {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 13.5px;
+    color: var(--primary-deep);
+    min-width: 5.5ch;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: st; }
+  .steps li {
+    position: relative;
+    padding: 7px 0 7px 36px;
+    font-size: 14.5px;
+  }
+  .steps .num {
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 25px;
+    height: 25px;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .notecard {
+    list-style: none;
+    margin: 9px 0 0;
+    padding: 13px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+  }
+  .notecard li {
+    font-size: 13px;
+    color: var(--faint);
+    padding: 3px 0;
+  }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-radius: 999px;
+    padding: 10px 15px;
+  }
+  .pill.solid { background: var(--primary-deep); color: var(--off-white); }
+  .pill.ghost { border: 1px solid var(--accent); color: var(--accent); }
+
+  /* ---- contrast readout ---- */
+  .ratios { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .ratios li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--page-faint);
+    border-bottom: 1px dotted var(--page-rule);
+    padding-bottom: 3px;
+  }
+  .ratios b {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--page-ink);
+    font-weight: 600;
+  }
+  .ratios-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--page-faint);
+    margin: 4px 0 0;
+  }
+
+  /* ---- closing ---- */
+  .closing {
+    margin-top: 44px;
+    padding-top: 26px;
+    border-top: 1px solid var(--page-rule);
+    max-width: 72ch;
+  }
+  .closing h2 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  .closing p { font-size: 15px; color: var(--page-faint); margin: 0 0 12px; }
+  .closing code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: color-mix(in srgb, var(--page-ink) 8%, transparent);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">The Sharp Edge · theme options</p>
+    <h1>Three ways to read “professional French kitchen”</h1>
+    <p class="lede">
+      Each column is the same recipe screen — Celeriac Purée, real content from the app —
+      rendered through a different palette. The markup is identical in all three; only the
+      nine design tokens change. That is exactly how the real switch works.
+    </p>
+  </header>
+
+  <p class="note">
+    <strong>Pick one and I'll build it.</strong> Light theme only, as agreed. Type is
+    approximated here with system faces — the app's own Fraunces / Work Sans / Spline Sans Mono
+    can't load inside this preview, so judge the colour, not the letterforms.
+  </p>
+
+  <div class="options">
+
+    <!-- ============ A. BRASSERIE ============ -->
+    <section
+      class="option"
+      style="
+        --paper:#f3f0e7; --card:#fbf9f3; --ink:#191512; --faint:#6d6459;
+        --primary:#7d2231; --primary-deep:#57121f; --accent:#7f611e;
+        --line:#ddd7c8; --off-white:#f8f4ea;
+        --btn-ghost:rgba(248,244,234,.16); --btn-outline:rgba(248,244,234,.45);
+      "
+    >
+      <div class="option-head">
+        <h2 class="option-name">A · Brasserie</h2>
+        <p class="option-why">
+          Oxblood banquette leather, aged brass rail, menu printed on bone stock. Warm and
+          classic — the closest in temperature to what you have now, but dressed for service.
+        </p>
+      </div>
+
+      <div class="tokens">
+        <div class="token" style="background:#f3f0e7;color:#191512">
+          <span class="token-name">--paper</span><span class="token-hex">#f3f0e7</span>
+        </div>
+        <div class="token" style="background:#fbf9f3;color:#191512">
+          <span class="token-name">--card</span><span class="token-hex">#fbf9f3</span>
+        </div>
+        <div class="token" style="background:#ddd7c8;color:#191512">
+          <span class="token-name">--line</span><span class="token-hex">#ddd7c8</span>
+        </div>
+        <div class="token" style="background:#7d2231;color:#f8f4ea">
+          <span class="token-name">--primary</span><span class="token-hex">#7d2231</span>
+        </div>
+        <div class="token" style="background:#57121f;color:#f8f4ea">
+          <span class="token-name">--primary-deep</span><span class="token-hex">#57121f</span>
+        </div>
+        <div class="token" style="background:#7f611e;color:#f8f4ea">
+          <span class="token-name">--accent</span><span class="token-hex">#7f611e</span>
+        </div>
+        <div class="token" style="background:#191512;color:#f8f4ea">
+          <span class="token-name">--ink</span><span class="token-hex">#191512</span>
+        </div>
+        <div class="token" style="background:#6d6459;color:#f8f4ea">
+          <span class="token-name">--faint</span><span class="token-hex">#6d6459</span>
+        </div>
+        <div class="token" style="background:#f8f4ea;color:#191512">
+          <span class="token-name">--off-white</span><span class="token-hex">#f8f4ea</span>
+        </div>
+      </div>
+
+      <div class="mock">
+        <div class="kicker">Side Dishes</div>
+        <h3>Celeriac Purée with Infused Milk &amp; Cream<span class="gf">GF</span></h3>
+        <p class="meta">Serves 4 · the milk and cream steep with garlic, thyme and bay</p>
+
+        <div class="scaler">
+          <span class="lbl">Scale</span>
+          <span class="step-btn">−</span>
+          <span class="n">6</span>
+          <span class="step-btn">+</span>
+          <span class="unit">servings</span>
+          <span class="base-pill">base 4</span>
+        </div>
+
+        <h4 class="sec">Ingredients</h4>
+        <ul class="ings">
+          <li><span class="qty">1.35 kg</span><span>celeriac, peeled, 2 cm cubes</span></li>
+          <li><span class="qty">750 ml</span><span>whole milk</span></li>
+          <li><span class="qty">180 ml</span><span>heavy cream</span></li>
+          <li><span class="qty">75 g</span><span>cold unsalted butter</span></li>
+          <li><span class="qty">—</span><span>pinch of freshly grated nutmeg</span></li>
+        </ul>
+
+        <h4 class="sec">Method</h4>
+        <ol class="steps">
+          <li><span class="num">1</span><strong>Infuse:</strong> warm the milk and cream with garlic, thyme and bay to a bare simmer. Never a hard boil.</li>
+          <li><span class="num">2</span><strong>Simmer:</strong> add the celeriac, aromatics still in, until completely fork-tender.</li>
+        </ol>
+
+        <h4 class="sec">Notes</h4>
+        <ul class="notecard">
+          <li>— Cooking it in the infused milk rather than water is the whole trick.</li>
+        </ul>
+
+        <div class="actions">
+          <span class="pill solid">Ask about this recipe</span>
+          <span class="pill ghost">Edit</span>
+        </div>
+      </div>
+
+      <p class="ratios-head">Contrast on ground</p>
+      <ul class="ratios">
+        <li><span>accent text</span><b>5.1 : 1</b></li>
+        <li><span>primary text</span><b>8.6 : 1</b></li>
+        <li><span>faint text</span><b>5.1 : 1</b></li>
+        <li><span>off-white on deep</span><b>12.5 : 1</b></li>
+      </ul>
+    </section>
+
+    <!-- ============ B. BATTERIE ============ -->
+    <section
+      class="option"
+      style="
+        --paper:#eceef0; --card:#fbfcfd; --ink:#15181b; --faint:#5f6870;
+        --primary:#3d4a53; --primary-deep:#26313a; --accent:#9c4f1c;
+        --line:#ccd2d8; --off-white:#f3f6f8;
+        --btn-ghost:rgba(243,246,248,.14); --btn-outline:rgba(243,246,248,.42);
+      "
+    >
+      <div class="option-head">
+        <h2 class="option-name">B · Batterie</h2>
+        <p class="option-why">
+          The working line, not the dining room: zinc counter, white enamel, and copper as the
+          only warm thing in the room. Cool, crisp, utilitarian — reads as equipment.
+        </p>
+      </div>
+
+      <div class="tokens">
+        <div class="token" style="background:#eceef0;color:#15181b">
+          <span class="token-name">--paper</span><span class="token-hex">#eceef0</span>
+        </div>
+        <div class="token" style="background:#fbfcfd;color:#15181b">
+          <span class="token-name">--card</span><span class="token-hex">#fbfcfd</span>
+        </div>
+        <div class="token" style="background:#ccd2d8;color:#15181b">
+          <span class="token-name">--line</span><span class="token-hex">#ccd2d8</span>
+        </div>
+        <div class="token" style="background:#3d4a53;color:#f3f6f8">
+          <span class="token-name">--primary</span><span class="token-hex">#3d4a53</span>
+        </div>
+        <div class="token" style="background:#26313a;color:#f3f6f8">
+          <span class="token-name">--primary-deep</span><span class="token-hex">#26313a</span>
+        </div>
+        <div class="token" style="background:#9c4f1c;color:#f3f6f8">
+          <span class="token-name">--accent</span><span class="token-hex">#9c4f1c</span>
+        </div>
+        <div class="token" style="background:#15181b;color:#f3f6f8">
+          <span class="token-name">--ink</span><span class="token-hex">#15181b</span>
+        </div>
+        <div class="token" style="background:#5f6870;color:#f3f6f8">
+          <span class="token-name">--faint</span><span class="token-hex">#5f6870</span>
+        </div>
+        <div class="token" style="background:#f3f6f8;color:#15181b">
+          <span class="token-name">--off-white</span><span class="token-hex">#f3f6f8</span>
+        </div>
+      </div>
+
+      <div class="mock">
+        <div class="kicker">Side Dishes</div>
+        <h3>Celeriac Purée with Infused Milk &amp; Cream<span class="gf">GF</span></h3>
+        <p class="meta">Serves 4 · the milk and cream steep with garlic, thyme and bay</p>
+
+        <div class="scaler">
+          <span class="lbl">Scale</span>
+          <span class="step-btn">−</span>
+          <span class="n">6</span>
+          <span class="step-btn">+</span>
+          <span class="unit">servings</span>
+          <span class="base-pill">base 4</span>
+        </div>
+
+        <h4 class="sec">Ingredients</h4>
+        <ul class="ings">
+          <li><span class="qty">1.35 kg</span><span>celeriac, peeled, 2 cm cubes</span></li>
+          <li><span class="qty">750 ml</span><span>whole milk</span></li>
+          <li><span class="qty">180 ml</span><span>heavy cream</span></li>
+          <li><span class="qty">75 g</span><span>cold unsalted butter</span></li>
+          <li><span class="qty">—</span><span>pinch of freshly grated nutmeg</span></li>
+        </ul>
+
+        <h4 class="sec">Method</h4>
+        <ol class="steps">
+          <li><span class="num">1</span><strong>Infuse:</strong> warm the milk and cream with garlic, thyme and bay to a bare simmer. Never a hard boil.</li>
+          <li><span class="num">2</span><strong>Simmer:</strong> add the celeriac, aromatics still in, until completely fork-tender.</li>
+        </ol>
+
+        <h4 class="sec">Notes</h4>
+        <ul class="notecard">
+          <li>— Cooking it in the infused milk rather than water is the whole trick.</li>
+        </ul>
+
+        <div class="actions">
+          <span class="pill solid">Ask about this recipe</span>
+          <span class="pill ghost">Edit</span>
+        </div>
+      </div>
+
+      <p class="ratios-head">Contrast on ground</p>
+      <ul class="ratios">
+        <li><span>accent text</span><b>5.1 : 1</b></li>
+        <li><span>primary text</span><b>7.8 : 1</b></li>
+        <li><span>faint text</span><b>4.9 : 1</b></li>
+        <li><span>off-white on deep</span><b>11.8 : 1</b></li>
+      </ul>
+    </section>
+
+    <!-- ============ C. FAÏENCE ============ -->
+    <section
+      class="option"
+      style="
+        --paper:#f4f3ee; --card:#fdfcf8; --ink:#14161c; --faint:#666a72;
+        --primary:#1f4a8f; --primary-deep:#14315f; --accent:#8a5e17;
+        --line:#d9d7cd; --off-white:#f6f5ef;
+        --btn-ghost:rgba(246,245,239,.16); --btn-outline:rgba(246,245,239,.45);
+      "
+    >
+      <div class="option-head">
+        <h2 class="option-name">C · Faïence</h2>
+        <p class="option-why">
+          Blue-and-white kitchen tile with an ochre mustard accent. The boldest of the three
+          and the furthest from the current app — cool primary, warm accent, high contrast.
+        </p>
+      </div>
+
+      <div class="tokens">
+        <div class="token" style="background:#f4f3ee;color:#14161c">
+          <span class="token-name">--paper</span><span class="token-hex">#f4f3ee</span>
+        </div>
+        <div class="token" style="background:#fdfcf8;color:#14161c">
+          <span class="token-name">--card</span><span class="token-hex">#fdfcf8</span>
+        </div>
+        <div class="token" style="background:#d9d7cd;color:#14161c">
+          <span class="token-name">--line</span><span class="token-hex">#d9d7cd</span>
+        </div>
+        <div class="token" style="background:#1f4a8f;color:#f6f5ef">
+          <span class="token-name">--primary</span><span class="token-hex">#1f4a8f</span>
+        </div>
+        <div class="token" style="background:#14315f;color:#f6f5ef">
+          <span class="token-name">--primary-deep</span><span class="token-hex">#14315f</span>
+        </div>
+        <div class="token" style="background:#8a5e17;color:#f6f5ef">
+          <span class="token-name">--accent</span><span class="token-hex">#8a5e17</span>
+        </div>
+        <div class="token" style="background:#14161c;color:#f6f5ef">
+          <span class="token-name">--ink</span><span class="token-hex">#14161c</span>
+        </div>
+        <div class="token" style="background:#666a72;color:#f6f5ef">
+          <span class="token-name">--faint</span><span class="token-hex">#666a72</span>
+        </div>
+        <div class="token" style="background:#f6f5ef;color:#14161c">
+          <span class="token-name">--off-white</span><span class="token-hex">#f6f5ef</span>
+        </div>
+      </div>
+
+      <div class="mock">
+        <div class="kicker">Side Dishes</div>
+        <h3>Celeriac Purée with Infused Milk &amp; Cream<span class="gf">GF</span></h3>
+        <p class="meta">Serves 4 · the milk and cream steep with garlic, thyme and bay</p>
+
+        <div class="scaler">
+          <span class="lbl">Scale</span>
+          <span class="step-btn">−</span>
+          <span class="n">6</span>
+          <span class="step-btn">+</span>
+          <span class="unit">servings</span>
+          <span class="base-pill">base 4</span>
+        </div>
+
+        <h4 class="sec">Ingredients</h4>
+        <ul class="ings">
+          <li><span class="qty">1.35 kg</span><span>celeriac, peeled, 2 cm cubes</span></li>
+          <li><span class="qty">750 ml</span><span>whole milk</span></li>
+          <li><span class="qty">180 ml</span><span>heavy cream</span></li>
+          <li><span class="qty">75 g</span><span>cold unsalted butter</span></li>
+          <li><span class="qty">—</span><span>pinch of freshly grated nutmeg</span></li>
+        </ul>
+
+        <h4 class="sec">Method</h4>
+        <ol class="steps">
+          <li><span class="num">1</span><strong>Infuse:</strong> warm the milk and cream with garlic, thyme and bay to a bare simmer. Never a hard boil.</li>
+          <li><span class="num">2</span><strong>Simmer:</strong> add the celeriac, aromatics still in, until completely fork-tender.</li>
+        </ol>
+
+        <h4 class="sec">Notes</h4>
+        <ul class="notecard">
+          <li>— Cooking it in the infused milk rather than water is the whole trick.</li>
+        </ul>
+
+        <div class="actions">
+          <span class="pill solid">Ask about this recipe</span>
+          <span class="pill ghost">Edit</span>
+        </div>
+      </div>
+
+      <p class="ratios-head">Contrast on ground</p>
+      <ul class="ratios">
+        <li><span>accent text</span><b>5.1 : 1</b></li>
+        <li><span>primary text</span><b>7.8 : 1</b></li>
+        <li><span>faint text</span><b>4.9 : 1</b></li>
+        <li><span>off-white on deep</span><b>13.9 : 1</b></li>
+      </ul>
+    </section>
+
+  </div>
+
+  <section class="closing">
+    <h2>What actually changes in the code</h2>
+    <p>
+      Whichever you pick, the work is the same shape. Web has nine variables in one 66-line file,
+      <code>web/src/lib/tokens.css</code>, driving 165 usages across six screens. iOS mirrors them in
+      <code>DesignSystem/Theme.swift</code>, which is impressively disciplined — those nine hex values
+      are the only colour literals in all 37 Swift files.
+    </p>
+    <p>
+      Two bits of cleanup ride along. Sixteen hardcoded colours in the Svelte routes currently dodge the
+      tokens — <code>#F4F3EC</code> appears nine times, there are three translucent white chips on the
+      scale bar, and the editor has eight literal <code>bg-white</code> inputs. Those become tokens, which
+      is what makes a future dark mode a small job rather than a rewrite. And <code>--green</code> /
+      <code>--green-deep</code> get renamed to <code>--primary</code> / <code>--primary-deep</code>, so the
+      names stop lying about what colour they hold.
+    </p>
+    <p>
+      Beyond the two token files: the PWA <code>theme_color</code> in the manifest and
+      <code>app.html</code>, the four-colour <code>logo.svg</code>, the raster app icons, the iOS
+      <code>AccentColor.colorset</code>, the QR fill in <code>api/app/routers/recipes.py</code>, and the
+      palette spec in CLAUDE.md §7.
+    </p>
+  </section>
+</div>
+
+</body>
+</html>

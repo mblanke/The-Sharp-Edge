@@ -9,15 +9,11 @@ from sqlalchemy.orm import selectinload
 from app.auth import require_token
 from app.db import get_session
 from app.models import MealPlan, Recipe, ShoppingItem
-from app.schemas.plan import (
-    PlanEntryCreate,
-    PlanEntryOut,
-    ShoppingCheckUpdate,
-    ShoppingItemOut,
-    WeekPlanOut,
-)
+from app.routers.shopping import MAX_ITEMS, _all, _out, _to_line
+from app.schemas.plan import PlanEntryCreate, PlanEntryOut, WeekPlanOut
+from app.schemas.shopping import ShoppingListOut
 from app.services.scaling import scale_ingredients
-from app.services.shopping import merge_shopping
+from app.services.shopping import ShoppingLine, merge_lines
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
@@ -50,22 +46,7 @@ async def _week_payload(session: AsyncSession, week: date) -> WeekPlanOut:
         .scalars()
         .all()
     )
-    shopping = (
-        (
-            await session.execute(
-                select(ShoppingItem)
-                .where(ShoppingItem.plan_week == week)
-                .order_by(ShoppingItem.name)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    return WeekPlanOut(
-        week=week,
-        entries=[_entry_out(e) for e in entries],
-        shopping=[ShoppingItemOut.model_validate(s) for s in shopping],
-    )
+    return WeekPlanOut(week=week, entries=[_entry_out(e) for e in entries])
 
 
 @router.get("", response_model=WeekPlanOut)
@@ -117,13 +98,17 @@ async def remove_entry(entry_id: UUID, session: AsyncSession = Depends(get_sessi
     return await _week_payload(session, week)
 
 
-@router.post("/shopping-list", response_model=WeekPlanOut, dependencies=[Depends(require_token)])
-async def generate_shopping_list(
+@router.post(
+    "/shopping-list", response_model=ShoppingListOut, dependencies=[Depends(require_token)]
+)
+async def push_week_to_shopping(
     week: date = Query(default_factory=date.today),
     session: AsyncSession = Depends(get_session),
 ):
-    """Regenerate the week's list from its planned recipes — canonical server
-    scaling (§8), duplicates merged. Existing checkmarks are discarded."""
+    """Push the week's planned recipes into the running shopping list — the one
+    list the iOS app and /shopping share. Adding merges into existing lines
+    (never replaces them) and checked state survives, per the merge rules in
+    services/shopping.py. To-taste rows never join the list."""
     week = monday_of(week)
     entries = (
         (
@@ -136,43 +121,40 @@ async def generate_shopping_list(
         .scalars()
         .all()
     )
-    rows: list[dict] = []
+    incoming: list[ShoppingLine] = []
     for entry in entries:
         recipe = entry.recipe
         current = next((v for v in recipe.versions if v.is_current), None)
-        if current is None:
+        if current is None or recipe.noscale:
             continue
-        target = entry.scaled_yield if not recipe.noscale else recipe.base_yield
-        for ing in scale_ingredients(current.ingredients, recipe.base_yield, target):
-            rows.append({**ing, "recipe_id": recipe.id})
+        target = entry.scaled_yield or recipe.base_yield
+        for row in scale_ingredients(current.ingredients, recipe.base_yield, target):
+            if (row.get("name") or "").strip() and row["scaled_amount"] > 0:
+                incoming.append(
+                    ShoppingLine(
+                        name=row["name"],
+                        amount=row["scaled_amount"],
+                        unit=row.get("unit", ""),
+                        to_taste=False,
+                        recipes=[recipe.slug],
+                    )
+                )
 
-    await session.execute(delete(ShoppingItem).where(ShoppingItem.plan_week == week))
-    for item in merge_shopping(rows):
+    existing = await _all(session)
+    combined = merge_lines([_to_line(i) for i in existing] + incoming)
+    if len(combined) > MAX_ITEMS:
+        raise HTTPException(400, f"Shopping list would exceed {MAX_ITEMS} items")
+    await session.execute(delete(ShoppingItem))
+    for line in combined:
         session.add(
             ShoppingItem(
-                plan_week=week,
-                name=item["name"],
-                amount=item["amount"],
-                recipe_id=item["recipe_id"],
+                name=line.name,
+                amount=line.amount,
+                unit=line.unit,
+                to_taste=line.to_taste,
+                checked=line.checked,
+                recipes=line.recipes,
             )
         )
     await session.commit()
-    return await _week_payload(session, week)
-
-
-@router.patch(
-    "/shopping-list/{item_id}",
-    response_model=ShoppingItemOut,
-    dependencies=[Depends(require_token)],
-)
-async def check_item(
-    item_id: UUID, payload: ShoppingCheckUpdate, session: AsyncSession = Depends(get_session)
-):
-    item = (
-        await session.execute(select(ShoppingItem).where(ShoppingItem.id == item_id))
-    ).scalar_one_or_none()
-    if item is None:
-        raise HTTPException(404, "No such shopping item")
-    item.checked = payload.checked
-    await session.commit()
-    return ShoppingItemOut.model_validate(item)
+    return ShoppingListOut(items=[_out(i) for i in await _all(session)])

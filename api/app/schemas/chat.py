@@ -25,6 +25,10 @@ class ChunkOut(BaseModel):
     title: str | None = None
     heading: str | None = None
     page: int | None = None
+    #: Last page of the passage when adjacent chunks were merged; equals `page` otherwise.
+    page_end: int | None = None
+    #: How many retrieved chunks this passage is made of (1 = unmerged).
+    chunk_count: int | None = None
     score: float | None = None
     rerank_score: float | None = None
 

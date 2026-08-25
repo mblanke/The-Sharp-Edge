@@ -25,21 +25,7 @@ class PlanEntryOut(BaseModel):
     gf: bool
 
 
-class ShoppingItemOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    name: str
-    amount: str
-    checked: bool
-    recipe_id: UUID | None = None
-
-
 class WeekPlanOut(BaseModel):
     week: date  # Monday
     entries: list[PlanEntryOut]
-    shopping: list[ShoppingItemOut]
-
-
-class ShoppingCheckUpdate(BaseModel):
-    checked: bool
+    # the shopping list lives at /shopping — one running list, shared with iOS

@@ -31,6 +31,18 @@
   color-scheme: dark;
 }
 
+/* Faïence-era aliases — pages written during the French-kitchen re-theme
+   (shopping, new, RecipeForm) resolve to the washi palette through these. */
+:root,
+:root[data-theme='dark'] {
+  --primary: var(--green);
+  --primary-deep: var(--green-deep);
+  --accent: var(--copper);
+  --accent-wash: var(--warn-bg);
+  --ink-accent: var(--green-deep);
+  --off-white: #f4f3ec;
+}
+
 html {
   scroll-behavior: smooth;
 }

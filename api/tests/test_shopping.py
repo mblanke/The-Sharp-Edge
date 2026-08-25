@@ -1,87 +1,180 @@
-"""Merge-table tests for the shopping list (services/shopping.py)."""
+"""Shopping-list merging.
 
-from app.services.shopping import merge_shopping
+The requirement in one line: adding a second recipe must ADD to a line, never
+replace it.
+"""
+
+import pytest
+
+from app.services.shopping import ShoppingLine, as_text, merge_lines, normalise_name
 
 
-def row(name, unit, scaled_amount, recipe_id=None):
-    return {"name": name, "unit": unit, "scaled_amount": scaled_amount, "recipe_id": recipe_id}
+def line(name, amount=0.0, unit="", recipe="r1"):
+    return ShoppingLine(name=name, amount=amount, unit=unit,
+                        to_taste=amount == 0, recipes=[recipe])
 
 
-def test_same_name_and_unit_sum_with_kitchen_fractions():
-    out = merge_shopping([
-        row("garlic cloves, minced", "", 4, "r1"),
-        row("Garlic cloves", "", 2.5, "r2"),
+# ---------------------------------------------------------------- the core rule
+
+def test_same_ingredient_and_unit_adds():
+    out = merge_lines([
+        line("sweet Hungarian paprika", 3, "tbsp", "goulash"),
+        line("sweet Hungarian paprika", 2, "tbsp", "rub"),
     ])
-    assert out == [{"name": "garlic cloves", "amount": "6 ½", "recipe_id": None}]
+    assert len(out) == 1
+    assert out[0].amount == 5
+    assert out[0].unit == "tbsp"
+    assert out[0].recipes == ["goulash", "rub"]
 
 
-def test_metric_sums_follow_rounding_rules():
-    out = merge_shopping([
-        row("beef broth", "ml", 150, "r1"),
-        row("beef broth", "ml", 62.5, "r2"),  # 212.5 ≥ 200 → nearest 5, half up
+def test_preparation_after_a_comma_is_ignored_when_matching():
+    """You buy beef chuck; how it gets cut is not a separate shopping item."""
+    out = merge_lines([
+        line("beef chuck, cut into 1-inch cubes", 2, "lb"),
+        line("beef chuck, trimmed", 1, "lb"),
     ])
-    assert out[0]["amount"] == "215 ml"
+    assert len(out) == 1
+    assert out[0].amount == 3
 
 
-def test_different_units_stay_separate():
-    out = merge_shopping([
-        row("olive oil", "tbsp", 2, "r1"),
-        row("olive oil", "cup", 0.25, "r2"),
+def test_singular_and_plural_merge():
+    out = merge_lines([line("yellow onions, diced", 3), line("yellow onion", 2)])
+    assert len(out) == 1
+    assert out[0].amount == 5
+
+
+def test_plural_stripping_does_not_mangle_real_words():
+    assert normalise_name("asparagus") == "asparagus"
+    assert normalise_name("Swiss chard") == "swiss chard"
+    assert normalise_name("molasses") == "molasses"
+
+
+# ---------------------------------------------------------------- unit families
+
+def test_volume_units_convert_and_add():
+    """1 cup + 2 tbsp is one line, read in cups because the cup is the larger part."""
+    out = merge_lines([line("olive oil", 1, "cup"), line("olive oil", 2, "tbsp")])
+    assert len(out) == 1
+    assert out[0].unit == "cup"
+    assert out[0].amount == pytest.approx(1.125, abs=0.01)
+
+
+def test_smaller_unit_wins_when_it_is_the_larger_amount():
+    out = merge_lines([line("olive oil", 3, "tbsp"), line("olive oil", 1, "tsp")])
+    assert out[0].unit == "tbsp"
+    assert out[0].amount == pytest.approx(3.333, abs=0.01)
+
+
+def test_weight_units_convert_and_add():
+    out = merge_lines([line("butter", 500, "g"), line("butter", 1, "lb")])
+    assert len(out) == 1
+    assert out[0].unit == "g"                       # 500 g > 453 g
+    assert out[0].amount == pytest.approx(953.6, abs=0.5)
+
+
+def test_volume_and_weight_never_combine():
+    """2 cups of stock and 400 g of beef are not 'the same ingredient, more of it'."""
+    out = merge_lines([line("stock", 2, "cup"), line("stock", 400, "g")])
+    assert len(out) == 2
+
+
+def test_countables_add():
+    out = merge_lines([line("limes", 2), line("limes", 3)])
+    assert len(out) == 1
+    assert out[0].amount == 5
+    assert out[0].unit == ""
+
+
+# ---------------------------------------------------------------- to taste
+
+def test_to_taste_items_do_not_gain_a_quantity():
+    out = merge_lines([line("salt", 0), line("salt", 0)])
+    assert len(out) == 1
+    assert out[0].to_taste
+    assert out[0].display == "to taste"
+
+
+def test_a_to_taste_item_is_absorbed_by_a_measured_one():
+    """One recipe wants 1 tsp of pepper, another wants it "to taste" — you buy pepper
+    once, and the measured amount is the more useful of the two. Never the reverse."""
+    out = merge_lines([
+        line("black pepper", 1, "tsp", "goulash"),
+        line("black pepper", 0, "", "salad"),
     ])
-    assert [(o["name"], o["amount"]) for o in out] == [
-        ("olive oil", "2 tbsp"),
-        ("olive oil", "¼ cup"),
-    ]
+    assert len(out) == 1
+    assert not out[0].to_taste
+    assert out[0].amount == 1 and out[0].unit == "tsp"
+    assert set(out[0].recipes) == {"goulash", "salad"}
 
 
-def test_prep_clause_merges_but_different_heads_do_not():
-    out = merge_shopping([
-        row("yellow onions, diced", "", 2, "r1"),
-        row("yellow onions, thinly sliced", "", 1, "r2"),
-        row("red onions, diced", "", 1, "r3"),
+def test_a_to_taste_only_ingredient_stays_a_staple():
+    out = merge_lines([line("flaky salt", 0), line("flaky salt", 0)])
+    assert len(out) == 1 and out[0].to_taste
+
+
+# ---------------------------------------------------------------- rendering
+
+def test_display_uses_kitchen_fractions():
+    out = merge_lines([line("flour", 1, "cup"), line("flour", 2, "tbsp")])
+    assert "⅛" in out[0].display          # 1.125 cup, not 1.125
+    assert "1.125" not in out[0].display
+
+
+def test_metric_display_is_whole_numbers():
+    out = merge_lines([line("milk", 150, "ml"), line("milk", 100, "ml")])
+    assert out[0].display == "250 ml"
+
+
+def test_order_of_first_appearance_is_kept():
+    out = merge_lines([line("onions", 1), line("garlic", 2), line("onions", 1)])
+    assert [ln.name for ln in out] == ["onions", "garlic"]
+
+
+# ---------------------------------------------------------------- gluten
+
+@pytest.mark.parametrize("name", [
+    "sweet Hungarian paprika (certified GF)", "beef broth", "tomato paste",
+    "GF tamari", "Worcestershire sauce", "chicken bouillon",
+])
+def test_hidden_gluten_ingredients_are_flagged(name):
+    assert ShoppingLine(name=name, amount=1, unit="tbsp").check_gluten
+
+
+def test_plain_ingredients_are_not_flagged():
+    for name in ["yellow onions", "carrots", "heavy cream", "butter"]:
+        assert not ShoppingLine(name=name, amount=1).check_gluten
+
+
+# ---------------------------------------------------------------- share text
+
+def test_text_export_is_one_item_per_line():
+    """List apps split pasted text on newlines, so one item per line is the contract."""
+    text = as_text(merge_lines([
+        line("beef chuck, cubed", 2, "lb"),
+        line("beef broth", 3, "cup"),
+    ]))
+    body = [ln for ln in text.splitlines() if ln.strip()]
+    assert "2 lb beef chuck, cubed" in body
+    assert any("beef broth" in ln and "check GF" in ln for ln in body)
+
+
+def test_text_export_can_group_by_aisle():
+    """Headings turn a dump into something you can walk."""
+    from app.services.aisles import aisle_rank, classify_aisle
+    lines = merge_lines([
+        line("beef chuck, cubed", 2, "lb"),
+        line("yellow onions", 3),
+        line("beef broth", 3, "cup"),
     ])
-    assert [(o["name"], o["amount"]) for o in out] == [
-        ("yellow onions", "3"),
-        ("red onions", "1"),
-    ]
+    lines.sort(key=lambda ln: aisle_rank(classify_aisle(ln.name)))
+    text = as_text(lines, group_by=lambda ln: classify_aisle(ln.name))
+    body = [ln for ln in text.splitlines() if ln.strip()]
+    assert "Produce" in body and "Meat & fish" in body and "Pantry" in body
+    # fresh first, cupboard last — the order you actually walk
+    assert body.index("Produce") < body.index("Meat & fish") < body.index("Pantry")
+    assert body.index("Produce") < body.index("3 yellow onions")
 
 
-def test_to_taste_folds_into_measured_line():
-    out = merge_shopping([
-        row("salt", "tsp", 1.5, "r1"),
-        row("salt, to taste", "", 0, "r2"),
-    ])
-    assert out == [{"name": "salt", "amount": "1 ½ tsp", "recipe_id": "r1"}]
-
-
-def test_to_taste_standalone_dedupes():
-    out = merge_shopping([
-        row("black pepper, to taste", "", 0, "r1"),
-        row("black pepper", "", 0, "r2"),
-    ])
-    assert out == [{"name": "black pepper", "amount": "— to taste", "recipe_id": None}]
-
-
-def test_single_recipe_provenance_kept():
-    out = merge_shopping([row("caraway seeds, crushed", "tsp", 1, "r1")])
-    assert out == [{"name": "caraway seeds", "amount": "1 tsp", "recipe_id": "r1"}]
-
-
-def test_fraction_glyphs_never_decimals():
-    out = merge_shopping([
-        row("flour", "cup", 0.75, "r1"),
-        row("butter", "tbsp", 1.5, "r1"),
-    ])
-    for o in out:
-        assert "." not in o["amount"]
-    assert out[0]["amount"] == "¾ cup"
-    assert out[1]["amount"] == "1 ½ tbsp"
-
-
-def test_blank_names_dropped_and_order_stable():
-    out = merge_shopping([
-        row("  ", "", 1, "r1"),
-        row("beef chuck, cubed", "lb", 2, "r1"),
-        row("paprika", "tbsp", 3, "r1"),
-    ])
-    assert [o["name"] for o in out] == ["beef chuck", "paprika"]
+def test_text_export_has_no_gf_flag_on_safe_items():
+    text = as_text(merge_lines([line("carrots", 3)]))
+    assert "check GF" not in text

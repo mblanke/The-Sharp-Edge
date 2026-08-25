@@ -46,6 +46,8 @@
       <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Library</a>
       <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Ask</a>
       <a href="/plan" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Plan</a>
+      <a href="/shopping" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">List</a>
+      <a href="/new" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Add</a>
       <button
         aria-label={dark ? 'Switch to daylight' : 'Switch to evening kitchen mode'}
         class="rounded-full border px-3 py-2"

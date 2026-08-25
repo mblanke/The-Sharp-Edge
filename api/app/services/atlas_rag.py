@@ -11,6 +11,9 @@ import httpx
 from fastapi import HTTPException
 
 from app.config import settings
+from app.services.expand import expand_passages
+from app.services.lexical import hybrid_order
+from app.services.passages import to_passages
 
 
 class RagChunk(dict):
@@ -56,14 +59,22 @@ class AtlasRag:
         self,
         question: str,
         top_k: int | None = None,
+        as_passages: bool = True,
         books: list[str] | None = None,
     ) -> list[dict]:
         """Vector + rerank retrieval, client-side filtered to the Cooking corpus.
 
-        `books`: restrict to source files whose name matches (scope selector).
-        rag-api takes only {question, top_k}, so book scope means a deeper
-        over-fetch then filtering here — DECISIONS.md flags the server-side
-        filter as a future Atlas improvement."""
+        `as_passages` post-processes the raw chunks: index and table-of-contents pages
+        are dropped and adjacent chunks are merged into continuous text (see
+        services/passages.py). Without it, a query like "french onion soup" is topped
+        by the *index entry* for that recipe rather than the recipe, because the index
+        contains the phrase verbatim. Pass False to see the unprocessed ranking.
+
+        `books` restricts results to the named source files (the /ask shelf
+        selector). rag-api takes only {question, top_k}, so book scope means a
+        deeper over-fetch then filtering here — DECISIONS.md flags the
+        server-side filter as a future Atlas improvement.
+        """
         keep = top_k or settings.rag_top_k
         fetch = max(settings.rag_fetch_k, keep)
         if books:
@@ -80,7 +91,19 @@ class AtlasRag:
         scoped = [c for c in chunks if _in_scope(c, settings.rag_source_folder)]
         if books:
             scoped = [c for c in scoped if _in_books(c, books)]
-        return scoped[:keep]
+        if not as_passages:
+            return scoped[:keep]
+
+        # Merge first, rank second. The unit a cook reads is a passage, not a chunk —
+        # ranking chunks and then merging would let four fragments of one recipe occupy
+        # four of the eight result slots.
+        passages = list(to_passages(scoped, keep=len(scoped) or keep))
+        order = hybrid_order(question, passages)
+        ranked = [passages[i] for i in order[:keep]]
+        # Pull the neighbouring chunks for the best few so a result reads as a recipe
+        # rather than a window that starts mid-sentence — and so text-extracted books
+        # recover their page numbers from the markers in those neighbours.
+        return await expand_passages(ranked, self._http())
 
     async def health(self) -> dict:
         try:

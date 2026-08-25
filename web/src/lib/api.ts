@@ -1,7 +1,15 @@
 import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import { problemDetail } from './problem';
-import type { Ingredient, RecipeFull, RecipeUpdate, RecipeCard, RecipeVersion } from './types';
+import type {
+  Ingredient,
+  RecipeCard,
+  RecipeCreate,
+  RecipeFull,
+  RecipeUpdate,
+  RecipeVersion,
+  ShoppingItem
+} from './types';
 
 /** Server-side API client — load functions run in the web container and
  *  reach the api container over the compose network (API_URL). */
@@ -98,18 +106,9 @@ export interface PlanEntry {
   gf: boolean;
 }
 
-export interface ShoppingItem {
-  id: string;
-  name: string;
-  amount: string;
-  checked: boolean;
-  recipe_id: string | null;
-}
-
 export interface WeekPlan {
   week: string; // Monday
   entries: PlanEntry[];
-  shopping: ShoppingItem[];
 }
 
 export const getWeekPlan = (fetchFn: typeof fetch, week?: string) =>
@@ -142,11 +141,66 @@ export const planUpsert = (
 export const planRemove = (fetchFn: typeof fetch, entryId: string) =>
   planWrite<WeekPlan>(fetchFn, 'DELETE', `/plan/${entryId}`);
 
-export const planGenerateList = (fetchFn: typeof fetch, week: string) =>
-  planWrite<WeekPlan>(fetchFn, 'POST', `/plan/shopping-list?week=${week}`);
+/** Push the week's planned recipes into the running shopping list (shared with iOS). */
+export const planPushToShopping = (fetchFn: typeof fetch, week: string) =>
+  planWrite<{ items: ShoppingItem[] }>(fetchFn, 'POST', `/plan/shopping-list?week=${week}`);
 
-export const planCheckItem = (fetchFn: typeof fetch, itemId: string, checked: boolean) =>
-  planWrite<ShoppingItem>(fetchFn, 'PATCH', `/plan/shopping-list/${itemId}`, { checked });
+// ---------------------------------------------------------------- shopping list
+
+export const getShopping = async (fetchFn: typeof fetch) =>
+  (await get<{ items: ShoppingItem[] }>(fetchFn, '/shopping')).items;
+
+/** Plain text for pasting into Notes or AnyList — one item per line, aisle headings. */
+export async function getShoppingText(fetchFn: typeof fetch): Promise<string> {
+  const res = await fetchFn(`${API_URL}/api/v1/shopping/text`);
+  return res.ok ? res.text() : '';
+}
+
+export async function setChecked(fetchFn: typeof fetch, id: string, checked: boolean) {
+  const res = await fetchFn(`${API_URL}/api/v1/shopping/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.API_TOKEN ?? ''}` },
+    body: JSON.stringify({ checked })
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+}
+
+export async function clearShopping(fetchFn: typeof fetch, checkedOnly: boolean) {
+  const res = await fetchFn(`${API_URL}/api/v1/shopping?checked_only=${checkedOnly}`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${env.API_TOKEN ?? ''}` }
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+}
+
+export async function addRecipeToShopping(
+  fetchFn: typeof fetch,
+  slug: string,
+  targetYield: number | null
+) {
+  const res = await fetchFn(`${API_URL}/api/v1/shopping/add`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.API_TOKEN ?? ''}` },
+    body: JSON.stringify({ slug, target_yield: targetYield })
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+}
+
+export async function createRecipe(
+  fetchFn: typeof fetch,
+  payload: RecipeCreate
+): Promise<RecipeFull> {
+  const res = await fetchFn(`${API_URL}/api/v1/recipes`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res.json() as Promise<RecipeFull>;
+}
 
 /** PUT a new version (append-only, CLAUDE.md §6). Bearer token stays server-side;
  *  the browser never sees it — only call this from load/actions, never the client. */

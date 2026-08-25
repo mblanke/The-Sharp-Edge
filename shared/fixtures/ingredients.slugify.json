@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "function": "slugify",
+  "note": "Slugs are the QR contract (CLAUDE.md §5) — generated once, never renamed.",
+  "cases": [
+    {
+      "id": "plain-title",
+      "args": {
+        "title": "Mango Salsa"
+      },
+      "expect": "mango-salsa"
+    },
+    {
+      "id": "romanian-diacritics",
+      "args": {
+        "title": "Vișinată"
+      },
+      "expect": "visinata"
+    },
+    {
+      "id": "parenthetical-year",
+      "args": {
+        "title": "Family Spaghetti Sauce (2009)"
+      },
+      "expect": "family-spaghetti-sauce-2009"
+    },
+    {
+      "id": "ampersand",
+      "args": {
+        "title": "Salt & Pepper Rub"
+      },
+      "expect": "salt-pepper-rub"
+    },
+    {
+      "id": "already-a-slug",
+      "args": {
+        "title": "mango-salsa"
+      },
+      "expect": "mango-salsa"
+    },
+    {
+      "id": "leading-and-trailing-junk",
+      "args": {
+        "title": "  ...Goulash!  "
+      },
+      "expect": "goulash"
+    },
+    {
+      "id": "collapses-runs-of-separators",
+      "args": {
+        "title": "Beef   ---   Stew"
+      },
+      "expect": "beef-stew"
+    },
+    {
+      "id": "french-accents",
+      "args": {
+        "title": "Crème Brûlée"
+      },
+      "expect": "creme-brulee"
+    },
+    {
+      "id": "german-sharp-s",
+      "args": {
+        "title": "Weißwein Sauce"
+      },
+      "expect": "weisswein-sauce"
+    },
+    {
+      "id": "apostrophe",
+      "args": {
+        "title": "Grandma's Pancakes"
+      },
+      "expect": "grandma-s-pancakes"
+    }
+  ]
+}

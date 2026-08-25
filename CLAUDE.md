@@ -167,13 +167,17 @@ Conventions: Pydantic schemas for every request/response; errors as RFC-7807 pro
 
 ## 7. Frontend requirements
 
-**Design tokens ("washi & bottle green")** — in `tokens.css`, used everywhere:
+**Design tokens ("C · Faïence" — blue-and-white kitchen tile, ochre accent)** — in `tokens.css`, used everywhere:
 ```
---paper #F2F1EC   --ink #20241E    --faint #6B6F63
---green #3E6B4A   --green-deep #2C4F36
---copper #C87A2E  --line #D9D7CC   --card #FAFAF6
+--paper #F2F3F5   --ink #14161C    --faint #5F6570
+--primary #1F4A8F --primary-deep #14315F
+--accent #8A5E17  --line #DCDEE3   --card #FBFCFD
+--off-white #F7F8FA  --btn-ghost rgba(255,255,255,.14)
+--btn-outline rgba(255,255,255,.4)  --accent-wash #F4EFE6
 ```
-Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities copper (~450 ms).
+Both schemes ship and follow the OS; there is no in-app toggle. `--primary-deep` is a *fill* carrying `--off-white` text, `--ink-accent` is that same blue used *as* text — they are identical in light and diverge in dark, so a `color:` must never use `--primary-deep`. Dark: `--paper #101319 --card #171B22 --line #2A2F39 --ink #E6E9EE --faint #98A0AD --primary #7BA6E2 --primary-deep #2F5F9E --ink-accent #8FB6EE --accent #D9A441 --accent-wash #2A2113`. The light ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses. `Theme.swift` mirrors these names exactly.
+
+Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities accent (~450 ms).
 
 Pages:
 - **Home** — category chip index + recipe cards. GF filter toggle.
@@ -248,3 +252,26 @@ Known gaps to leave as editable placeholders: spaghetti-sauce herb quantities, b
 - Config only via env (`config.py`); `.env.example` stays current.
 - No secrets, no owner name, no editorializing in user-facing strings.
 - If a decision isn't covered here, prefer the boring option and note it in a `DECISIONS.md`.
+
+## 14. Cross-language parity (non-negotiable)
+
+The kitchen arithmetic exists three times: Python (`api/app/services/`), Swift
+(`ios/TheSharpEdge/Domain/`), TypeScript (`web/src/lib/`). §8 used to say "the server is
+canonical" and the clients "mirror" it. That was a comment, and comments don't fail builds —
+by the time this rule was written the iOS gluten-watch list had drifted to 14 terms against
+the server's 23, and `AISLE_ORDER` existed in four hand-copied places.
+
+**Any change to `scaling.py`, `shopping.py`, `aisles.py` or `ingredients.py` must add or
+change a case in `shared/fixtures/`.** Regenerate with `python api/scripts/dump_fixtures.py`;
+every port that hasn't followed then goes red on the exact input that moved. CI enforces both
+halves (`.github/workflows/parity.yml`): `--check` fails on stale fixtures, and the pytest,
+vitest and XCTest suites all read the same files. See `shared/fixtures/README.md`.
+
+This matters more than it used to: in **local notebook mode** (a device hosting its own
+recipes, with no server in the loop) the Swift implementation *is* the answer a cook acts on.
+GF is load-bearing (§1) — a term missing from the Swift gluten list is a bad week, not a
+cosmetic difference.
+
+iOS tests: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test
+-project ios/TheSharpEdge.xcodeproj -scheme TheSharpEdge -destination 'platform=iOS
+Simulator,name=iPad Pro 11-inch (M4)'`. Simulator only — fixtures resolve via `#filePath`.

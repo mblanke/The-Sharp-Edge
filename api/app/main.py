@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth import token_configured
 from app.config import settings
 from app.problems import install_problem_handlers
-from app.routers import admin, ask, export, library, plan, recipes
+from app.routers import admin, ask, export, library, parse, plan, recipes, shopping
 
 logger = logging.getLogger("sharp-edge")
 
@@ -30,6 +30,8 @@ def create_app() -> FastAPI:
     app.include_router(recipes.router, prefix="/api/v1")
     app.include_router(library.router, prefix="/api/v1")
     app.include_router(ask.router, prefix="/api/v1")
+    app.include_router(parse.router, prefix="/api/v1")
+    app.include_router(shopping.router, prefix="/api/v1")
     app.include_router(export.router, prefix="/api/v1")
     app.include_router(plan.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")

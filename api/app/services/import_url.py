@@ -18,7 +18,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.services.gf_audit import scan_ingredients
-from app.services.ingredient_parse import parse_ingredient
+from app.services.ingredients import parse_ingredient
 from app.services.llm import LLMProvider
 from app.services.photo_import import RecipeDraft
 

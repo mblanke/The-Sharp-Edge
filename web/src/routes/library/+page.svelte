@@ -92,18 +92,18 @@
 </svelte:head>
 
 <section class="pt-7">
-  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--copper)">
+  <div class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--accent)">
     Culinary library
   </div>
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">The shelf</h2>
   <p class="mt-1 text-[13.5px]" style="color: var(--faint)">
     Books dropped in the Cooking folder are indexed automatically. Search the shelf, or
-    <a href="/ask" style="color: var(--green-deep)">ask the library</a> a question.
+    <a href="/ask" style="color: var(--ink-accent)">ask the library</a> a question.
   </p>
 
   <div
     class="font-mono-label mt-3 inline-block rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--green-deep)' : 'var(--copper)'}; background: var(--card)"
+    style="border-color: var(--line); color: {data.library.rag_health.ok ? 'var(--ink-accent)' : 'var(--accent)'}; background: var(--card)"
   >
     index: {data.library.rag_health.ok ? 'online' : 'unreachable'}
     {#if data.library.rag_health.qdrant_points}
@@ -127,7 +127,7 @@
     <button
       type="submit"
       class="font-mono-label min-h-[48px] rounded-full px-6 text-[12px] uppercase tracking-widest"
-      style="background: var(--green-deep); color: #F4F3EC"
+      style="background: var(--primary-deep); color: var(--off-white)"
       disabled={searching || query.trim().length < 2}
     >
       {searching ? '…' : 'Search'}
@@ -155,7 +155,7 @@
   {/if}
 
   {#if errorMsg}
-    <p class="mt-3 text-[13.5px]" style="color: var(--copper)">{errorMsg}</p>
+    <p class="mt-3 text-[13.5px]" style="color: var(--accent)">{errorMsg}</p>
   {/if}
 
   {#if searching}
@@ -170,7 +170,7 @@
   {#if searched}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
+      style="border-color: var(--line); color: var(--primary)"
     >
       Results
     </h3>
@@ -193,9 +193,20 @@
             <div class="font-mono-label flex items-baseline gap-2 text-[10.5px] uppercase tracking-widest">
               {#if r.page != null}
                 <span class="qty shrink-0 text-[12px]">p.{r.page}</span>
+                {#if r.source_path}
+                  <!-- Extracted text is a good index and a poor recipe: a line lost by
+                       the text layer is a step never cooked. Read it in the book. -->
+                  <a
+                    href="/book?path={encodeURIComponent(r.source_path)}&page={r.page}"
+                    target="_blank"
+                    rel="noopener"
+                    class="qty shrink-0 text-[12px] no-underline"
+                    style="color: var(--ink-accent)"
+                  >open page ↗</a>
+                {/if}
               {/if}
               {#if r.heading}
-                <span style="color: var(--copper)">{r.heading}</span>
+                <span style="color: var(--accent)">{r.heading}</span>
               {/if}
             </div>
             <p class="mt-1.5 text-[14px]" style="color: var(--ink)">
@@ -209,7 +220,7 @@
 
   <h3
     class="font-mono-label mt-8 border-b pb-1 text-xs uppercase tracking-widest"
-    style="border-color: var(--line); color: var(--green)"
+    style="border-color: var(--line); color: var(--primary)"
   >
     On the shelf
   </h3>
