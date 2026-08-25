@@ -69,6 +69,21 @@ _WRITTEN_ABBREV = [
 ]
 
 
+def strip_leading_connector(name: str, lang: str = "en") -> str:
+    """Drop the article a written page leaves behind the unit — "250 g de farine"
+    should shop as *farine*, not *de farine*.
+
+    Not applied by parse_ingredient itself: the printed path is pinned by the seed
+    corpus round-trip (see test_printed_path_is_untouched_by_language_support).
+    Callers that know the page's language — photo import — apply it themselves."""
+    connectors = _lex(lang).connectors
+    for connector in sorted(connectors, key=len, reverse=True):
+        prefix = connector if connector.endswith("'") else connector + " "
+        if name.lower().startswith(prefix) and name[len(prefix):].strip():
+            return name[len(prefix):].strip()
+    return name
+
+
 def normalise_written(text: str) -> str:
     """Collapse multi-token unit abbreviations to a single token."""
     for pattern, replacement in _WRITTEN_ABBREV:

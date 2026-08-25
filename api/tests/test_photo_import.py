@@ -187,3 +187,43 @@ async def test_endpoint_requires_auth_and_returns_draft(client, auth, monkeypatc
     res = await client.post("/api/v1/recipes/parse-photo", files=files, headers=auth)
     assert res.status_code == 200
     assert res.json()["title"] == "From Photo"
+
+
+def test_names_lose_the_article_and_pinches_are_to_taste():
+    """What a cook sees in the review form: 'farine', not 'de farine'; and a
+    pinch is amount 0 so scaling 4x never asks for four pinches (CLAUDE.md §5)."""
+    draft = parse_transcript(
+        """LANG: fr
+TITLE: Crêpes
+YIELD: Pour 4 personnes
+INGREDIENTS:
+- 250 g de farine
+- 50 cl de lait
+- 2 c. à s. de beurre fondu
+- 1 pincée de sel
+- Sel et poivre au goût
+"""
+    )
+    rows = [(i.amount, i.unit, i.name) for i in draft.ingredients]
+    assert rows[0] == (250, "g", "farine")
+    assert rows[1] == (500, "ml", "lait")  # 50 cl
+    assert rows[2] == (2, "tbsp", "beurre fondu")  # 2 c. à s.
+    assert rows[3][0] == 0 and rows[3][2] == "sel"  # pinch → to taste
+    assert rows[4][0] == 0  # "au goût"
+
+
+def test_german_page_units_and_prise():
+    draft = parse_transcript(
+        """LANG: de
+TITLE: Kartoffelsalat
+YIELD: 6 Portionen
+INGREDIENTS:
+- 1 kg Kartoffeln
+- 2 EL Essig
+- eine Prise Salz
+"""
+    )
+    rows = [(i.amount, i.unit, i.name) for i in draft.ingredients]
+    assert rows[0] == (1000, "g", "Kartoffeln")
+    assert rows[1] == (2, "tbsp", "Essig")  # EL
+    assert rows[2][0] == 0 and rows[2][2] == "Salz"

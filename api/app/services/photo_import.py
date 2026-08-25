@@ -22,7 +22,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.services.ingredients import LANGS, parse_ingredient
+from app.services.ingredients import LANGS, parse_ingredient, strip_leading_connector
 
 logger = logging.getLogger("sharp-edge")
 
@@ -148,8 +148,24 @@ def parse_transcript(text: str) -> RecipeDraft:
 
     ingredients: list[DraftIngredient] = []
     for line in buckets["ingredients"]:
-        row = parse_ingredient(line, lang=lang)
-        if str(row.get("name") or "").strip():
+        # spoken=True: a photographed page is prose like dictation is — it says
+        # "une pincée de sel", not "0". The printed path stays pinned to the seed
+        # corpus, so this is opt-in per caller.
+        row = parse_ingredient(line, lang=lang, spoken=True)
+        if (
+            not row.get("amount")
+            and not str(row.get("unit") or "")
+            and str(row.get("name") or "").strip() == line.strip()
+        ):
+            # Nothing at all was recognised — re-read as plain printed text. Guarded
+            # on the untouched name so a deliberate zero ("1 pincée de sel") is not
+            # undone by a second parse that only sees the digit.
+            plain = parse_ingredient(line, lang=lang)
+            if plain.get("amount"):
+                row = plain
+        name = strip_leading_connector(str(row.get("name") or ""), lang)
+        if name.strip():
+            row["name"] = name
             ingredients.append(DraftIngredient(**row))
 
     steps = [DraftStep(text=s, timer_seconds=_timer_seconds(s)) for s in buckets["steps"]]
