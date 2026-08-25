@@ -10,8 +10,10 @@ export default defineConfig({
     trace: 'retain-on-failure'
   },
   projects: [
-    { name: 'iphone', use: { ...devices['iPhone 13'] } },
-    { name: 'ipad', use: { ...devices['iPad (gen 7) landscape'] } }
+    { name: 'iphone', use: { ...devices['iPhone 13'] }, testIgnore: '**/offline.spec.ts' },
+    { name: 'ipad', use: { ...devices['iPad (gen 7) landscape'] }, testIgnore: '**/offline.spec.ts' },
+    // service workers + setOffline are only reliable in chromium
+    { name: 'offline', use: { ...devices['Desktop Chrome'] }, testMatch: '**/offline.spec.ts' }
   ],
   webServer: [
     {
