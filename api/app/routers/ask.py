@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -60,6 +61,37 @@ async def _recipe_context(
     return ctx, hint, {"title": recipe.title, "slug": recipe.slug}
 
 
+_GF_TRIGGERS = re.compile(
+    r"substitut|replace|swap|instead of|gluten|celiac|\bgf\b|soy sauce|worcestershire|tamari",
+    re.I,
+)
+
+
+async def _gf_guard(session: AsyncSession, question: str) -> str:
+    """Substitution questions get the hidden-gluten reference appended so the
+    assistant's advice is always celiac-safe (GF status is load-bearing)."""
+    if not _GF_TRIGGERS.search(question):
+        return ""
+    recipe = (
+        await session.execute(
+            select(Recipe)
+            .where(Recipe.slug == "gf-reference")
+            .options(selectinload(Recipe.versions))
+        )
+    ).scalar_one_or_none()
+    if recipe is None:
+        return ""
+    current = next((v for v in recipe.versions if v.is_current), None)
+    if current is None:
+        return ""
+    lines = [s.get("text", "") for s in current.steps] + list(current.notes or [])
+    return (
+        "\n\nCeliac safety — a household member has celiac disease. When suggesting "
+        "ingredients or substitutions, check them against this hidden-gluten "
+        "reference and flag anything risky:\n- " + "\n- ".join(x for x in lines if x)
+    )
+
+
 @router.post("/ask")
 async def ask(
     payload: AskRequest,
@@ -109,8 +141,9 @@ async def ask(
             "\n\nSource excerpts (cite these — put the bracket number, e.g. [2], "
             "immediately after every claim you take from one):\n" + chunks_block(chunks)
         )
+    gf_ctx = await _gf_guard(session, payload.question)
     messages = (
-        [{"role": "system", "content": SYSTEM_PROMPT + recipe_ctx}]
+        [{"role": "system", "content": SYSTEM_PROMPT + gf_ctx + recipe_ctx}]
         + history
         + [{"role": "user", "content": user_content}]
     )

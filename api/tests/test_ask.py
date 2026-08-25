@@ -124,6 +124,33 @@ async def test_ask_recipe_scope_injects_context(client, auth, monkeypatch):
     assert "beef chuck" in system
 
 
+async def test_substitution_questions_carry_gf_guard(client, auth, monkeypatch):
+    gf_ref = {
+        "slug": "gf-reference",
+        "title": "Hidden Gluten — Celiac Watch-Outs",
+        "category": "Reference",
+        "base_yield": 1,
+        "yield_word": "card",
+        "noscale": True,
+        "ingredients": [],
+        "steps": [{"text": "Soy sauce: use GF tamari."}, {"text": "Worcestershire: check the label."}],
+        "notes": ["Lea & Perrins Canada is GF."],
+    }
+    await client.post("/api/v1/recipes", json=gf_ref, headers=auth)
+
+    _, provider = await ask_and_parse(
+        client, monkeypatch, {"question": "what can I substitute for soy sauce?"}
+    )
+    system = provider.calls[0]["messages"][0]["content"]
+    assert "Celiac safety" in system
+    assert "GF tamari" in system
+    assert "Lea & Perrins" in system
+
+    # unrelated questions stay clean
+    _, provider = await ask_and_parse(client, monkeypatch, {"question": "how do I sear a steak?"})
+    assert "Celiac safety" not in provider.calls[0]["messages"][0]["content"]
+
+
 async def test_recipe_scope_augments_retrieval_and_cites_R(client, auth, monkeypatch):
     from tests.test_recipes_api import GOULASH
 
