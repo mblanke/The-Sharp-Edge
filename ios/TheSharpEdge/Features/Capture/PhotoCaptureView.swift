@@ -89,9 +89,16 @@ struct PhotoCaptureView: View {
                 }
             }
             .fullScreenCover(isPresented: $showCamera) {
-                CameraPicker { image in
+                CameraPicker { result in
                     showCamera = false
-                    if let image { Task { await read(image) } }
+                    switch result {
+                    case .image(let image): Task { await read(image) }
+                    case .cancelled: break
+                    case .empty:
+                        // Seen on iOS betas: the picker returns without a usable
+                        // image. Say so — silence here reads as "stuck".
+                        error = "The camera returned no photo (an iOS beta quirk). Try again, or shoot with the Camera app and use Choose from library."
+                    }
                 }
                 .ignoresSafeArea()
             }
@@ -135,7 +142,15 @@ struct PhotoCaptureView: View {
 /// Minimal camera wrapper — PhotosPicker has no capture mode, so the classic
 /// picker does the one job SwiftUI still lacks.
 private struct CameraPicker: UIViewControllerRepresentable {
-    let onImage: (UIImage?) -> Void
+    enum Result {
+        case image(UIImage)
+        case cancelled
+        case empty
+    }
+
+    let onResult: (Result) -> Void
+
+    init(onResult: @escaping (Result) -> Void) { self.onResult = onResult }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
@@ -146,19 +161,24 @@ private struct CameraPicker: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
 
-    func makeCoordinator() -> Coordinator { Coordinator(onImage: onImage) }
+    func makeCoordinator() -> Coordinator { Coordinator(onResult: onResult) }
 
     final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let onImage: (UIImage?) -> Void
-        init(onImage: @escaping (UIImage?) -> Void) { self.onImage = onImage }
+        let onResult: (Result) -> Void
+        init(onResult: @escaping (Result) -> Void) { self.onResult = onResult }
 
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            onImage(info[.originalImage] as? UIImage)
+            // iOS betas have been seen delivering only one of these; take either.
+            if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage {
+                onResult(.image(image))
+            } else {
+                onResult(.empty)
+            }
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            onImage(nil)
+            onResult(.cancelled)
         }
     }
 }
