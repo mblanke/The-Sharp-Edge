@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { gfRisks } from '$lib/gf';
   import { ALLOWED_UNITS, CATEGORY_ORDER } from '$lib/types';
   import type { Ingredient, PageRef, RecipeUpdate, Step } from '$lib/types';
 
@@ -228,6 +229,20 @@
         <input class={inputCls} style="border-color: var(--line)" bind:value={yield_word} />
       </label>
     </div>
+
+    {#if gf}
+      {@const risks = gfRisks(ingredients)}
+      {#if risks.length}
+        <p
+          class="rounded-lg border px-3 py-2 text-[13.5px]"
+          style="border-color: var(--copper); color: var(--copper); background: #FBF0E6"
+          data-testid="gf-warning"
+        >
+          Marked GF but these may hide gluten: {risks.join(' · ')}. Check labels or swap
+          (soy sauce → GF tamari).
+        </p>
+      {/if}
+    {/if}
 
     <div class="flex gap-5 pt-1">
       <label class="flex items-center gap-2 text-[14px]">
