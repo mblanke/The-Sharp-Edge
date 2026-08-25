@@ -36,3 +36,11 @@ test('to-taste rows stay em dash at any scale', async ({ page }) => {
   await page.getByRole('button', { name: /More/ }).click();
   await expect(pepper.locator('.qty')).toHaveText('—');
 });
+
+test('home search finds recipes by ingredient', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('searchbox', { name: 'Search recipes' }).fill('paprika');
+  // goulash has paprika; pancakes don't
+  await expect(page.getByRole('link', { name: /Gluten-Free Hungarian Beef Goulash/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Classic Fluffy Pancakes/ })).toHaveCount(0);
+});

@@ -3,7 +3,7 @@ import io
 import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from qrcode.constants import ERROR_CORRECT_H
-from sqlalchemy import func, select
+from sqlalchemy import Text, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -93,6 +93,7 @@ async def _resolve_tags(session: AsyncSession, names: list[str]) -> list[Tag]:
 async def list_recipes(
     category: str | None = None,
     q: str | None = None,
+    ingredient: str | None = None,
     gf: bool | None = None,
     tag: str | None = None,
     status: str = "active",
@@ -104,7 +105,33 @@ async def list_recipes(
     if category:
         query = query.where(Recipe.category == category)
     if q:
-        query = query.where(Recipe.title.ilike(f"%{q}%"))
+        # "what can I make": titles, tag names, or current-version ingredients
+        needle = f"%{q}%"
+        current_ing = (
+            select(RecipeVersion.recipe_id)
+            .where(RecipeVersion.is_current, cast(RecipeVersion.ingredients, Text).ilike(needle))
+            .scalar_subquery()
+        )
+        tagged = (
+            select(RecipeTag.recipe_id)
+            .join(Tag, Tag.id == RecipeTag.tag_id)
+            .where(Tag.name.ilike(needle))
+            .scalar_subquery()
+        )
+        query = query.where(
+            Recipe.title.ilike(needle) | Recipe.id.in_(current_ing) | Recipe.id.in_(tagged)
+        )
+    if ingredient:
+        query = query.where(
+            Recipe.id.in_(
+                select(RecipeVersion.recipe_id)
+                .where(
+                    RecipeVersion.is_current,
+                    cast(RecipeVersion.ingredients, Text).ilike(f"%{ingredient}%"),
+                )
+                .scalar_subquery()
+            )
+        )
     if gf is not None:
         query = query.where(Recipe.gf == gf)
     if tag:

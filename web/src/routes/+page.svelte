@@ -7,10 +7,32 @@
   let gfOnly = $state(false);
   let tagFilter = $state<string | null>(null);
 
+  // "what can I make?" — server search across titles, ingredients, and tags
+  let search = $state('');
+  let searchHits = $state<string[] | null>(null); // matching slugs; null = no search
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function runSearch(value: string) {
+    clearTimeout(searchTimer);
+    const term = value.trim();
+    if (term.length < 2) {
+      searchHits = null;
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/recipes?q=${encodeURIComponent(term)}`);
+        if (res.ok) searchHits = (await res.json()).map((r: RecipeCard) => r.slug);
+      } catch {
+        searchHits = null; // offline — full list stays
+      }
+    }, 250);
+  }
+
   const visible = $derived(
-    (gfOnly ? data.recipes.filter((r: RecipeCard) => r.gf) : data.recipes).filter(
-      (r: RecipeCard) => !tagFilter || r.tags?.includes(tagFilter)
-    )
+    (gfOnly ? data.recipes.filter((r: RecipeCard) => r.gf) : data.recipes)
+      .filter((r: RecipeCard) => !tagFilter || r.tags?.includes(tagFilter))
+      .filter((r: RecipeCard) => searchHits === null || searchHits.includes(r.slug))
   );
 
   const categories = $derived(
@@ -27,6 +49,18 @@
 <svelte:head>
   <title>The Sharp Edge — Recipe Master</title>
 </svelte:head>
+
+<search class="pt-5">
+  <input
+    type="search"
+    bind:value={search}
+    oninput={() => runSearch(search)}
+    placeholder="what can I make? — search titles, ingredients, tags…"
+    aria-label="Search recipes"
+    class="min-h-[48px] w-full rounded-full border px-5 text-[15px]"
+    style="border-color: var(--line); background: var(--card); color: var(--ink)"
+  />
+</search>
 
 <nav aria-label="Filters" class="flex items-center gap-3 pt-5">
   <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">Show</span>
