@@ -26,15 +26,29 @@ PROMPT = (
     "notebook. The page may be in English, French, German, or Romanian — keep the "
     "original language, do not translate. Transcribe it as JSON with keys: title, "
     "meta (short subtitle or null), base_yield (int), yield_word, ingredients "
-    "(list of {amount, unit, name, section} — units only g, ml, cup, tbsp, tsp, "
-    "lb, oz, or empty for countable items; map localized units: c. à s./EL/lingură "
-    "→ tbsp, c. à c./TL/linguriță → tsp, tasse/Tasse/cană → cup, kg → g ×1000, "
-    "l/L → ml ×1000; amount 0 means 'to taste' / 'au goût' / 'nach Geschmack' / "
-    "'după gust'; section null unless the page groups ingredients), steps (list of "
-    "{text, timer_seconds} — timer_seconds only for explicit durations, else "
-    "null), notes (list of strings). Keep the cook's own wording; leave anything "
+    "(list of {amount, unit, name, section} — unit is one of g, kg, ml, cl, dl, "
+    "l, cup, tbsp, tsp, lb, oz, or empty for countable items; keep the amount "
+    "exactly as written on the page, never convert; map spoon/cup words: "
+    "c. à s./EL/lingură → tbsp, c. à c./TL/linguriță → tsp, tasse/Tasse/cană → "
+    "cup; amount 0 means 'to taste' / 'au goût' / 'nach Geschmack' / 'după gust'; "
+    "section null unless the page groups ingredients), steps (list of {text, "
+    "timer_seconds} — timer_seconds only for explicit durations, else null), "
+    "notes (list of strings). Keep the cook's own wording; leave anything "
     "unreadable out rather than inventing it. Output ONLY the JSON."
 )
+
+# Metric multiples come back as written; the app's unit set is g/ml (§5).
+_METRIC_FACTOR = {"kg": ("g", 1000), "l": ("ml", 1000), "cl": ("ml", 10), "dl": ("ml", 100)}
+
+
+def _normalize_units(draft: "RecipeDraft") -> "RecipeDraft":
+    for ing in draft.ingredients:
+        unit = ing.unit.strip().lower()
+        if unit in _METRIC_FACTOR:
+            base, factor = _METRIC_FACTOR[unit]
+            ing.amount *= factor
+            ing.unit = base
+    return draft
 
 
 class DraftIngredient(BaseModel):
@@ -112,6 +126,6 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
     if not m:
         raise HTTPException(422, "Could not read a recipe from that photo")
     try:
-        return RecipeDraft.model_validate(json.loads(m.group()))
+        return _normalize_units(RecipeDraft.model_validate(json.loads(m.group())))
     except Exception as exc:
         raise HTTPException(422, "Could not read a recipe from that photo") from exc

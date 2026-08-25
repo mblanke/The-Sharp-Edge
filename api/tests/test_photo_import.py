@@ -72,6 +72,38 @@ async def test_parses_photo_into_draft(monkeypatch):
     assert "Cooking/" not in str(seen)
 
 
+async def test_metric_multiples_convert_in_code(monkeypatch):
+    """'50 cl de lait' must become 500 ml — arithmetic is ours, not the model's."""
+    draft = json.dumps(
+        {
+            "title": "Crêpes",
+            "base_yield": 4,
+            "yield_word": "personnes",
+            "ingredients": [
+                {"amount": 50, "unit": "cl", "name": "lait"},
+                {"amount": 1, "unit": "kg", "name": "farine"},
+                {"amount": 2, "unit": "dl", "name": "crème"},
+                {"amount": 1.5, "unit": "L", "name": "bouillon"},
+                {"amount": 250, "unit": "g", "name": "beurre"},
+            ],
+            "steps": [],
+            "notes": [],
+        }
+    )
+
+    async def fake_complete(messages):
+        return draft
+
+    monkeypatch.setattr(photo_module, "_complete", fake_complete)
+    out = await parse_photo(PNG, "image/png")
+    rows = {i.name: (i.amount, i.unit) for i in out.ingredients}
+    assert rows["lait"] == (500, "ml")
+    assert rows["farine"] == (1000, "g")
+    assert rows["crème"] == (200, "ml")
+    assert rows["bouillon"] == (1500, "ml")
+    assert rows["beurre"] == (250, "g")  # already base — untouched
+
+
 async def test_garbage_output_maps_to_422(monkeypatch):
     async def fake_complete(messages):
         return "I see a lovely handwritten page but cannot read it."
