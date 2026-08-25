@@ -38,6 +38,30 @@ enum IngredientParse {
         // Synthetic token. French *livre* and German *Pfund* are half-kilos, not pounds;
         // normaliseSpoken rewrites them to this so the conversion below catches them.
         "halfkilo": "halfkilo",
+        // Written abbreviations found on European recipe cards. German EL/TL are on
+        // practically every German page; cs/cc are the French shorthand.
+        "el": "tbsp", "esslöffel": "tbsp", "essloffel": "tbsp",
+        "tl": "tsp", "teelöffel": "tsp", "teeloffel": "tsp",
+        "cs": "tbsp", "cc": "tsp",
+        "lgr": "tbsp", "lingura": "tbsp", "lingurita": "tsp",
+    ]
+
+    /// Collapse multi-token unit abbreviations to a single token.
+    static func normaliseWritten(_ text: String) -> String {
+        var out = text
+        for (pattern, replacement) in writtenAbbrev {
+            out = Regex(pattern).replacingAll(in: out, with: replacement)
+        }
+        return out
+    }
+
+    /// "c. à s." / "c à c" — multi-token French shorthand the unit regex cannot see
+    /// as one word, so it is rewritten to the single-token form before parsing.
+    static let writtenAbbrev: [(String, String)] = [
+        (#"\bc\.?\s*[àa]\s*s\.?"#, "cs"),
+        (#"\bc\.?\s*[àa]\s*c\.?"#, "cc"),
+        (#"\bcuill[èe]res?\s*[àa]\s*soupe"#, "cs"),
+        (#"\bcuill[èe]res?\s*[àa]\s*caf[ée]"#, "cc"),
     ]
 
     /// Spec units are g/ml — convert metric multiples.
@@ -552,6 +576,12 @@ enum IngredientParse {
         var text = line.trimmingCharacters(in: .whitespaces)
         while text.hasPrefix("-") { text.removeFirst() }
         text = text.trimmingCharacters(in: .whitespaces)
+        if !spoken {
+            // Printed cards use abbreviations ("2 c. à s.", "2 EL"); dictation has
+            // its own lexicon that handles the spoken forms — and their articles —
+            // better.
+            text = normaliseWritten(text)
+        }
 
         var forcedZero = false
         if spoken {

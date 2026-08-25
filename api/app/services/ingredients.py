@@ -51,7 +51,29 @@ UNIT_MAP = {
     # Synthetic token. French *livre* and German *Pfund* are half-kilos, not pounds;
     # normalise_spoken() rewrites them to this so the conversion below catches them.
     "halfkilo": "halfkilo",
+    # Written abbreviations found on European recipe cards. German EL/TL are on
+    # practically every German page; cs/cc are the French shorthand.
+    "el": "tbsp", "esslöffel": "tbsp", "essloffel": "tbsp",
+    "tl": "tsp", "teelöffel": "tsp", "teeloffel": "tsp",
+    "cs": "tbsp", "cc": "tsp",
+    "lgr": "tbsp", "lingura": "tbsp", "lingurita": "tsp",
 }
+
+# "c. à s." / "c à c" — multi-token French shorthand the unit regex cannot see as
+# one word, so it is rewritten to the single-token form before parsing.
+_WRITTEN_ABBREV = [
+    (re.compile(r"\bc\.?\s*[àa]\s*s\.?", re.I), "cs"),
+    (re.compile(r"\bc\.?\s*[àa]\s*c\.?", re.I), "cc"),
+    (re.compile(r"\bcuill[èe]res?\s*[àa]\s*soupe", re.I), "cs"),
+    (re.compile(r"\bcuill[èe]res?\s*[àa]\s*caf[ée]", re.I), "cc"),
+]
+
+
+def normalise_written(text: str) -> str:
+    """Collapse multi-token unit abbreviations to a single token."""
+    for pattern, replacement in _WRITTEN_ABBREV:
+        text = pattern.sub(replacement, text)
+    return text
 # spec units are g/ml — convert metric multiples
 METRIC_FACTOR = {
     "kg": ("g", 1000), "l": ("ml", 1000), "halfkilo": ("g", 500),
@@ -520,6 +542,10 @@ def parse_ingredient(
     The default is the printed-text behaviour the seed importer depends on.
     """
     text = line.strip().lstrip("-").strip()
+    if not spoken:
+        # Printed cards use abbreviations ("2 c. à s.", "2 EL"); dictation has its
+        # own lexicon that handles the spoken forms — and their articles — better.
+        text = normalise_written(text)
     forced_zero = False
 
     if spoken:

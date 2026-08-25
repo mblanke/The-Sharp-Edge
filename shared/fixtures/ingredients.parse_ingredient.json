@@ -757,6 +757,58 @@
         "unit": "ml",
         "name": "stock"
       }
+    },
+    {
+      "id": "fr-cuillere-a-soupe-abbrev",
+      "args": {
+        "line": "2 c. à s. de beurre",
+        "lang": "fr",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "de beurre"
+      }
+    },
+    {
+      "id": "fr-cuillere-a-cafe-abbrev",
+      "args": {
+        "line": "1 c. à c. de sel",
+        "lang": "fr",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "tsp",
+        "name": "de sel"
+      }
+    },
+    {
+      "id": "de-esslöffel-abbrev",
+      "args": {
+        "line": "2 EL Essig",
+        "lang": "de",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "name": "Essig"
+      }
+    },
+    {
+      "id": "de-teelöffel-abbrev",
+      "args": {
+        "line": "1 TL Salz",
+        "lang": "de",
+        "spoken": false
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "tsp",
+        "name": "Salz"
+      }
     }
   ]
 }

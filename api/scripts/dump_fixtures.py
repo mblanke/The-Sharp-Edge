@@ -334,6 +334,11 @@ PARSE_INPUTS = [
     ("de-decilitres-spoken", "zwei Deziliter Sahne", "de", True),
     ("en-deciliters-spoken", "three deciliters of stock", "en", True),
     ("en-decilitres", "3 dl stock", "en", False),
+    # Written unit abbreviations off European cards.
+    ("fr-cuillere-a-soupe-abbrev", "2 c. à s. de beurre", "fr", False),
+    ("fr-cuillere-a-cafe-abbrev", "1 c. à c. de sel", "fr", False),
+    ("de-esslöffel-abbrev", "2 EL Essig", "de", False),
+    ("de-teelöffel-abbrev", "1 TL Salz", "de", False),
 ]
 
 NORMALISE_SPOKEN_INPUTS = [
