@@ -21,6 +21,13 @@ export interface RecipeCard {
   gf: boolean;
   noscale: boolean;
   status: string;
+  tags: string[];
+}
+
+/** Notebook page mapping — feeds the cards.pdf glue-in index (§10). */
+export interface PageRef {
+  page_number: number;
+  section: string | null;
 }
 
 export interface RecipeVersion {
@@ -36,6 +43,7 @@ export interface RecipeVersion {
 
 export interface RecipeFull extends RecipeCard {
   source: string | null;
+  pages: PageRef[];
   current_version: RecipeVersion;
 }
 
@@ -55,6 +63,8 @@ export interface RecipeUpdate {
   ingredients: Ingredient[];
   steps: Step[];
   notes: string[];
+  tags?: string[];
+  pages?: PageRef[];
 }
 
 /** Units the API accepts (empty = countable; counting noun lives in name). */

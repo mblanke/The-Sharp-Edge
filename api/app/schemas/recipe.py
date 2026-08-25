@@ -23,6 +23,15 @@ class Step(BaseModel):
     timer_seconds: int | None = None
 
 
+class PageRef(BaseModel):
+    """Notebook page mapping — feeds the cards.pdf glue-in index (§10)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    page_number: int = Field(ge=1)
+    section: str | None = None
+
+
 class RecipeCard(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -35,6 +44,7 @@ class RecipeCard(BaseModel):
     gf: bool
     noscale: bool
     status: str
+    tags: list[str] = []
 
 
 class VersionOut(BaseModel):
@@ -52,6 +62,7 @@ class VersionOut(BaseModel):
 
 class RecipeFull(RecipeCard):
     source: str | None = None
+    pages: list[PageRef] = []
     current_version: VersionOut
 
 
@@ -80,6 +91,8 @@ class RecipeCreate(BaseModel):
     ingredients: list[Ingredient] = []
     steps: list[Step] = []
     notes: list[str] = []
+    tags: list[str] = []
+    pages: list[PageRef] = []
 
 
 class RecipeUpdate(BaseModel):
@@ -98,6 +111,8 @@ class RecipeUpdate(BaseModel):
     ingredients: list[Ingredient]
     steps: list[Step]
     notes: list[str] = []
+    tags: list[str] | None = None  # None = leave unchanged
+    pages: list[PageRef] | None = None  # None = leave unchanged
 
 
 class ScaleRequest(BaseModel):

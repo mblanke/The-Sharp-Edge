@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { ALLOWED_UNITS, CATEGORY_ORDER } from '$lib/types';
-  import type { Ingredient, RecipeUpdate, Step } from '$lib/types';
+  import type { Ingredient, PageRef, RecipeUpdate, Step } from '$lib/types';
 
   let { data, form } = $props();
 
@@ -22,6 +22,15 @@
   let ingredients = $state<Ingredient[]>(v.ingredients.map((i) => ({ ...i })));
   let steps = $state<Step[]>(v.steps.map((s) => ({ ...s })));
   let notes = $state<string[]>([...v.notes]);
+  let tags = $state<string[]>([...(recipe.tags ?? [])]);
+  let newTag = $state('');
+  let pages = $state<PageRef[]>((recipe.pages ?? []).map((p) => ({ ...p })));
+
+  function addTag() {
+    const t = newTag.trim();
+    if (t && !tags.some((x) => x.toLowerCase() === t.toLowerCase())) tags.push(t);
+    newTag = '';
+  }
 
   let saving = $state(false);
 
@@ -62,7 +71,14 @@
           ? { timer_seconds: Number(s.timer_seconds) }
           : {})
       })),
-    notes: notes.map((n) => n.trim()).filter(Boolean)
+    notes: notes.map((n) => n.trim()).filter(Boolean),
+    tags,
+    pages: pages
+      .filter((p) => Number(p.page_number) >= 1)
+      .map((p) => ({
+        page_number: Number(p.page_number),
+        section: p.section?.trim() || null
+      }))
   });
 
   const payloadJson = $derived(JSON.stringify(payload));
@@ -171,6 +187,67 @@
         bind:value={label}
       />
     </label>
+
+    <div class="grid gap-1">
+      <span class="{labelCls}" style="color: var(--green)">Tags</span>
+      <div class="flex flex-wrap items-center gap-2">
+        {#each tags as tag, i (tag)}
+          <span
+            class="font-mono-label inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-widest"
+            style="border-color: var(--green); color: var(--green-deep); background: var(--card)"
+          >
+            {tag}
+            <button type="button" aria-label="Remove tag {tag}" style="color: var(--copper)" onclick={() => tags.splice(i, 1)}>✕</button>
+          </span>
+        {/each}
+        <input
+          aria-label="Add tag"
+          placeholder="+ tag"
+          class="w-[8rem] rounded-full border bg-white px-3 py-1.5 text-[13px] outline-none"
+          style="border-color: var(--line)"
+          bind:value={newTag}
+          onkeydown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag();
+            }
+          }}
+          onblur={addTag}
+        />
+      </div>
+    </div>
+
+    <div class="grid gap-1">
+      <span class="{labelCls}" style="color: var(--green)">Notebook pages</span>
+      {#each pages as p, i (i)}
+        <div class="flex items-center gap-2">
+          <input
+            type="number"
+            min="1"
+            aria-label="Page number"
+            class="qty w-[5.5rem] rounded-lg border bg-white px-2 py-1.5 text-[14px] outline-none"
+            style="border-color: var(--line)"
+            bind:value={p.page_number}
+          />
+          <input
+            aria-label="Notebook section"
+            placeholder="section (e.g. Sauces)"
+            class="min-w-0 flex-1 rounded-lg border bg-white px-2 py-1.5 text-[13px] outline-none"
+            style="border-color: var(--line)"
+            bind:value={p.section}
+          />
+          <button type="button" aria-label="Remove page" class="h-9 w-9 shrink-0 rounded-lg border" style="border-color: var(--copper); color: var(--copper)" onclick={() => pages.splice(i, 1)}>✕</button>
+        </div>
+      {/each}
+      <button
+        type="button"
+        class="{btnGhost} justify-self-start"
+        style="border-color: var(--green); color: var(--green)"
+        onclick={() => pages.push({ page_number: 1, section: null })}
+      >
+        + notebook page
+      </button>
+    </div>
   </section>
 
   <!-- Ingredients -->

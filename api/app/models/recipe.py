@@ -35,6 +35,17 @@ class Recipe(Base):
     versions: Mapped[list["RecipeVersion"]] = relationship(
         back_populates="recipe", order_by="RecipeVersion.version", cascade="all, delete-orphan"
     )
+    # selectin: loaded with the recipe, async-safe on every existing query path
+    tag_rows: Mapped[list["Tag"]] = relationship(
+        secondary="recipe_tag", order_by="Tag.name", lazy="selectin"
+    )
+    pages: Mapped[list["NotebookPage"]] = relationship(
+        order_by="NotebookPage.page_number", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    @property
+    def tags(self) -> list[str]:
+        return [t.name for t in self.tag_rows]
 
 
 class RecipeVersion(Base):

@@ -10,8 +10,9 @@ from sqlalchemy.orm import selectinload
 from app.auth import require_token
 from app.config import settings
 from app.db import get_session
-from app.models import Recipe, RecipeVersion, Redirect
+from app.models import NotebookPage, Recipe, RecipeTag, RecipeVersion, Redirect, Tag
 from app.schemas.recipe import (
+    PageRef,
     RecipeCard,
     RecipeCreate,
     RecipeFull,
@@ -54,8 +55,36 @@ def _full(recipe: Recipe) -> RecipeFull:
     return RecipeFull(
         **RecipeCard.model_validate(recipe).model_dump(),
         source=recipe.source,
+        pages=[PageRef.model_validate(p) for p in recipe.pages],
         current_version=VersionOut.model_validate(_current_version(recipe)),
     )
+
+
+async def _resolve_tags(session: AsyncSession, names: list[str]) -> list[Tag]:
+    """Get-or-create tags by name (case-insensitive dedupe, order preserved)."""
+    cleaned: list[str] = []
+    for name in names:
+        name = name.strip()
+        if name and name.lower() not in {c.lower() for c in cleaned}:
+            cleaned.append(name)
+    if not cleaned:
+        return []
+    existing = {
+        t.name.lower(): t
+        for t in (
+            (await session.execute(select(Tag).where(func.lower(Tag.name).in_([c.lower() for c in cleaned]))))
+            .scalars()
+            .all()
+        )
+    }
+    out: list[Tag] = []
+    for name in cleaned:
+        tag = existing.get(name.lower())
+        if tag is None:
+            tag = Tag(name=name)
+            session.add(tag)
+        out.append(tag)
+    return out
 
 
 @router.get("", response_model=list[RecipeCard])
@@ -63,6 +92,7 @@ async def list_recipes(
     category: str | None = None,
     q: str | None = None,
     gf: bool | None = None,
+    tag: str | None = None,
     status: str = "active",
     session: AsyncSession = Depends(get_session),
 ):
@@ -75,6 +105,12 @@ async def list_recipes(
         query = query.where(Recipe.title.ilike(f"%{q}%"))
     if gf is not None:
         query = query.where(Recipe.gf == gf)
+    if tag:
+        query = (
+            query.join(RecipeTag, RecipeTag.recipe_id == Recipe.id)
+            .join(Tag, Tag.id == RecipeTag.tag_id)
+            .where(func.lower(Tag.name) == tag.lower())
+        )
     recipes = (await session.execute(query)).scalars().all()
     return [RecipeCard.model_validate(r) for r in recipes]
 
@@ -122,9 +158,11 @@ async def create_recipe(payload: RecipeCreate, session: AsyncSession = Depends(g
             is_current=True,
         )
     )
+    recipe.tag_rows = await _resolve_tags(session, payload.tags)
+    recipe.pages = [NotebookPage(page_number=p.page_number, section=p.section) for p in payload.pages]
     session.add(recipe)
     await session.commit()
-    await session.refresh(recipe, ["versions"])
+    await session.refresh(recipe, ["versions", "tag_rows", "pages"])
     return _full(recipe)
 
 
@@ -149,8 +187,14 @@ async def update_recipe(slug: str, payload: RecipeUpdate, session: AsyncSession 
             is_current=True,
         )
     )
+    if payload.tags is not None:
+        recipe.tag_rows = await _resolve_tags(session, payload.tags)
+    if payload.pages is not None:
+        recipe.pages = [
+            NotebookPage(page_number=p.page_number, section=p.section) for p in payload.pages
+        ]
     await session.commit()
-    await session.refresh(recipe, ["versions"])
+    await session.refresh(recipe, ["versions", "tag_rows", "pages"])
     return _full(recipe)
 
 
