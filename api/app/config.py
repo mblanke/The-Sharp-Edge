@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:3000"
     api_token: str = "change-me-long-random"
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-5"  # photo import (public tier only)
+    # Router alias of a local multimodal model (photo-to-recipe import).
+    # Empty disables the feature; "vision" = llava:13b on Wile today.
+    vision_model_alias: str = "vision"
 
     # Browser origins allowed by CORS; the web app itself goes through its
     # same-origin proxy, so this only needs the app's own base URL (plus any
