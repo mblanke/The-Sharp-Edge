@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     # Router alias of a local multimodal model (photo-to-recipe import).
     # Empty disables the feature; "vision" = llava:13b on Wile today.
     vision_model_alias: str = "vision"
+    # Router alias of a local instruct model used to translate a recipe's words.
+    translate_model_alias: str = "translate"
 
     # Browser origins allowed by CORS; the web app itself goes through its
     # same-origin proxy, so this only needs the app's own base URL (plus any

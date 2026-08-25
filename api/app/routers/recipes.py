@@ -35,6 +35,18 @@ class ImportUrlRequest(BaseModel):
     url: str = Field(min_length=8, max_length=2000)
 
 
+class TranslateRequest(BaseModel):
+    """A recipe's words on the way to another language. Amounts and units are
+    carried through untouched — see services/translate.py."""
+
+    target: str = Field(default="en", pattern=r"^(en|fr|de|ro)$")
+    title: str = ""
+    meta: str | None = None
+    ingredients: list[dict] = []
+    steps: list[dict] = []
+    notes: list[str] = []
+
+
 async def _resolve(session: AsyncSession, slug: str, *, with_versions: bool = False) -> Recipe:
     """Fetch by slug, honouring the redirect table (renamed slugs keep working)."""
     q = select(Recipe).where(Recipe.slug == slug)
@@ -308,6 +320,17 @@ async def parse_photo_endpoint(photo: UploadFile):
 
     draft = await parse_photo(await photo.read(), photo.content_type or "")
     return draft
+
+
+@router.post("/translate", dependencies=[Depends(require_token)])
+async def translate_endpoint(payload: TranslateRequest):
+    """Translate a draft or recipe into another language, review-first like every
+    other import: the caller shows the result and the cook decides."""
+    from app.services.translate import translate_recipe
+
+    return await translate_recipe(
+        payload.model_dump(exclude={"target"}), payload.target
+    )
 
 
 @router.post("/import-url", dependencies=[Depends(require_token)])
