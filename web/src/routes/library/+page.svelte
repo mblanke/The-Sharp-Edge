@@ -158,6 +158,15 @@
     <p class="mt-3 text-[13.5px]" style="color: var(--copper)">{errorMsg}</p>
   {/if}
 
+  {#if searching}
+    <div class="mt-5 grid gap-2" aria-hidden="true">
+      <div class="skeleton h-5 w-2/5"></div>
+      <div class="skeleton h-16"></div>
+      <div class="skeleton h-16"></div>
+      <div class="skeleton h-16 w-11/12"></div>
+    </div>
+  {/if}
+
   {#if searched}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"

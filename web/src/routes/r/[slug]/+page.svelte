@@ -201,14 +201,12 @@
             {ing.section}
           </li>
         {/if}
-        <li
-          class="flex items-baseline gap-3 border-b border-dashed py-2 text-[15px]"
-          style="border-color: var(--line)"
-        >
-          <span class="qty min-w-[5.5ch] shrink-0 text-[14px]" class:flash={flashing}>
+        <li class="flex items-baseline gap-2 py-2 text-[15px]">
+          <span class="min-w-0">{ing.name}</span>
+          <span class="leader-dots flex-1" aria-hidden="true"></span>
+          <span class="qty shrink-0 text-right text-[14px]" class:flash={flashing}>
             {serverDisplays?.[i] ?? scaledDisplay(ing.amount, ing.unit, factor)}
           </span>
-          <span>{ing.name}</span>
         </li>
       {/each}
     </ul>

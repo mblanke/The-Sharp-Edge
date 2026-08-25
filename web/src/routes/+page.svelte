@@ -107,17 +107,21 @@
 
 <main>
   {#each categories as cat (cat)}
-    <section id="cat-{cat}" class="mt-9 scroll-mt-4">
+    <section
+      id="cat-{cat}"
+      class="mt-9 scroll-mt-4 border-l-2 pl-3"
+      style="border-color: var(--green)"
+    >
       <h2
-        class="font-mono-label border-b pb-1 text-[11px] uppercase tracking-widest"
-        style="border-color: var(--line); color: var(--green)"
+        class="font-mono-label sticky top-0 z-10 border-b pb-1 pt-1 text-[11px] uppercase tracking-widest"
+        style="border-color: var(--line); color: var(--green); background: var(--paper)"
       >
         {cat}
       </h2>
       <ul class="mt-2 list-none p-0">
         {#each byCategory.get(cat) ?? [] as r (r.slug)}
           <li
-            class="flex min-h-[52px] items-center gap-3 border-b border-dashed"
+            class="lift flex min-h-[52px] items-center gap-3 border-b border-dashed"
             style="border-color: var(--line)"
           >
             <a href="/r/{r.slug}" class="min-w-0 flex-1 py-3 no-underline">

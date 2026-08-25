@@ -25,7 +25,7 @@
         </p>
       {:else}
         {#each data.audit.warnings as w (w.slug)}
-          <div class="mt-2 rounded-lg border px-3 py-2" style="border-color: var(--copper); background: #FBF0E6">
+          <div class="mt-2 rounded-lg border px-3 py-2" style="border-color: var(--copper); background: var(--warn-bg)">
             <a href="/r/{w.slug}" class="text-[14.5px] font-medium no-underline" style="color: var(--copper)">
               {w.title}
             </a>

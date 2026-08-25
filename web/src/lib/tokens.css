@@ -8,6 +8,27 @@
   --copper: #c87a2e;
   --line: #d9d7cc;
   --card: #fafaf6;
+  --warn-bg: #fbf0e6;
+}
+
+/* Evening kitchen mode — same family, lights down. Copper stays warm. */
+:root[data-theme='dark'] {
+  --paper: #161a15;
+  --ink: #e8e6dc;
+  --faint: #9ba093;
+  --green: #6fa37e;
+  --green-deep: #24402c;
+  --copper: #d08a3e;
+  --line: #2e332c;
+  --card: #1c211b;
+  --warn-bg: #3a2a1a;
+}
+
+:root {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 html {
@@ -20,6 +41,17 @@ body {
   font-family: 'Work Sans', system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.55;
+}
+
+/* faint paper grain — inline SVG noise, no asset, both themes */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.46 0 0 0 0 0.42 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .font-display {
@@ -50,9 +82,90 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Recipe-card list rows: mono amount, dotted leader, name — print-card typography */
+.leader-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.leader-row::before {
+  content: '';
+}
+.leader-dots {
+  flex: 0 1 auto;
+  min-width: 12px;
+  border-bottom: 1px dotted var(--line);
+  transform: translateY(-4px);
+}
+
+/* Card lift — quiet, tactile */
+.lift {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.lift:hover,
+.lift:active {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(32, 36, 30, 0.08);
+}
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--line);
+  opacity: 0.5;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* View transitions: gentle crossfade between pages */
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+::view-transition-old(root) {
+  animation: 90ms ease both fade-out;
+}
+::view-transition-new(root) {
+  animation: 160ms ease both vt-fade-in;
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  .lift,
+  .lift:hover {
+    transition: none;
+    transform: none;
+  }
+  .skeleton::after {
+    animation: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }
 

@@ -35,6 +35,13 @@
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
+    <script>
+      // theme before first paint — no flash; falls back to light
+      try {
+        const theme = localStorage.getItem('sharp-edge-theme');
+        if (theme === 'dark') document.documentElement.dataset.theme = 'dark';
+      } catch {}
+    </script>
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

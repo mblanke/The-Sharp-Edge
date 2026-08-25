@@ -56,7 +56,7 @@
   </div>
 
   {#if form?.message}
-    <p class="mt-3 rounded-lg border px-3 py-2 text-[13.5px]" style="border-color: var(--copper); color: var(--copper); background: #FBF0E6">
+    <p class="mt-3 rounded-lg border px-3 py-2 text-[13.5px]" style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)">
       {form.message}
     </p>
   {/if}

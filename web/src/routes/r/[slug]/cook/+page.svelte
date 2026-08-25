@@ -30,8 +30,20 @@
   // --- wake lock + session start stamp ---
   let wake: WakeLockHandle | null = null;
   let startedAt = $state('');
+  // evening cooks default to kitchen-dark unless the cook chose a theme
+  let themeWasForced = false;
   onMount(() => {
     startedAt = new Date().toISOString();
+    try {
+      const hour = new Date().getHours();
+      const chosen = localStorage.getItem('sharp-edge-theme');
+      if (!chosen && (hour >= 18 || hour < 7) && !document.documentElement.dataset.theme) {
+        document.documentElement.dataset.theme = 'dark';
+        themeWasForced = true;
+      }
+    } catch {
+      // storage blocked — stay on the current theme
+    }
     wake = keepAwake();
     interval = setInterval(() => {
       tick++;
@@ -47,6 +59,7 @@
     wake?.release();
     voice?.stop();
     clearInterval(interval);
+    if (themeWasForced) document.documentElement.dataset.theme = '';
   });
 
   function go(delta: number) {

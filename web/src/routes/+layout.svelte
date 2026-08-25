@@ -1,7 +1,35 @@
 <script lang="ts">
   import '../app.css';
+  import { onNavigate } from '$app/navigation';
 
   let { children } = $props();
+
+  // gentle page crossfade where supported (reduced-motion handled in CSS)
+  onNavigate((navigation) => {
+    if (!document.startViewTransition) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
+
+  // evening kitchen mode — explicit choice persisted per device
+  let dark = $state(false);
+  $effect(() => {
+    dark = document.documentElement.dataset.theme === 'dark';
+  });
+  function toggleTheme() {
+    dark = !dark;
+    document.documentElement.dataset.theme = dark ? 'dark' : '';
+    try {
+      localStorage.setItem('sharp-edge-theme', dark ? 'dark' : 'light');
+    } catch {
+      // private mode — theme just won't persist
+    }
+  }
 </script>
 
 <div class="mx-auto max-w-[680px] px-[18px] pb-20">
@@ -18,6 +46,14 @@
       <a href="/library" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Library</a>
       <a href="/ask" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Ask</a>
       <a href="/plan" class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Plan</a>
+      <button
+        aria-label={dark ? 'Switch to daylight' : 'Switch to evening kitchen mode'}
+        class="rounded-full border px-3 py-2"
+        style="border-color: var(--line); color: var(--faint)"
+        onclick={toggleTheme}
+      >
+        {dark ? '☀' : '☾'}
+      </button>
     </nav>
   </header>
 

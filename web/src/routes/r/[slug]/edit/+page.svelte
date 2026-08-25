@@ -192,7 +192,7 @@
   </button>
 </form>
 {#if form && 'gfRisks' in form && Array.isArray(form.gfRisks) && form.gfRisks.length}
-  <p class="mt-2 rounded-lg border px-3 py-2 text-[13px]" style="border-color: var(--copper); color: var(--copper); background: #FBF0E6">
+  <p class="mt-2 rounded-lg border px-3 py-2 text-[13px]" style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)">
     Imported with possible hidden gluten: {form.gfRisks.map((r: { ingredient: string }) => r.ingredient).join(' · ')}
   </p>
 {/if}
@@ -220,7 +220,7 @@
   {#if form?.message}
     <p
       class="mt-3 rounded-lg border px-3 py-2 text-[13.5px]"
-      style="border-color: var(--copper); color: var(--copper); background: #FBF0E6"
+      style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)"
     >
       {form.message}
     </p>
@@ -275,7 +275,7 @@
       {#if risks.length}
         <p
           class="rounded-lg border px-3 py-2 text-[13.5px]"
-          style="border-color: var(--copper); color: var(--copper); background: #FBF0E6"
+          style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)"
           data-testid="gf-warning"
         >
           Marked GF but these may hide gluten: {risks.join(' · ')}. Check labels or swap
