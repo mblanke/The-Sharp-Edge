@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import RecipeForm from '$lib/components/RecipeForm.svelte';
   import {
     CAPTURE_LANGUAGES,
@@ -13,7 +14,7 @@
   } from '$lib/voice';
   import type { Ingredient, Step } from '$lib/types';
 
-  let { form } = $props();
+  let { data, form } = $props();
 
   // Dictation fills the same form the typed path uses — there is no parallel flow.
   // The review step is the entire answer to imperfect dictation, so nothing here
@@ -103,6 +104,52 @@
     }
   }
 
+  // Photo capture: the server transcribes with the local vision model; the
+  // returned draft seeds the same review form dictation uses.
+  interface PhotoDraft {
+    title?: string;
+    meta?: string | null;
+    base_yield?: number;
+    yield_word?: string;
+    ingredients?: Ingredient[];
+    steps?: Step[];
+    notes?: string[];
+  }
+  let photoBusy = $state(false);
+  let appliedDraft: unknown = null;
+
+  function slugify(title: string): string {
+    return title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+  }
+
+  $effect(() => {
+    const draft = form && 'draft' in form ? (form.draft as PhotoDraft) : null;
+    if (!draft || draft === appliedDraft) return;
+    appliedDraft = draft;
+    seed = {
+      title: draft.title ?? '',
+      category: '',
+      ingredients: (draft.ingredients ?? []).map((i) => ({ ...i })),
+      steps: (draft.steps ?? []).map((s) => ({ ...s }))
+    };
+    // extra fields RecipeForm's seed also understands
+    Object.assign(seed, {
+      slug: draft.title ? slugify(draft.title) : '',
+      meta: draft.meta ?? '',
+      base_yield: draft.base_yield ?? 4,
+      yield_word: draft.yield_word ?? 'servings',
+      notes: draft.notes ?? []
+    });
+    formKey += 1;
+    panelOpen = false;
+  });
+
   const labelCls = 'font-mono-label text-[10.5px] uppercase tracking-widest';
   const prompts = [
     { field: 'title' as const, prompt: "What's it called?", rows: 1 },
@@ -116,7 +163,38 @@
   <title>Add a recipe — The Sharp Edge</title>
 </svelte:head>
 
-<div class="pt-7">
+<div class="pt-7 grid gap-2">
+  {#if data.photoImport}
+    <form
+      method="POST"
+      action="?/photo"
+      enctype="multipart/form-data"
+      use:enhance={() => {
+        photoBusy = true;
+        return async ({ update }) => {
+          await update({ reset: false });
+          photoBusy = false;
+        };
+      }}
+    >
+      <label
+        class="font-mono-label flex min-h-[44px] w-full cursor-pointer items-center justify-center rounded-full border px-4 text-[11px] uppercase tracking-widest"
+        style="border-color: var(--accent); color: var(--accent)"
+      >
+        {photoBusy ? 'reading the page… (first read can take a minute)' : '📷 photograph a recipe page'}
+        <input
+          type="file"
+          name="photo"
+          accept="image/*"
+          capture="environment"
+          class="hidden"
+          disabled={photoBusy}
+          onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
+        />
+      </label>
+    </form>
+  {/if}
+
   <button
     type="button"
     class="font-mono-label min-h-[44px] w-full rounded-full border px-4 text-[11px] uppercase tracking-widest"
