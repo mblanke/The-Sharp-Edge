@@ -121,11 +121,18 @@ struct PhotoCaptureView: View {
     private func read(_ image: UIImage) async {
         reading = true
         error = nil
+        // The read takes a minute; if the screen locks, iOS suspends the app and
+        // kills the socket ("the network connection was lost"). Keep it awake.
+        UIApplication.shared.isIdleTimerDisabled = true
+        defer {
+            UIApplication.shared.isIdleTimerDisabled = false
+            reading = false
+        }
         do {
-            guard let jpeg = image.downscaledJPEG(maxDimension: 2048) else {
+            guard let jpeg = image.downscaledJPEG(maxDimension: 1600) else {
                 throw APIError.transport("Could not encode the photo")
             }
-            let draft = try await env.dataSource.parsePhoto(jpeg)
+            let draft = try await parseWithRetry(jpeg)
             // Best-effort slug from the title; editable like everything else.
             let slug = (try? await env.dataSource.slug(for: draft.title))?.slug ?? ""
             onDraft(draft.toRecipeCreate(slug: slug))
@@ -135,7 +142,16 @@ struct PhotoCaptureView: View {
         } catch {
             self.error = "Could not read the page."
         }
-        reading = false
+    }
+
+    /// One automatic retry on a dropped connection — the vision model is warm by
+    /// then, so the second attempt is fast.
+    private func parseWithRetry(_ jpeg: Data) async throws -> PhotoDraft {
+        do {
+            return try await env.dataSource.parsePhoto(jpeg)
+        } catch APIError.transport {
+            return try await env.dataSource.parsePhoto(jpeg)
+        }
     }
 }
 

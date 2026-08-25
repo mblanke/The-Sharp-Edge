@@ -91,6 +91,9 @@ async def _complete(messages: list[dict]) -> str:
                     "model": settings.vision_model_alias,
                     "messages": messages,
                     "max_tokens": 4000,
+                    # ollama passthrough: keep the vision model resident so the
+                    # retry (and the next cook) skips the cold load
+                    "keep_alive": "60m",
                 },
             )
             res.raise_for_status()
