@@ -117,6 +117,10 @@ final class SampleDataSource: DataSource {
     // The full parser, not an approximation — IngredientParse is fixture-pinned to
     // /parse/* case for case, so the DEBUG path behaves exactly like the server and like
     // a device-hosted notebook.
+    func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft {
+        throw APIError.localOnly("Photo import")
+    }
+
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
         IngredientParse.parseLines(lines, lang: lang.rawValue, spoken: true)
     }

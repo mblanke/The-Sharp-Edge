@@ -68,3 +68,28 @@ struct CategoryRequest: Encodable {
 struct CategoryResponse: Decodable {
     var category: String?
 }
+
+/// Mirrors api/app/services/photo_import.py RecipeDraft — what the local vision
+/// model reads off a photographed page. Review-first, like dictation: the draft
+/// seeds the editor and nothing saves until the cook says so.
+struct PhotoDraft: Decodable {
+    var title: String
+    var meta: String?
+    var baseYield: Int
+    var yieldWord: String
+    var ingredients: [Ingredient]
+    var steps: [Step]
+    var notes: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title, meta, ingredients, steps, notes
+        case baseYield = "base_yield"
+        case yieldWord = "yield_word"
+    }
+
+    func toRecipeCreate(slug: String) -> RecipeCreate {
+        RecipeCreate(slug: slug, title: title, category: Category.order[0],
+                     meta: meta, baseYield: baseYield, yieldWord: yieldWord,
+                     ingredients: ingredients, steps: steps, notes: notes)
+    }
+}

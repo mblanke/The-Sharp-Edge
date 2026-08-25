@@ -30,6 +30,7 @@ struct Endpoints {
     func scale(_ slug: String) -> URL? { url("/recipes/\(slug)/scale") }
     func qr(_ slug: String) -> URL? { url("/recipes/\(slug)/qr") }
     func createRecipe() -> URL? { url("/recipes") }
+    func parsePhoto() -> URL? { url("/recipes/parse-photo") }
 
     func parseIngredients() -> URL? { url("/parse/ingredients") }
     func parseSlug() -> URL? { url("/parse/slug") }

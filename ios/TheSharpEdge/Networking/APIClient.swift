@@ -159,6 +159,29 @@ final class APIClient: DataSource {
         return res.ingredients
     }
 
+    func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft {
+        guard let url = endpoints.parsePhoto() else { throw APIError.badURL }
+        let boundary = "sharp-edge-\(UUID().uuidString)"
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"photo\"; filename=\"page.jpg\"\r\n".utf8))
+        body.append(Data("Content-Type: image/jpeg\r\n\r\n".utf8))
+        body.append(jpeg)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = tokenProvider(), !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = body
+        // The first read after idle waits for the vision model to load on the GB10s.
+        req.timeoutInterval = 300
+        return try await run(req, as: PhotoDraft.self)
+    }
+
     func slug(for title: String) async throws -> SlugResponse {
         let body = try JSONCoding.encoder.encode(SlugRequest(title: title))
         return try await run(request(endpoints.parseSlug(), method: "POST", body: body), as: SlugResponse.self)

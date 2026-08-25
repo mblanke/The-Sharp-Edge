@@ -17,6 +17,9 @@ protocol DataSource: AnyObject {
     // Deterministic text→structure helpers, shared with web so both clients behave
     // identically. Unauthenticated; no model in the loop.
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient]
+    /// A photo of the cook's own page → structured draft, read by the local vision
+    /// model on the server. Server mode only; local/sample throw `.localOnly`.
+    func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft
     func slug(for title: String) async throws -> SlugResponse
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String?
 

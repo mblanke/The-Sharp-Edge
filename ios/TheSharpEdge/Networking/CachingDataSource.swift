@@ -125,6 +125,7 @@ final class CachingDataSource: DataSource {
         try await upstream.parseIngredients(lines, lang: lang)
     }
     func slug(for title: String) async throws -> SlugResponse { try await upstream.slug(for: title) }
+    func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft { try await upstream.parsePhoto(jpeg) }
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String? {
         try await upstream.category(for: spoken, lang: lang)
     }

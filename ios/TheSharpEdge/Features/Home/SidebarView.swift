@@ -8,6 +8,7 @@ struct SidebarView: View {
     @Binding var showImportPicker: Bool
 
     @State private var showCapture = false
+    @State private var showPhotoCapture = false
     @State private var draft: RecipeCreate?
 
     var body: some View {
@@ -93,6 +94,13 @@ struct SidebarView: View {
                     Button { showCapture = true } label: {
                         Label("Dictate it", systemImage: "mic")
                     }
+                    // Vision runs on the server's GB10s — a device-hosted
+                    // notebook has no model to read the page with.
+                    if config.mode == .server {
+                        Button { showPhotoCapture = true } label: {
+                            Label("Photograph a page", systemImage: "camera")
+                        }
+                    }
                     Divider()
                     Button { showImportPicker = true } label: {
                         Label("Import from a file", systemImage: "square.and.arrow.down")
@@ -107,6 +115,7 @@ struct SidebarView: View {
             // Screenshot hook, same idea as RootView's UITEST_ROUTE.
             switch ProcessInfo.processInfo.environment["UITEST_SHEET"] {
             case "capture": showCapture = true
+            case "photo": showPhotoCapture = true
             case "create": draft = RecipeCreate()
             case "create-filled":
                 draft = RecipeCreate(
@@ -119,6 +128,13 @@ struct SidebarView: View {
             default: break
             }
             #endif
+        }
+        .sheet(isPresented: $showPhotoCapture) {
+            PhotoCaptureView { captured in
+                showPhotoCapture = false
+                // Same rule as dictation: the draft lands on the editable form.
+                draft = captured
+            }
         }
         .sheet(isPresented: $showCapture) {
             VoiceCaptureView { captured in

@@ -74,6 +74,10 @@ final class LocalDataSource: DataSource {
     // MARK: - Text → structure
     // The same parser the server runs, pinned case for case by shared/fixtures.
 
+    func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft {
+        throw APIError.localOnly("Photo import")
+    }
+
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
         IngredientParse.parseLines(lines, lang: lang.rawValue, spoken: true)
     }
