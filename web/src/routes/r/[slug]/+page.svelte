@@ -243,6 +243,16 @@
   {/if}
 
   <div class="mt-6 flex flex-wrap gap-2">
+    {#if !recipe.noscale}
+      <a
+        href="/r/{recipe.slug}/cook{target !== recipe.base_yield ? `?yield=${target}` : ''}"
+        class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+        style="background: var(--copper); color: #FFF"
+        data-testid="start-cooking"
+      >
+        ▶ Cook
+      </a>
+    {/if}
     <a
       href="/ask?recipe={recipe.slug}"
       class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
