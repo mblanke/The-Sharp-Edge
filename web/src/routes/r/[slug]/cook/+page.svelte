@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { chime, createCountdown, formatDuration, matchIngredients, type Countdown } from '$lib/cook';
+  import { listen, parseCommand, speak, type VoiceListener } from '$lib/voice';
   import { keepAwake, type WakeLockHandle } from '$lib/wakelock';
 
   let { data } = $props();
@@ -44,11 +45,57 @@
   });
   onDestroy(() => {
     wake?.release();
+    voice?.stop();
     clearInterval(interval);
   });
 
   function go(delta: number) {
     stepIndex = Math.min(steps.length, Math.max(0, stepIndex + delta));
+  }
+
+  // --- voice control (F1): on-device recognition, nothing leaves the browser ---
+  let voice: VoiceListener | null = null;
+  let voiceOn = $state(false);
+  let voiceHeard = $state('');
+  const voiceAvailable =
+    typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  function onVoice(transcript: string) {
+    voiceHeard = transcript.trim();
+    const intent = parseCommand(transcript, scaled);
+    if (!intent) return;
+    if (intent.type === 'next') go(1);
+    else if (intent.type === 'back') go(-1);
+    else if (intent.type === 'repeat' && !finished) speak(steps[stepIndex].text.replace(/\*\*/g, ''));
+    else if (intent.type === 'how-much') {
+      const ing = scaled[intent.ingredient];
+      speak(`${ing.display === '—' ? 'to taste' : ing.display} ${ing.name.split(',')[0]}`);
+    } else {
+      const t = timerFor(stepIndex);
+      if (!t) return;
+      if (intent.type === 'timer-start') {
+        chimed.delete(stepIndex);
+        t.start();
+      } else if (intent.type === 'timer-pause') t.pause();
+      else if (intent.type === 'timer-reset') {
+        t.reset();
+        chimed.delete(stepIndex);
+      }
+      tick++;
+    }
+  }
+
+  function toggleVoice() {
+    if (voiceOn) {
+      voice?.stop();
+      voice = null;
+      voiceOn = false;
+      return;
+    }
+    voice = listen(onVoice);
+    voiceOn = voice.supported;
+    if (!voice.supported) voiceHeard = 'voice not available on this device';
   }
 
   // --- tap zones + swipe ---
@@ -128,6 +175,19 @@
         {data.target} {recipe.yield_word}
       </span>
     </div>
+    {#if voiceAvailable}
+      <button
+        aria-label={voiceOn ? 'Stop voice control' : 'Start voice control'}
+        aria-pressed={voiceOn}
+        class="font-mono-label min-h-[44px] rounded-full border px-3.5 text-[13px]"
+        style={voiceOn
+          ? 'background: var(--copper); border-color: var(--copper); color: #FFF'
+          : 'border-color: var(--line); color: var(--faint)'}
+        onclick={toggleVoice}
+      >
+        🎙
+      </button>
+    {/if}
     <button
       aria-label="Show all ingredients"
       class="font-mono-label min-h-[44px] rounded-full border px-4 text-[11px] uppercase tracking-widest"
@@ -137,6 +197,13 @@
       list
     </button>
   </header>
+
+  {#if voiceOn}
+    <p class="px-5 pb-1 text-center text-[11.5px]" style="color: var(--faint)">
+      listening — say "next", "back", "repeat", "start timer", or "how much …"
+      {#if voiceHeard}<span class="qty"> · “{voiceHeard}”</span>{/if}
+    </p>
+  {/if}
 
   <!-- progress dots -->
   <div class="flex justify-center gap-1.5 pb-1" aria-label="Progress">
