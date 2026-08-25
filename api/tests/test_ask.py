@@ -27,7 +27,11 @@ class FakeProvider:
 
 
 class FakeRag:
+    def __init__(self):
+        self.queries: list[str] = []
+
     async def retrieve(self, question, top_k=None, books=None):
+        self.queries.append(question)
         return COOKING_CHUNKS
 
 
@@ -41,9 +45,9 @@ def parse_sse(body: str) -> list[tuple[str, dict]]:
     return events
 
 
-async def ask_and_parse(client, monkeypatch, payload, provider=None):
+async def ask_and_parse(client, monkeypatch, payload, provider=None, rag=None):
     provider = provider or FakeProvider()
-    monkeypatch.setattr(ask_module, "atlas_rag", FakeRag())
+    monkeypatch.setattr(ask_module, "atlas_rag", rag or FakeRag())
     monkeypatch.setattr(ask_module, "get_provider", lambda: provider)
     res = await client.post("/api/v1/ask", json=payload)
     assert res.status_code == 200
@@ -118,3 +122,27 @@ async def test_ask_recipe_scope_injects_context(client, auth, monkeypatch):
     system = provider.calls[0]["messages"][0]["content"]
     assert "GF Hungarian Beef Goulash" in system
     assert "beef chuck" in system
+
+
+async def test_recipe_scope_augments_retrieval_and_cites_R(client, auth, monkeypatch):
+    from tests.test_recipes_api import GOULASH
+
+    await client.post("/api/v1/recipes", json=GOULASH, headers=auth)
+    rag = FakeRag()
+    provider = FakeProvider(tokens=("Your notebook version [R] matches Keller [1].",))
+    events, _ = await ask_and_parse(
+        client,
+        monkeypatch,
+        {"question": "why sear first?", "scope": {"recipe_slug": "goulash"}},
+        provider,
+        rag,
+    )
+    # retrieval query carries the recipe title + key ingredient heads
+    assert "GF Hungarian Beef Goulash" in rag.queries[0]
+    assert "beef chuck" in rag.queries[0]
+    done = events[-1][1]
+    # [R] cites the notebook recipe (n=0, app path); [1] the library chunk
+    assert done["citations"][0]["n"] == 0
+    assert done["citations"][0]["source_path"] == "/r/goulash"
+    assert done["citations"][1]["n"] == 1
+    assert done["ungrounded"] is False

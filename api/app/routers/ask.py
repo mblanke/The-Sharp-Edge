@@ -22,16 +22,19 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-async def _recipe_context(session: AsyncSession, slug: str | None) -> str:
+async def _recipe_context(
+    session: AsyncSession, slug: str | None
+) -> tuple[str, str, dict | None]:
+    """Returns (system-prompt context, retrieval hint, {title, slug} or None)."""
     if not slug:
-        return ""
+        return "", "", None
     recipe = (
         await session.execute(
             select(Recipe).where(Recipe.slug == slug).options(selectinload(Recipe.versions))
         )
     ).scalar_one_or_none()
     if recipe is None:
-        return ""
+        return "", "", None
     current = next((v for v in recipe.versions if v.is_current), None)
     payload = {
         "title": recipe.title,
@@ -43,10 +46,18 @@ async def _recipe_context(session: AsyncSession, slug: str | None) -> str:
         "steps": current.steps if current else [],
         "notes": current.notes if current else [],
     }
-    return (
+    ctx = (
         "\n\nThe user is currently looking at this recipe from their notebook; "
-        "treat it as the working context:\n" + json.dumps(payload, ensure_ascii=False)
+        "treat it as the working context and cite it as [R] when you draw on it:\n"
+        + json.dumps(payload, ensure_ascii=False)
     )
+    # retrieval hint: title + key ingredient heads ground technique questions
+    heads = [
+        str(i.get("name", "")).split(",")[0].strip()
+        for i in (current.ingredients if current else [])[:6]
+    ]
+    hint = f"{recipe.title}: {', '.join(h for h in heads if h)}"
+    return ctx, hint, {"title": recipe.title, "slug": recipe.slug}
 
 
 @router.post("/ask")
@@ -78,14 +89,19 @@ async def ask(
     conversation_id = str(conversation.id)
 
     provider = get_provider()
+    recipe_ctx, recipe_hint, recipe_ref = await _recipe_context(
+        session, payload.scope.recipe_slug
+    )
 
     # Follow-ups retrieve on a standalone rewrite ("what about with lamb?" alone
     # finds nothing). Local provider only — history can carry corpus text.
     retrieval_query = await standalone_query(payload.question, history, provider)
+    if recipe_hint:
+        # ground technique questions in the working recipe's actual ingredients
+        retrieval_query = f"{retrieval_query} ({recipe_hint})"
     chunks = await atlas_rag.retrieve(
         retrieval_query, top_k=payload.top_k, books=payload.scope.books or None
     )
-    recipe_ctx = await _recipe_context(session, payload.scope.recipe_slug)
 
     user_content = payload.question
     if chunks:
@@ -112,7 +128,7 @@ async def ask(
         answer = "".join(answer_parts)
         # No fabricated fallback: an answer without [n] markers reports itself as
         # ungrounded rather than borrowing the top chunks' credibility.
-        citations = extract_citations(answer, chunks)
+        citations = extract_citations(answer, chunks, recipe=recipe_ref)
         ungrounded = bool(chunks) and not citations
         # The request-scoped session can be torn down before the stream drains;
         # persist on a session owned by the generator itself.

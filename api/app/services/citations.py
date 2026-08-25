@@ -17,14 +17,18 @@ def chunks_block(chunks: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def extract_citations(answer: str, chunks: list[dict]) -> list[dict]:
-    """Map [n] references in the answer to structured citations, in first-use order."""
+def extract_citations(
+    answer: str, chunks: list[dict], recipe: dict | None = None
+) -> list[dict]:
+    """Map [n] references in the answer to structured citations, in first-use
+    order. When a working recipe is in scope it may be cited as [R] — mapped to
+    n=0 with the recipe's app path as source."""
     seen: list[int] = []
     for m in re.finditer(r"\[(\d+)\]", answer):
         n = int(m.group(1))
         if 1 <= n <= len(chunks) and n not in seen:
             seen.append(n)
-    return [
+    out = [
         {
             "n": n,
             "title": chunks[n - 1].get("title"),
@@ -34,6 +38,18 @@ def extract_citations(answer: str, chunks: list[dict]) -> list[dict]:
         }
         for n in seen
     ]
+    if recipe and re.search(r"\[R\]", answer):
+        out.insert(
+            0,
+            {
+                "n": 0,
+                "title": recipe.get("title"),
+                "source_path": f"/r/{recipe.get('slug')}",
+                "heading": "notebook recipe",
+                "page": None,
+            },
+        )
+    return out
 
 
 SYSTEM_PROMPT = (

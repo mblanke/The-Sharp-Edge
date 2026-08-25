@@ -165,13 +165,24 @@
           {#if msg.citations?.length}
             <div class="mt-3 flex flex-wrap gap-2 border-t pt-3" style="border-color: var(--line)">
               {#each msg.citations as c (c.n)}
-                <button
-                  class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
-                  style="border-color: var(--green); color: var(--green-deep)"
-                  onclick={() => (openSource = openSource === `${i}:${c.n}` ? null : `${i}:${c.n}`)}
-                >
-                  [{c.n}] {c.title ?? bookName(c.source_path)}{c.page != null ? ` · p.${c.page}` : ''}
-                </button>
+                {#if c.n === 0}
+                  <!-- [R]: the working notebook recipe — links straight to it -->
+                  <a
+                    href={c.source_path}
+                    class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide no-underline"
+                    style="border-color: var(--copper); color: var(--copper)"
+                  >
+                    [R] {c.title}
+                  </a>
+                {:else}
+                  <button
+                    class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
+                    style="border-color: var(--green); color: var(--green-deep)"
+                    onclick={() => (openSource = openSource === `${i}:${c.n}` ? null : `${i}:${c.n}`)}
+                  >
+                    [{c.n}] {c.title ?? bookName(c.source_path)}{c.page != null ? ` · p.${c.page}` : ''}
+                  </button>
+                {/if}
               {/each}
             </div>
             {#if openSource?.startsWith(`${i}:`)}
