@@ -1,0 +1,20 @@
+{
+  "comment": "Retrieval eval set (D2). Each question lists source_path substrings that count as a hit in the top-8. Runs only with RAG_EVAL=1 against the live Atlas rag-api — grow this set as books land on the shelf, and ratchet MIN_HIT_RATE up in test_retrieval_eval.py as the corpus stabilizes.",
+  "questions": [
+    { "q": "how does Escoffier build an espagnole sauce", "expect": ["escoffier"] },
+    { "q": "what temperature and time for sous vide short ribs", "expect": ["under-pressure", "under_pressure", "keller"] },
+    { "q": "mother sauces of French cuisine", "expect": ["escoffier", "professional", "ruhlman"] },
+    { "q": "how to make a beurre blanc", "expect": ["escoffier", "professional", "sauces"] },
+    { "q": "proper way to temper chocolate", "expect": ["professional", "baking", "dessert"] },
+    { "q": "brining ratios for poultry", "expect": ["ruhlman", "professional", "food-lab", "food_lab"] },
+    { "q": "why rest meat after roasting", "expect": ["food-lab", "food_lab", "professional", "mcgee"] },
+    { "q": "maillard reaction temperature", "expect": ["mcgee", "food-lab", "food_lab", "modernist"] },
+    { "q": "knife cuts brunoise julienne dimensions", "expect": ["professional", "culinary"] },
+    { "q": "emulsion breaking and how to rescue it", "expect": ["mcgee", "food-lab", "food_lab", "professional", "sauces"] },
+    { "q": "stock clarification with a raft", "expect": ["escoffier", "professional", "culinary"] },
+    { "q": "hungarian goulash paprika technique", "expect": ["paprika", "central", "european", "goulash"] },
+    { "q": "pressure cooker stock advantages", "expect": ["under-pressure", "under_pressure", "modernist", "keller"] },
+    { "q": "gluten free flour substitution ratios", "expect": ["gluten", "gf", "flavor"] },
+    { "q": "how to butcher a whole chicken into eight pieces", "expect": ["professional", "culinary", "butcher"] }
+  ]
+}
