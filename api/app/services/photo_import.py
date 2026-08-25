@@ -30,21 +30,31 @@ ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_BYTES = 15 * 1024 * 1024
 TIMEOUT = 300.0  # cold model load on the GB10s can take minutes
 
-PROMPT = (
-    "Transcribe this recipe page exactly as written. Keep the original language "
-    "(English, French, German or Romanian) — do not translate, do not convert "
-    "units, do not add anything that is not on the page. Use exactly this "
-    "layout:\n"
+# Two stages, because each model is asked only for what it is good at. A small
+# vision model transcribes reliably but ignores output formats — one run returned
+# every ingredient on a single pipe-separated line with no STEPS header at all.
+# A text model follows the format exactly. Vision reads; text organises.
+OCR_PROMPT = (
+    "Transcribe every word on this recipe page exactly as written, keeping the "
+    "line breaks and the original language. Do not translate, do not convert "
+    "units, do not summarise, do not add anything that is not on the page."
+)
+
+STRUCTURE_PROMPT = (
+    "Reorganise this transcribed recipe page into exactly the layout below. "
+    "Copy the text as-is — keep the original language, do not translate, do not "
+    "convert units, do not invent anything. One item per line.\n"
     "LANG: <en|fr|de|ro>\n"
     "TITLE: <the recipe name>\n"
-    "YIELD: <the servings line if the page states one, else blank>\n"
+    "YIELD: <the servings line if there is one, else blank>\n"
     "INGREDIENTS:\n"
-    "- <one ingredient per line, exactly as written>\n"
+    "- <one ingredient per line>\n"
     "STEPS:\n"
-    "- <one step per line, exactly as written>\n"
+    "- <one step per line>\n"
     "NOTES:\n"
-    "- <any remaining notes, one per line>\n"
-    "Leave a section empty if the page has none. Output only this text."
+    "- <anything left over, one per line>\n"
+    "Leave a section header with nothing under it if the page has none. "
+    "Output only this layout."
 )
 
 
@@ -78,6 +88,8 @@ def enabled() -> bool:
 
 _SECTIONS = ("ingredients", "steps", "notes")
 _BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s*")
+# Models sometimes run a section together on one line; treat these as line breaks.
+_INLINE_SEPARATORS = re.compile(r"\s*[|·;]\s*")
 # "Pour 4 personnes", "Serves 6", "4 Portionen", "Pentru 4 persoane"
 _YIELD = re.compile(r"(\d+)\s*([A-Za-zÀ-ÿ]+)?")
 _DURATION = re.compile(
@@ -130,9 +142,10 @@ def parse_transcript(text: str) -> RecipeDraft:
             current = matched
             continue
         if current:
-            cleaned = _BULLET.sub("", line)
-            if cleaned:
-                buckets[current].append(cleaned)
+            for part in _INLINE_SEPARATORS.split(line):
+                cleaned = _BULLET.sub("", part).strip()
+                if cleaned:
+                    buckets[current].append(cleaned)
 
     base_yield, yield_word = 1, "servings"
     if (m := _YIELD.search(yield_line)) is not None:
@@ -161,8 +174,8 @@ def parse_transcript(text: str) -> RecipeDraft:
 # ---------------------------------------------------------------- transport
 
 
-async def _complete(messages: list[dict]) -> str:
-    """One non-streamed completion on the router's vision alias."""
+async def _complete(messages: list[dict], model: str) -> str:
+    """One non-streamed completion on the local router."""
     try:
         async with httpx.AsyncClient(
             base_url=settings.llm_router_url.rstrip("/"),
@@ -172,7 +185,7 @@ async def _complete(messages: list[dict]) -> str:
             res = await client.post(
                 "/chat/completions",
                 json={
-                    "model": settings.vision_model_alias,
+                    "model": model,
                     "messages": messages,
                     "max_tokens": 2000,
                 },
@@ -201,12 +214,23 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": data_uri}},
-                    {"type": "text", "text": PROMPT},
+                    {"type": "text", "text": OCR_PROMPT},
                 ],
             }
-        ]
+        ],
+        settings.vision_model_alias,
     )
-    draft = parse_transcript(transcript)
+    laid_out = await _complete(
+        [
+            {"role": "system", "content": STRUCTURE_PROMPT},
+            {"role": "user", "content": transcript},
+        ],
+        settings.chat_model_alias,
+    )
+    draft = parse_transcript(laid_out)
+    if not draft.ingredients and not draft.steps:
+        # The layout pass can drop a page the OCR read fine; try the raw transcript.
+        draft = parse_transcript(transcript)
     if not draft.ingredients and not draft.steps:
         logger.warning("photo-import: nothing usable in transcript: %.500s", transcript)
         raise HTTPException(422, "Could not read a recipe from that photo")

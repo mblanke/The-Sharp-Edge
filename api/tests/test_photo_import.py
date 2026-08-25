@@ -125,26 +125,59 @@ STEPS:
     assert ro.steps[0].timer_seconds == 2700
 
 
-async def test_transcript_flows_through_parse_photo(monkeypatch):
-    seen: list[list[dict]] = []
+async def test_two_stage_flow_reads_then_organises(monkeypatch):
+    """Vision transcribes; the text model lays it out; our parser structures it."""
+    calls: list[tuple[str, list[dict]]] = []
 
-    async def fake_complete(messages):
-        seen.append(messages)
-        return FRENCH_PAGE
+    async def fake_complete(messages, model):
+        calls.append((model, messages))
+        # stage 1 sees the image, stage 2 sees the transcript
+        return "raw page text" if len(calls) == 1 else FRENCH_PAGE
 
     monkeypatch.setattr(photo_module, "_complete", fake_complete)
     out = await parse_photo(PNG, "image/png")
     assert out.title == "Crêpes de Mamie"
     assert len(out.ingredients) == 5
 
-    content = seen[0][0]["content"]
-    assert content[0]["image_url"]["url"].startswith("data:image/png;base64,")
-    # only the photo and the fixed instruction leave — and only to the local router
-    assert "Cooking/" not in str(seen)
+    assert calls[0][0] == settings.vision_model_alias
+    assert calls[1][0] == settings.chat_model_alias
+    assert calls[0][1][0]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert "raw page text" in str(calls[1][1])
+    # only the photo and fixed instructions leave — and only to the local router
+    assert "Cooking/" not in str(calls)
+
+
+async def test_falls_back_to_raw_transcript_when_layout_pass_loses_it(monkeypatch):
+    async def fake_complete(messages, model):
+        # the OCR read the page fine; the layout pass returned nothing usable
+        return FRENCH_PAGE if model == settings.vision_model_alias else "sorry, no recipe"
+
+    monkeypatch.setattr(photo_module, "_complete", fake_complete)
+    out = await parse_photo(PNG, "image/png")
+    assert out.title == "Crêpes de Mamie"
+    assert len(out.ingredients) == 5
+
+
+def test_inline_separators_are_treated_as_line_breaks():
+    """A real run returned every ingredient on one pipe-separated line."""
+    draft = parse_transcript(
+        """LANG: fr
+TITLE: Crêpes
+YIELD: Pour 4 personnes
+INGREDIENTS:
+250 g de farine | 3 œufs | 50 cl de lait
+STEPS:
+Mélanger. | Cuire 1 minute.
+"""
+    )
+    assert len(draft.ingredients) == 3
+    assert draft.ingredients[2].amount == 500 and draft.ingredients[2].unit == "ml"
+    assert len(draft.steps) == 2
+    assert draft.steps[1].timer_seconds == 60
 
 
 async def test_unreadable_page_maps_to_422(monkeypatch):
-    async def fake_complete(messages):
+    async def fake_complete(messages, model):
         return "I see a lovely handwritten page but cannot read it."
 
     monkeypatch.setattr(photo_module, "_complete", fake_complete)
