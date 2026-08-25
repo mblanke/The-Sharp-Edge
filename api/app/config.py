@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     rag_source_folder: str = "Cooking"
     rag_top_k: int = 8
     rag_fetch_k: int = 24  # over-fetch before the client-side folder filter
+    annotation_min_score: float = 0.4  # floor for technique margin notes (F5)
 
     # LiteLLM router on Atlas — OpenAI-compatible; 'cluster' balances Wile + RoadRunner
     llm_router_url: str = "http://100.110.190.10:4000/v1"

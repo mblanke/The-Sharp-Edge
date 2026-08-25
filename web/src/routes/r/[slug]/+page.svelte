@@ -1,8 +1,13 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { scaledDisplay } from '$lib/scaling';
   import type { Ingredient } from '$lib/types';
 
   let { data } = $props();
+
+  let illuminating = $state(false);
+  let openNote = $state<number | null>(null); // step_index of the expanded margin note
+  const notesByStep = $derived(new Map(data.annotations.map((a) => [a.step_index, a])));
 
   const recipe = $derived(data.recipe);
 
@@ -217,6 +222,7 @@
   </h3>
   <ol class="list-none p-0" style="counter-reset: st">
     {#each shown.steps as step, i (i)}
+      {@const note = shown.is_current ? notesByStep.get(i) : undefined}
       <li class="relative py-2 pl-10 text-[15px]">
         <span
           class="font-mono-label absolute top-2 left-0 flex h-[26px] w-[26px] items-center justify-center rounded-full border text-[12px]"
@@ -227,9 +233,51 @@
         {#each boldParts(step.text) as part, j (j)}
           {#if part.bold}<strong>{part.t}</strong>{:else}{part.t}{/if}
         {/each}
+        {#if note}
+          <button
+            class="font-mono-label mt-1 block border-b border-dotted pb-0.5 text-[11px] tracking-wide"
+            style="color: var(--copper); border-color: var(--copper)"
+            onclick={() => (openNote = openNote === i ? null : i)}
+            data-testid="margin-note"
+          >
+            📖 {note.title ?? 'library'} — {note.phrase}{note.page != null ? ` · p.${note.page}` : ''}
+          </button>
+          {#if openNote === i && note.snippet}
+            <div
+              class="mt-1.5 rounded-xl border p-3 text-[13px]"
+              style="border-color: var(--line); background: var(--card); color: var(--faint)"
+            >
+              {note.snippet}
+            </div>
+          {/if}
+        {/if}
       </li>
     {/each}
   </ol>
+
+  {#if !data.annotated && shown.is_current && shown.steps.length}
+    <form
+      method="POST"
+      action="?/illuminate"
+      use:enhance={() => {
+        illuminating = true;
+        return async ({ update }) => {
+          await update();
+          illuminating = false;
+        };
+      }}
+    >
+      <button
+        type="submit"
+        disabled={illuminating}
+        class="font-mono-label mt-3 rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest disabled:opacity-60"
+        style="border-color: var(--line); color: var(--faint)"
+        data-testid="illuminate"
+      >
+        {illuminating ? 'consulting the shelf…' : '📖 illuminate — let the library annotate the steps'}
+      </button>
+    </form>
+  {/if}
 
   {#if shown.notes.length}
     <h3

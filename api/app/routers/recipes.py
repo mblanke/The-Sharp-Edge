@@ -316,6 +316,69 @@ async def log_session(
     return CookSessionOut.model_validate(row)
 
 
+def _annotation_out(a) -> dict:
+    return {
+        "step_index": a.step_index,
+        "phrase": a.phrase,
+        "title": a.title,
+        "source_path": a.source_path,
+        "heading": a.heading,
+        "page": a.page,
+        "snippet": a.snippet,
+    }
+
+
+@router.get("/{slug}/annotations")
+async def list_annotations(slug: str, session: AsyncSession = Depends(get_session)):
+    """Cached library margin notes for the current version (F5)."""
+    from app.models import RecipeAnnotation
+
+    recipe = await _resolve(session, slug, with_versions=True)
+    current = _current_version(recipe)
+    rows = (
+        (
+            await session.execute(
+                select(RecipeAnnotation)
+                .where(RecipeAnnotation.recipe_version_id == current.id)
+                .order_by(RecipeAnnotation.step_index)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {"annotated": bool(rows), "annotations": [_annotation_out(a) for a in rows]}
+
+
+@router.post("/{slug}/annotate", dependencies=[Depends(require_token)])
+async def annotate_recipe(
+    slug: str, force: bool = False, session: AsyncSession = Depends(get_session)
+):
+    """Run retrieval over the current version's steps and cache the results.
+    Skips work when the version is already annotated (unless force)."""
+    from app.models import RecipeAnnotation
+    from app.services.annotate import build_annotations
+
+    recipe = await _resolve(session, slug, with_versions=True)
+    current = _current_version(recipe)
+    existing = (
+        (
+            await session.execute(
+                select(RecipeAnnotation).where(RecipeAnnotation.recipe_version_id == current.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if existing and not force:
+        return {"annotated": True, "annotations": [_annotation_out(a) for a in existing]}
+    for row in existing:
+        await session.delete(row)
+    rows = await build_annotations(current.id, current.steps)
+    session.add_all(rows)
+    await session.commit()
+    return {"annotated": bool(rows), "annotations": [_annotation_out(a) for a in rows]}
+
+
 @router.get("/{slug}/qr")
 async def recipe_qr(slug: str, session: AsyncSession = Depends(get_session)):
     recipe = await _resolve(session, slug)

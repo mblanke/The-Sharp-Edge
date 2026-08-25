@@ -1,3 +1,4 @@
+from app.models.annotation import RecipeAnnotation
 from app.models.chat import Conversation, Message
 from app.models.plan import CookSession, MealPlan, ShoppingItem
 from app.models.recipe import (
@@ -21,4 +22,5 @@ __all__ = [
     "MealPlan",
     "CookSession",
     "ShoppingItem",
+    "RecipeAnnotation",
 ]
