@@ -64,8 +64,20 @@
   <!-- week grid -->
   <div class="mt-5 grid gap-2">
     {#each days as day (iso(day))}
+      {@const dayEntries = plan.entries.filter((e) => e.date === iso(day))}
       <div class="rounded-2xl border p-3" style="border-color: var(--line); background: var(--card)">
-        <div class={labelCls} style="color: var(--green)">{dayLabel(day)}</div>
+        <div class="flex items-baseline gap-2">
+          <div class={labelCls} style="color: var(--green)">{dayLabel(day)}</div>
+          {#if dayEntries.length >= 2}
+            <a
+              href="/cook-together?slugs={dayEntries.map((e) => e.recipe_slug).join(',')}"
+              class="{labelCls} ml-auto no-underline"
+              style="color: var(--copper)"
+            >
+              cook together →
+            </a>
+          {/if}
+        </div>
         <div class="mt-1.5 grid gap-1.5">
           {#each MEALS as meal (meal)}
             {@const entry = entryFor(day, meal)}
