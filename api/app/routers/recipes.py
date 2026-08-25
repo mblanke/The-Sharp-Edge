@@ -2,6 +2,7 @@ import io
 
 import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
+from pydantic import BaseModel, Field
 from qrcode.constants import ERROR_CORRECT_H
 from sqlalchemy import Text, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,10 @@ from app.services.scaling import scale_ingredients
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 MAX_SCALE_FACTOR = 4
+
+
+class ImportUrlRequest(BaseModel):
+    url: str = Field(min_length=8, max_length=2000)
 
 
 async def _resolve(session: AsyncSession, slug: str, *, with_versions: bool = False) -> Recipe:
@@ -253,6 +258,16 @@ async def parse_photo_endpoint(photo: UploadFile):
 
     draft = await parse_photo(await photo.read(), photo.content_type or "")
     return draft
+
+
+@router.post("/import-url", dependencies=[Depends(require_token)])
+async def import_url_endpoint(payload: "ImportUrlRequest"):
+    """Recipe URL → structured draft for the editor (F4). Review-first —
+    never auto-saved; source line = bare domain."""
+    from app.services.import_url import import_from_url
+    from app.services.llm import get_provider
+
+    return await import_from_url(payload.url, get_provider())
 
 
 @router.get("/{slug}/sessions", response_model=list[CookSessionOut])

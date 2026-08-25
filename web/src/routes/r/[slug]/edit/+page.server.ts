@@ -70,5 +70,30 @@ export const actions: Actions = {
     }
     // draft lands in `form.draft`; the editor prefills from it — nothing saved yet
     return { draft: await res.json() };
+  },
+
+  url: async ({ request, fetch }) => {
+    const form = await request.formData();
+    const url = String(form.get('url') ?? '').trim();
+    if (!url) return fail(400, { message: 'Paste a recipe URL first' });
+    const res = await fetch(`${API_URL}/api/v1/recipes/import-url`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${env.API_TOKEN ?? ''}`
+      },
+      body: JSON.stringify({ url })
+    });
+    if (!res.ok) {
+      const detail = await res
+        .json()
+        .then((b: { detail?: string }) => b.detail)
+        .catch(() => null);
+      return fail(res.status >= 500 ? 502 : res.status, {
+        message: detail ?? `import failed (${res.status})`
+      });
+    }
+    const body = await res.json();
+    return { draft: body.draft, source: body.source, gfRisks: body.gf_risks };
   }
 };

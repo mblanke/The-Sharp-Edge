@@ -45,6 +45,7 @@
     notes?: string[];
   }
   let photoBusy = $state(false);
+  let urlBusy = $state(false);
   let appliedDraft: unknown = null;
   $effect(() => {
     const draft = form && 'draft' in form ? (form.draft as PhotoDraft) : null;
@@ -57,7 +58,12 @@
     if (draft.ingredients?.length) ingredients = draft.ingredients.map((i) => ({ ...i }));
     if (draft.steps?.length) steps = draft.steps.map((s) => ({ ...s }));
     if (draft.notes?.length) notes = [...draft.notes];
-    label = label || 'from photo';
+    if (form && 'source' in form && typeof form.source === 'string') {
+      source = form.source; // bare domain from URL import
+      label = label || 'imported from url';
+    } else {
+      label = label || 'from photo';
+    }
   });
 
   let saving = $state(false);
@@ -155,6 +161,40 @@
       a page from your notebook becomes a draft — review before saving
     </span>
   </form>
+{/if}
+
+<form
+  method="POST"
+  action="?/url"
+  class="mt-3 flex gap-2"
+  use:enhance={() => {
+    urlBusy = true;
+    return async ({ update }) => {
+      await update({ reset: false });
+      urlBusy = false;
+    };
+  }}
+>
+  <input
+    name="url"
+    type="url"
+    placeholder="…or paste a recipe URL"
+    class="min-h-[44px] flex-1 rounded-full border px-4 text-[14px]"
+    style="border-color: var(--line); background: var(--card); color: var(--ink)"
+  />
+  <button
+    type="submit"
+    disabled={urlBusy}
+    class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest disabled:opacity-60"
+    style="border-color: var(--copper); color: var(--copper)"
+  >
+    {urlBusy ? 'importing…' : 'import'}
+  </button>
+</form>
+{#if form && 'gfRisks' in form && Array.isArray(form.gfRisks) && form.gfRisks.length}
+  <p class="mt-2 rounded-lg border px-3 py-2 text-[13px]" style="border-color: var(--copper); color: var(--copper); background: #FBF0E6">
+    Imported with possible hidden gluten: {form.gfRisks.map((r: { ingredient: string }) => r.ingredient).join(' · ')}
+  </p>
 {/if}
 
 <form
