@@ -55,6 +55,37 @@ export class ApiError extends Error {
   }
 }
 
+// ---------------------------------------------------------------- cook sessions
+
+export interface CookSession {
+  id: string;
+  started_at: string;
+  finished_at: string;
+  scaled_yield: number;
+  notes: string | null;
+}
+
+export const getCookSessions = (fetchFn: typeof fetch, slug: string, limit = 1) =>
+  get<CookSession[]>(fetchFn, `/recipes/${encodeURIComponent(slug)}/sessions?limit=${limit}`);
+
+/** Server-side only (token from env). */
+export async function logCookSession(
+  fetchFn: typeof fetch,
+  slug: string,
+  payload: { started_at?: string; scaled_yield: number; notes?: string }
+): Promise<CookSession> {
+  const res = await fetchFn(`${API_URL}/api/v1/recipes/${encodeURIComponent(slug)}/sessions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res.json() as Promise<CookSession>;
+}
+
 // ---------------------------------------------------------------- meal plan
 
 export interface PlanEntry {

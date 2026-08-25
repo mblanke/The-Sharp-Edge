@@ -1,6 +1,7 @@
-import { getRecipe, scaleRecipe, type ScaledIngredient } from '$lib/api';
+import { fail, redirect } from '@sveltejs/kit';
+import { ApiError, getRecipe, logCookSession, scaleRecipe, type ScaledIngredient } from '$lib/api';
 import { scaledDisplay } from '$lib/scaling';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ fetch, params, url }) => {
   const recipe = await getRecipe(fetch, params.slug);
@@ -20,4 +21,22 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
     : await scaleRecipe(fetch, params.slug, target);
 
   return { recipe, target, scaled };
+};
+
+export const actions: Actions = {
+  log: async ({ request, params }) => {
+    const form = await request.formData();
+    const startedAt = form.get('started_at');
+    try {
+      await logCookSession(fetch, params.slug, {
+        scaled_yield: Number(form.get('scaled_yield')) || 1,
+        notes: String(form.get('notes') ?? '').trim() || undefined,
+        ...(typeof startedAt === 'string' && startedAt ? { started_at: startedAt } : {})
+      });
+    } catch (e) {
+      if (e instanceof ApiError) return fail(e.status >= 500 ? 502 : e.status, { message: e.message });
+      throw e;
+    }
+    throw redirect(303, `/r/${params.slug}`);
+  }
 };

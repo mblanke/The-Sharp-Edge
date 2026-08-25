@@ -109,6 +109,14 @@
   {#if recipe.source}
     <p class="mt-1 text-[12.5px] italic" style="color: var(--faint)">source: {recipe.source}</p>
   {/if}
+  {#if data.lastCooked}
+    <p class="qty mt-1 text-[12px]" style="color: var(--faint)" data-testid="last-cooked">
+      last cooked {new Date(data.lastCooked.finished_at).toLocaleDateString('en-CA', {
+        month: 'short',
+        day: 'numeric'
+      })} · ×{data.lastCooked.scaled_yield}{data.lastCooked.notes ? ` · ${data.lastCooked.notes}` : ''}
+    </p>
+  {/if}
 
   {#if data.versions.length > 1}
     <div class="mt-3 flex flex-wrap gap-2" role="group" aria-label="Versions">

@@ -115,6 +115,22 @@ class RecipeUpdate(BaseModel):
     pages: list[PageRef] | None = None  # None = leave unchanged
 
 
+class CookSessionCreate(BaseModel):
+    started_at: datetime | None = None  # None = finished_at (untimed log)
+    scaled_yield: int = Field(ge=1)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class CookSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    started_at: datetime
+    finished_at: datetime
+    scaled_yield: int
+    notes: str | None = None
+
+
 class ScaleRequest(BaseModel):
     target_yield: int = Field(ge=1)
 

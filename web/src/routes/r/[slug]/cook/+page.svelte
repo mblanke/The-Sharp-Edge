@@ -26,9 +26,11 @@
     return timers.get(i)!;
   }
 
-  // --- wake lock ---
+  // --- wake lock + session start stamp ---
   let wake: WakeLockHandle | null = null;
+  let startedAt = $state('');
   onMount(() => {
+    startedAt = new Date().toISOString();
     wake = keepAwake();
     interval = setInterval(() => {
       tick++;
@@ -155,12 +157,31 @@
           Done.
         </div>
         <p class="mt-2 text-[15px]" style="color: var(--faint)">Every step cooked. Knives down.</p>
+        <form method="POST" action="?/log" class="mx-auto mt-6 flex max-w-md flex-col gap-2">
+          <input type="hidden" name="started_at" value={startedAt} />
+          <input type="hidden" name="scaled_yield" value={data.target} />
+          <input
+            name="notes"
+            placeholder="what did you change? (optional)"
+            class="min-h-[48px] rounded-full border px-5 text-[15px]"
+            style="border-color: var(--line); background: var(--card); color: var(--ink)"
+            maxlength="500"
+          />
+          <button
+            type="submit"
+            class="font-mono-label min-h-[48px] rounded-full px-6 text-[12px] uppercase tracking-widest"
+            style="background: var(--green-deep); color: #F4F3EC"
+            data-testid="log-cook"
+          >
+            log this cook
+          </button>
+        </form>
         <a
           href="/r/{recipe.slug}"
-          class="font-mono-label mt-6 inline-block rounded-full px-6 py-3.5 text-[12px] uppercase tracking-widest no-underline"
-          style="background: var(--green-deep); color: #F4F3EC"
+          class="font-mono-label mt-3 inline-block rounded-full border px-6 py-3.5 text-[12px] uppercase tracking-widest no-underline"
+          style="border-color: var(--line); color: var(--faint)"
         >
-          back to the recipe
+          skip · back to the recipe
         </a>
       </div>
     {:else}

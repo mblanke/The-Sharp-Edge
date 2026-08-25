@@ -10,8 +10,10 @@ from sqlalchemy.orm import selectinload
 from app.auth import require_token
 from app.config import settings
 from app.db import get_session
-from app.models import NotebookPage, Recipe, RecipeTag, RecipeVersion, Redirect, Tag
+from app.models import CookSession, NotebookPage, Recipe, RecipeTag, RecipeVersion, Redirect, Tag
 from app.schemas.recipe import (
+    CookSessionCreate,
+    CookSessionOut,
     PageRef,
     RecipeCard,
     RecipeCreate,
@@ -214,6 +216,52 @@ async def scale_recipe(slug: str, payload: ScaleRequest, session: AsyncSession =
         yield_word=recipe.yield_word,
         ingredients=scaled,
     )
+
+
+@router.get("/{slug}/sessions", response_model=list[CookSessionOut])
+async def list_sessions(
+    slug: str, limit: int = 10, session: AsyncSession = Depends(get_session)
+):
+    """Cook history, newest first — app-only, never exported."""
+    recipe = await _resolve(session, slug)
+    rows = (
+        (
+            await session.execute(
+                select(CookSession)
+                .where(CookSession.recipe_id == recipe.id)
+                .order_by(CookSession.finished_at.desc())
+                .limit(max(1, min(limit, 50)))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [CookSessionOut.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/{slug}/sessions",
+    response_model=CookSessionOut,
+    status_code=201,
+    dependencies=[Depends(require_token)],
+)
+async def log_session(
+    slug: str, payload: CookSessionCreate, session: AsyncSession = Depends(get_session)
+):
+    recipe = await _resolve(session, slug)
+    from app.models.recipe import utcnow
+
+    finished = utcnow()
+    row = CookSession(
+        recipe_id=recipe.id,
+        started_at=payload.started_at or finished,
+        finished_at=finished,
+        scaled_yield=payload.scaled_yield,
+        notes=(payload.notes or "").strip() or None,
+    )
+    session.add(row)
+    await session.commit()
+    return CookSessionOut.model_validate(row)
 
 
 @router.get("/{slug}/qr")

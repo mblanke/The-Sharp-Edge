@@ -53,4 +53,12 @@ test('cook mode timer counts down and finish screen appears', async ({ page, req
   const total = v.steps.length;
   for (let i = 0; i < total; i++) await page.getByTestId('next-step').click();
   await expect(page.getByText('Done.')).toBeVisible();
+
+  // log the cook with a note → recipe page shows the last-cooked strip
+  await page.getByPlaceholder(/what did you change/).fill('extra ginger');
+  await page.getByTestId('log-cook').click();
+  await expect(page).toHaveURL(/\/r\/stirfry$/);
+  const strip = page.getByTestId('last-cooked');
+  await expect(strip).toContainText('last cooked');
+  await expect(strip).toContainText('extra ginger');
 });
