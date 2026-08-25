@@ -125,37 +125,24 @@ STEPS:
     assert ro.steps[0].timer_seconds == 2700
 
 
-async def test_two_stage_flow_reads_then_organises(monkeypatch):
-    """Vision transcribes; the text model lays it out; our parser structures it."""
+async def test_one_call_only_and_nothing_paraphrases_the_page(monkeypatch):
+    """A second 'tidy up' model rewrote 50 cl as 50 ml — so there is exactly one."""
     calls: list[tuple[str, list[dict]]] = []
 
     async def fake_complete(messages, model):
         calls.append((model, messages))
-        # stage 1 sees the image, stage 2 sees the transcript
-        return "raw page text" if len(calls) == 1 else FRENCH_PAGE
+        return FRENCH_PAGE
 
     monkeypatch.setattr(photo_module, "_complete", fake_complete)
     out = await parse_photo(PNG, "image/png")
     assert out.title == "Crêpes de Mamie"
     assert len(out.ingredients) == 5
 
+    assert len(calls) == 1
     assert calls[0][0] == settings.vision_model_alias
-    assert calls[1][0] == settings.chat_model_alias
     assert calls[0][1][0]["content"][0]["image_url"]["url"].startswith("data:image/png;base64,")
-    assert "raw page text" in str(calls[1][1])
-    # only the photo and fixed instructions leave — and only to the local router
+    # only the photo and the fixed instruction leave — and only to the local router
     assert "Cooking/" not in str(calls)
-
-
-async def test_falls_back_to_raw_transcript_when_layout_pass_loses_it(monkeypatch):
-    async def fake_complete(messages, model):
-        # the OCR read the page fine; the layout pass returned nothing usable
-        return FRENCH_PAGE if model == settings.vision_model_alias else "sorry, no recipe"
-
-    monkeypatch.setattr(photo_module, "_complete", fake_complete)
-    out = await parse_photo(PNG, "image/png")
-    assert out.title == "Crêpes de Mamie"
-    assert len(out.ingredients) == 5
 
 
 def test_inline_separators_are_treated_as_line_breaks():

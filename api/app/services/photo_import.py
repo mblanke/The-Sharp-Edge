@@ -30,31 +30,25 @@ ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_BYTES = 15 * 1024 * 1024
 TIMEOUT = 300.0  # cold model load on the GB10s can take minutes
 
-# Two stages, because each model is asked only for what it is good at. A small
-# vision model transcribes reliably but ignores output formats — one run returned
-# every ingredient on a single pipe-separated line with no STEPS header at all.
-# A text model follows the format exactly. Vision reads; text organises.
-OCR_PROMPT = (
-    "Transcribe every word on this recipe page exactly as written, keeping the "
-    "line breaks and the original language. Do not translate, do not convert "
-    "units, do not summarise, do not add anything that is not on the page."
-)
-
-STRUCTURE_PROMPT = (
-    "Reorganise this transcribed recipe page into exactly the layout below. "
-    "Copy the text as-is — keep the original language, do not translate, do not "
-    "convert units, do not invent anything. One item per line.\n"
+# One model, one call. A second "tidy it up" pass by a text model corrupted the
+# page — it rewrote 50 cl as 50 ml and invented an ingredient — so nothing gets
+# to paraphrase the cook's own words. The vision model transcribes into this
+# layout (11 s, byte-identical across runs), and our parser does the rest.
+PROMPT = (
+    "Transcribe this recipe page exactly as written. Keep the original language "
+    "(English, French, German or Romanian) — do not translate, do not convert "
+    "units, do not add anything that is not on the page. Use exactly this "
+    "layout:\n"
     "LANG: <en|fr|de|ro>\n"
     "TITLE: <the recipe name>\n"
-    "YIELD: <the servings line if there is one, else blank>\n"
+    "YIELD: <the servings line if the page states one, else blank>\n"
     "INGREDIENTS:\n"
-    "- <one ingredient per line>\n"
+    "- <one ingredient per line, exactly as written>\n"
     "STEPS:\n"
-    "- <one step per line>\n"
+    "- <one step per line, exactly as written>\n"
     "NOTES:\n"
-    "- <anything left over, one per line>\n"
-    "Leave a section header with nothing under it if the page has none. "
-    "Output only this layout."
+    "- <any remaining notes, one per line>\n"
+    "Leave a section empty if the page has none. Output only this text."
 )
 
 
@@ -214,23 +208,13 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": data_uri}},
-                    {"type": "text", "text": OCR_PROMPT},
+                    {"type": "text", "text": PROMPT},
                 ],
             }
         ],
         settings.vision_model_alias,
     )
-    laid_out = await _complete(
-        [
-            {"role": "system", "content": STRUCTURE_PROMPT},
-            {"role": "user", "content": transcript},
-        ],
-        settings.chat_model_alias,
-    )
-    draft = parse_transcript(laid_out)
-    if not draft.ingredients and not draft.steps:
-        # The layout pass can drop a page the OCR read fine; try the raw transcript.
-        draft = parse_transcript(transcript)
+    draft = parse_transcript(transcript)
     if not draft.ingredients and not draft.steps:
         logger.warning("photo-import: nothing usable in transcript: %.500s", transcript)
         raise HTTPException(422, "Could not read a recipe from that photo")
