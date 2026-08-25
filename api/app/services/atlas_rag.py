@@ -30,6 +30,17 @@ def _in_scope(chunk: dict[str, Any], folder: str) -> bool:
     )
 
 
+def _in_books(chunk: dict[str, Any], books: list[str]) -> bool:
+    """Match a chunk to any selected book by source-file name (case-insensitive)."""
+    source_path = str(chunk.get("source_path") or "").casefold()
+    basename = source_path.rsplit("/", 1)[-1]
+    for book in books:
+        b = book.strip().casefold()
+        if b and (basename == b or b in source_path):
+            return True
+    return False
+
+
 class AtlasRag:
     def __init__(self, base_url: str | None = None, client: httpx.AsyncClient | None = None):
         self.base_url = (base_url or settings.rag_api_url).rstrip("/")
@@ -41,19 +52,34 @@ class AtlasRag:
             self._client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
         return self._client
 
-    async def retrieve(self, question: str, top_k: int | None = None) -> list[dict]:
-        """Vector + rerank retrieval, client-side filtered to the Cooking corpus."""
+    async def retrieve(
+        self,
+        question: str,
+        top_k: int | None = None,
+        books: list[str] | None = None,
+    ) -> list[dict]:
+        """Vector + rerank retrieval, client-side filtered to the Cooking corpus.
+
+        `books`: restrict to source files whose name matches (scope selector).
+        rag-api takes only {question, top_k}, so book scope means a deeper
+        over-fetch then filtering here — DECISIONS.md flags the server-side
+        filter as a future Atlas improvement."""
         keep = top_k or settings.rag_top_k
+        fetch = max(settings.rag_fetch_k, keep)
+        if books:
+            fetch = max(fetch * 2, 48)  # harder client filter needs more recall
         try:
             res = await self._http().post(
                 "/retrieve",
-                json={"question": question, "top_k": max(settings.rag_fetch_k, keep)},
+                json={"question": question, "top_k": fetch},
             )
             res.raise_for_status()
         except httpx.HTTPError as exc:
             raise HTTPException(502, f"Atlas rag-api unreachable: {exc}") from exc
         chunks = res.json().get("chunks", [])
         scoped = [c for c in chunks if _in_scope(c, settings.rag_source_folder)]
+        if books:
+            scoped = [c for c in scoped if _in_books(c, books)]
         return scoped[:keep]
 
     async def health(self) -> dict:

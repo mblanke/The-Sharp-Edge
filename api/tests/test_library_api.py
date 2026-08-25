@@ -21,7 +21,7 @@ class FakeRag:
         self.healthy = healthy
         self.calls: list[dict] = []
 
-    async def retrieve(self, question, top_k=None):
+    async def retrieve(self, question, top_k=None, books=None):
         self.calls.append({"question": question, "top_k": top_k})
         return self.chunks
 

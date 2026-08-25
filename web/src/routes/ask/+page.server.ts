@@ -17,5 +17,18 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
   } catch {
     // API down — page still renders
   }
-  return { recipeSlug, recipeTitle, conversations };
+  // book names for the scope selector (degrades to whole-library only)
+  let books: string[] = [];
+  try {
+    const res = await fetch(`${API_URL}/api/v1/library/books`);
+    if (res.ok) {
+      const lib = await res.json();
+      books = (lib.books ?? [])
+        .filter((b: { kind: string }) => b.kind === 'file')
+        .map((b: { name: string }) => b.name);
+    }
+  } catch {
+    // rag-api down — selector hides
+  }
+  return { recipeSlug, recipeTitle, conversations, books };
 };

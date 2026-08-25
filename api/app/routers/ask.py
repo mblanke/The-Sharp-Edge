@@ -76,7 +76,9 @@ async def ask(
     await session.commit()
     conversation_id = str(conversation.id)
 
-    chunks = await atlas_rag.retrieve(payload.question, top_k=payload.top_k)
+    chunks = await atlas_rag.retrieve(
+        payload.question, top_k=payload.top_k, books=payload.scope.books or None
+    )
     recipe_ctx = await _recipe_context(session, payload.scope.recipe_slug)
 
     user_content = payload.question

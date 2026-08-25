@@ -16,9 +16,16 @@ router = APIRouter(tags=["library"])
 
 
 @router.get("/search", response_model=list[ChunkOut])
-async def search(q: str = Query(min_length=2), top_k: int = Query(default=8, ge=1, le=20)):
-    """Fast retrieval from the Cooking corpus — vector + rerank, no LLM."""
-    return [ChunkOut.model_validate(c) for c in await atlas_rag.retrieve(q, top_k=top_k)]
+async def search(
+    q: str = Query(min_length=2),
+    top_k: int = Query(default=8, ge=1, le=20),
+    book: str | None = None,
+):
+    """Fast retrieval from the Cooking corpus — vector + rerank, no LLM.
+    `book` restricts to one source file (client-side filter; `kind=` awaits
+    chunk metadata from Atlas)."""
+    chunks = await atlas_rag.retrieve(q, top_k=top_k, books=[book] if book else None)
+    return [ChunkOut.model_validate(c) for c in chunks]
 
 
 @router.get("/library/books", response_model=LibraryStatus)

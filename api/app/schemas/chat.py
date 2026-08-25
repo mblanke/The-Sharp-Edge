@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class AskScope(BaseModel):
     recipe_slug: str | None = None
+    # restrict retrieval to these source files (book names from /library/books)
+    books: list[str] = []
 
 
 class AskRequest(BaseModel):

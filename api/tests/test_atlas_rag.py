@@ -70,3 +70,30 @@ def test_in_scope_variants():
     assert _in_scope({"source_path": "/mnt/references/Cooking/x.pdf"}, "Cooking")
     assert not _in_scope({"source_path": "Security/x.pdf", "source_folder": "Security"}, "Cooking")
     assert _in_scope({"source_path": "anything"}, "")  # empty folder = no filter
+
+
+async def test_retrieve_book_scope_filters_and_overfetches():
+    seen_top_k: list[int] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        seen_top_k.append(json.loads(request.content)["top_k"])
+        return httpx.Response(200, json={"chunks": CHUNKS})
+
+    rag = AtlasRag(base_url="http://rag.test", client=make_client(handler))
+    out = await rag.retrieve("espagnole", top_k=8, books=["professional-chef.pdf"])
+    assert [c["source_path"] for c in out] == ["/mnt/references/Cooking/professional-chef.pdf"]
+    assert seen_top_k[0] >= 48  # deeper over-fetch for the harder client filter
+
+
+async def test_retrieve_book_scope_matches_basename_case_insensitive():
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"chunks": CHUNKS})
+
+    rag = AtlasRag(base_url="http://rag.test", client=make_client(handler))
+    out = await rag.retrieve("ribs", books=["Keller-Under-Pressure.EPUB"])
+    assert [c["source_path"] for c in out] == ["Cooking/keller-under-pressure.epub"]
+    # never leaks outside the Cooking folder even if the name would match
+    out = await rag.retrieve("ribs", books=["sans-660.pdf"])
+    assert out == []

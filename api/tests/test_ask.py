@@ -27,7 +27,7 @@ class FakeProvider:
 
 
 class FakeRag:
-    async def retrieve(self, question, top_k=None):
+    async def retrieve(self, question, top_k=None, books=None):
         return COOKING_CHUNKS
 
 

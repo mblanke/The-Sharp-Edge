@@ -22,6 +22,7 @@
   }
 
   let question = $state('');
+  let scopeBook = $state<string>(''); // '' = whole library
   let messages = $state<ChatMessage[]>([]);
   let busy = $state(false);
   let errorMsg = $state('');
@@ -44,7 +45,7 @@
         body: JSON.stringify({
           question: q,
           conversation_id: conversationId,
-          scope: { recipe_slug: data.recipeSlug }
+          scope: { recipe_slug: data.recipeSlug, books: scopeBook ? [scopeBook] : [] }
         })
       });
       if (!res.ok) throw new Error(`ask failed (${res.status})`);
@@ -113,6 +114,25 @@
       scoped to: {data.recipeTitle ?? data.recipeSlug}
       <a href="/ask" class="no-underline" style="color: var(--copper)" title="Clear scope">✕</a>
     </div>
+  {/if}
+
+  {#if data.books.length}
+    <label class="mt-3 flex items-center gap-2">
+      <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">
+        Shelf
+      </span>
+      <select
+        class="font-mono-label min-h-[44px] max-w-[70vw] rounded-full border px-4 text-[11.5px]"
+        style="border-color: {scopeBook ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--green-deep)"
+        bind:value={scopeBook}
+        aria-label="Restrict answers to one book"
+      >
+        <option value="">Whole library</option>
+        {#each data.books as book (book)}
+          <option value={book}>{book}</option>
+        {/each}
+      </select>
+    </label>
   {/if}
 
   <div class="mt-5 flex flex-col gap-4">

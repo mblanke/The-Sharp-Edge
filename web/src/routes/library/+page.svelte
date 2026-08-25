@@ -18,6 +18,7 @@
   }
 
   let query = $state('');
+  let bookFilter = $state('');
   let results = $state<Chunk[]>([]);
   let searching = $state(false);
   let searched = $state(false);
@@ -30,7 +31,8 @@
     errorMsg = '';
     try {
       // over-fetch so more references make the cut, then group client-side
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=20`);
+      const bookParam = bookFilter ? `&book=${encodeURIComponent(bookFilter)}` : '';
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=20${bookParam}`);
       if (!res.ok) throw new Error(`search failed (${res.status})`);
       results = await res.json();
       searched = true;
@@ -131,6 +133,26 @@
       {searching ? '…' : 'Search'}
     </button>
   </form>
+
+  {#if data.library.books.some((b: { kind: string }) => b.kind === 'file')}
+    <label class="mt-2 flex items-center gap-2">
+      <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">
+        In
+      </span>
+      <select
+        class="font-mono-label min-h-[44px] max-w-[70vw] rounded-full border px-4 text-[11.5px]"
+        style="border-color: {bookFilter ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--green-deep)"
+        bind:value={bookFilter}
+        aria-label="Restrict search to one book"
+        onchange={() => searched && search()}
+      >
+        <option value="">All books</option>
+        {#each data.library.books.filter((b: { kind: string }) => b.kind === 'file') as b (b.name)}
+          <option value={b.name}>{b.name}</option>
+        {/each}
+      </select>
+    </label>
+  {/if}
 
   {#if errorMsg}
     <p class="mt-3 text-[13.5px]" style="color: var(--copper)">{errorMsg}</p>
