@@ -128,3 +128,37 @@ async def test_endpoint_requires_auth_and_returns_draft(client, auth, monkeypatc
     res = await client.post("/api/v1/recipes/parse-photo", files=files, headers=auth)
     assert res.status_code == 200
     assert res.json()["title"] == "From Photo"
+
+
+async def test_tolerates_messy_model_output(monkeypatch):
+    """Real vision models emit nulls and strings where the schema wants values."""
+    messy = json.dumps(
+        {
+            "title": "Ciorbă de legume",
+            "meta": None,
+            "base_yield": None,  # page had no serving count
+            "yield_word": None,
+            "ingredients": [
+                {"amount": "2", "unit": None, "name": "morcovi"},
+                {"amount": None, "unit": "", "name": "sare"},
+                {"amount": 1, "unit": "", "name": ""},  # nameless → dropped
+                "not even a dict",
+            ],
+            "steps": ["Se fierbe totul.", {"text": "Se servește.", "timer_seconds": "600"}],
+            "notes": [None, "", "Mai bună a doua zi."],
+        }
+    )
+
+    async def fake_complete(messages):
+        return messy
+
+    monkeypatch.setattr(photo_module, "_complete", fake_complete)
+    out = await parse_photo(PNG, "image/png")
+    assert out.title == "Ciorbă de legume"
+    assert out.base_yield == 1  # defaulted, not 422
+    assert out.yield_word == "servings"
+    assert [i.name for i in out.ingredients] == ["morcovi", "sare"]
+    assert out.ingredients[0].amount == 2
+    assert out.steps[0].text == "Se fierbe totul."
+    assert out.steps[1].timer_seconds == 600
+    assert out.notes == ["Mai bună a doua zi."]

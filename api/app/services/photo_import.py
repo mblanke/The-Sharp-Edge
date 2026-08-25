@@ -9,13 +9,16 @@ loads the vision model; the timeout allows for a cold start.
 
 import base64
 import json
+import logging
 import re
 
 import httpx
 from fastapi import HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.config import settings
+
+logger = logging.getLogger("sharp-edge")
 
 ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_BYTES = 15 * 1024 * 1024
@@ -72,6 +75,50 @@ class RecipeDraft(BaseModel):
     steps: list[DraftStep] = []
     notes: list[str] = []
 
+    @model_validator(mode="before")
+    @classmethod
+    def _tolerate_model_output(cls, data):
+        """Vision models emit null/strings where the schema wants values — a
+        page with no serving count comes back as base_yield: null. Coerce
+        rather than 422 on an otherwise-good read."""
+        if not isinstance(data, dict):
+            return data
+        for key, default in (("base_yield", 1), ("yield_word", "servings"),
+                             ("title", ""), ("ingredients", []), ("steps", []),
+                             ("notes", [])):
+            if data.get(key) is None:
+                data[key] = default
+        try:
+            data["base_yield"] = max(1, int(float(data["base_yield"])))
+        except (TypeError, ValueError):
+            data["base_yield"] = 1
+        # ingredient/step rows: drop unusable entries instead of failing the draft
+        rows = []
+        for ing in data.get("ingredients", []):
+            if not isinstance(ing, dict) or not str(ing.get("name") or "").strip():
+                continue
+            try:
+                ing["amount"] = float(ing.get("amount") or 0)
+            except (TypeError, ValueError):
+                ing["amount"] = 0
+            ing["unit"] = str(ing.get("unit") or "")
+            rows.append(ing)
+        data["ingredients"] = rows
+        steps = []
+        for step in data.get("steps", []):
+            if isinstance(step, str) and step.strip():
+                steps.append({"text": step})
+            elif isinstance(step, dict) and str(step.get("text") or "").strip():
+                ts = step.get("timer_seconds")
+                try:
+                    step["timer_seconds"] = int(float(ts)) if ts is not None else None
+                except (TypeError, ValueError):
+                    step["timer_seconds"] = None
+                steps.append(step)
+        data["steps"] = steps
+        data["notes"] = [str(n) for n in data.get("notes", []) if str(n or "").strip()]
+        return data
+
 
 def enabled() -> bool:
     return bool(settings.vision_model_alias)
@@ -127,8 +174,10 @@ async def parse_photo(image: bytes, media_type: str) -> RecipeDraft:
     )
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
+        logger.warning("photo-import: no JSON in model output: %.400s", raw)
         raise HTTPException(422, "Could not read a recipe from that photo")
     try:
         return _normalize_units(RecipeDraft.model_validate(json.loads(m.group())))
     except Exception as exc:
+        logger.warning("photo-import: draft rejected (%s): %.600s", exc, m.group())
         raise HTTPException(422, "Could not read a recipe from that photo") from exc
