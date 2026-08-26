@@ -20,7 +20,11 @@ from app.config import settings
 
 logger = logging.getLogger("sharp-edge")
 
-TIMEOUT = 180.0
+TIMEOUT = 300.0
+# The translate alias is a reasoning model: it spends most of its budget thinking
+# before it writes a word (1,300+ tokens to translate two lines). A recipe-sized
+# request needs room for that, or the answer comes back empty.
+MAX_TOKENS = 8000
 LANGUAGE_NAMES = {"en": "English", "fr": "French", "de": "German", "ro": "Romanian"}
 
 PROMPT = (
@@ -32,6 +36,8 @@ PROMPT = (
 )
 
 _NUMBERED = re.compile(r"^\s*(\d+)\s*[.):]\s*(.*)$")
+# Some local models put their reasoning inline rather than in a separate field.
+_THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S | re.I)
 
 
 def build_lines(payload: dict) -> list[str]:
@@ -112,7 +118,7 @@ async def translate_recipe(payload: dict, target: str) -> dict:
                         {"role": "system", "content": PROMPT.format(language=language)},
                         {"role": "user", "content": numbered},
                     ],
-                    "max_tokens": 2000,
+                    "max_tokens": MAX_TOKENS,
                 },
             )
             res.raise_for_status()
@@ -122,9 +128,12 @@ async def translate_recipe(payload: dict, target: str) -> dict:
     except (KeyError, IndexError, ValueError) as exc:
         raise HTTPException(502, "Translation model returned an unexpected response") from exc
 
+    reply = _THINK_BLOCK.sub("", reply)
     translated = parse_numbered(reply, len(lines))
     if not any(translated):
-        logger.warning("translate: nothing usable in reply: %.400s", reply)
+        logger.warning(
+            "translate: nothing usable in reply (%d chars): %.400s", len(reply), reply
+        )
         raise HTTPException(422, "Could not translate this recipe")
     # blanks fall back to the original line, so a partial reply degrades gracefully
     merged = [new or old for new, old in zip(translated, lines)]
