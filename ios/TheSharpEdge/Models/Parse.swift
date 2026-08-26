@@ -93,3 +93,23 @@ struct PhotoDraft: Decodable {
                      ingredients: ingredients, steps: steps, notes: notes)
     }
 }
+
+/// Mirrors api/app/services/translate.py — a recipe's words in another language.
+/// Only strings travel; amounts, units and timers are carried through untouched
+/// by the server, so a translation can never change a quantity.
+struct TranslateRequest: Encodable {
+    var target: String
+    var title: String
+    var meta: String?
+    var ingredients: [Ingredient]
+    var steps: [Step]
+    var notes: [String]
+}
+
+struct TranslateResponse: Decodable {
+    var title: String
+    var meta: String?
+    var ingredients: [Ingredient]
+    var steps: [Step]
+    var notes: [String]
+}

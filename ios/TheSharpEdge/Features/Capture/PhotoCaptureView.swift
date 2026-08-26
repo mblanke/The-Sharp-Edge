@@ -92,7 +92,7 @@ struct PhotoCaptureView: View {
                 CameraPicker { result in
                     showCamera = false
                     switch result {
-                    case .image(let image): Task { await read(image) }
+                    case .data(let data): Task { await read(data) }
                     case .cancelled: break
                     case .empty:
                         // Seen on iOS betas: the picker returns without a usable
@@ -105,9 +105,8 @@ struct PhotoCaptureView: View {
             .onChange(of: pickedItem) { _, item in
                 guard let item else { return }
                 Task {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        await read(image)
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        await read(data)
                     } else {
                         error = "Could not load that photo."
                     }
@@ -118,10 +117,10 @@ struct PhotoCaptureView: View {
     }
 
     @MainActor
-    private func read(_ image: UIImage) async {
+    private func read(_ original: Data) async {
         reading = true
         error = nil
-        // The read takes a minute; if the screen locks, iOS suspends the app and
+        // The read takes a while; if the screen locks, iOS suspends the app and
         // kills the socket ("the network connection was lost"). Keep it awake.
         UIApplication.shared.isIdleTimerDisabled = true
         defer {
@@ -129,8 +128,15 @@ struct PhotoCaptureView: View {
             reading = false
         }
         do {
-            guard let jpeg = image.downscaledJPEG(maxDimension: 1600) else {
-                throw APIError.transport("Could not encode the photo")
+            // Downsample off the main thread and during decode: a ProRAW capture is
+            // ~40 MB, and turning that into a full UIImage would spike memory for no
+            // gain. A recipe page is text — 1400 px reads identically and uploads in
+            // a fraction of the time.
+            let shrunk = await Task.detached(priority: .userInitiated) {
+                downsampledJPEG(from: original, maxPixel: 1400)
+            }.value
+            guard let jpeg = shrunk else {
+                throw APIError.transport("Could not read that image format")
             }
             let draft = try await parseWithRetry(jpeg)
             // Best-effort slug from the title; editable like everything else.
@@ -159,7 +165,9 @@ struct PhotoCaptureView: View {
 /// picker does the one job SwiftUI still lacks.
 private struct CameraPicker: UIViewControllerRepresentable {
     enum Result {
-        case image(UIImage)
+        /// The captured photo as file data. ProRAW/HEIC are handed over as bytes and
+        /// downsampled during decode — a 40 MB RAW must never become a full UIImage.
+        case data(Data)
         case cancelled
         case empty
     }
@@ -185,9 +193,13 @@ private struct CameraPicker: UIViewControllerRepresentable {
 
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            // iOS betas have been seen delivering only one of these; take either.
-            if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage {
-                onResult(.image(image))
+            // Prefer the file on disk: reading its bytes avoids decoding a RAW
+            // capture into memory. Fall back to the UIImage the picker provides.
+            if let url = info[.imageURL] as? URL, let data = try? Data(contentsOf: url) {
+                onResult(.data(data))
+            } else if let image = (info[.editedImage] ?? info[.originalImage]) as? UIImage,
+                      let data = image.jpegData(compressionQuality: 0.9) {
+                onResult(.data(data))
             } else {
                 onResult(.empty)
             }
@@ -196,18 +208,5 @@ private struct CameraPicker: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             onResult(.cancelled)
         }
-    }
-}
-
-private extension UIImage {
-    /// Recipe pages don't need 48 MP — a bounded JPEG keeps upload and vision fast.
-    func downscaledJPEG(maxDimension: CGFloat) -> Data? {
-        let largest = max(size.width, size.height)
-        guard largest > maxDimension else { return jpegData(compressionQuality: 0.85) }
-        let scale = maxDimension / largest
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resized = renderer.image { _ in draw(in: CGRect(origin: .zero, size: newSize)) }
-        return resized.jpegData(compressionQuality: 0.85)
     }
 }

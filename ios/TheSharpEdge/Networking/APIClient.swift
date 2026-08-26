@@ -159,6 +159,19 @@ final class APIClient: DataSource {
         return res.ingredients
     }
 
+    /// Photo upload gets its own session. The shared one is tuned for small,
+    /// quick JSON calls; a multi-hundred-KB body over Tailscale needs to wait for
+    /// connectivity rather than fail, and to allow cellular and low-data modes.
+    private static let uploadSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300
+        config.timeoutIntervalForResource = 600
+        config.waitsForConnectivity = true
+        config.allowsExpensiveNetworkAccess = true
+        config.allowsConstrainedNetworkAccess = true
+        return URLSession(configuration: config)
+    }()
+
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft {
         guard let url = endpoints.parsePhoto() else { throw APIError.badURL }
         let boundary = "sharp-edge-\(UUID().uuidString)"
@@ -176,10 +189,34 @@ final class APIClient: DataSource {
         if let token = tokenProvider(), !token.isEmpty {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        req.httpBody = body
         // The first read after idle waits for the vision model to load on the GB10s.
         req.timeoutInterval = 300
-        return try await run(req, as: PhotoDraft.self)
+
+        let data: Data
+        let response: URLResponse
+        do {
+            // upload(for:from:) streams the body, unlike data(for:) with httpBody.
+            (data, response) = try await Self.uploadSession.upload(for: req, from: body)
+        } catch {
+            throw APIError.transport(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.transport("No HTTP response")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw mapError(status: http.statusCode, data: data)
+        }
+        do {
+            return try JSONCoding.decoder.decode(PhotoDraft.self, from: data)
+        } catch {
+            throw APIError.decoding(String(describing: error))
+        }
+    }
+
+    func translate(_ body: TranslateRequest) async throws -> TranslateResponse {
+        try await run(request(endpoints.translate(), method: "POST", authed: true,
+                              body: try JSONCoding.encoder.encode(body)),
+                      as: TranslateResponse.self)
     }
 
     func slug(for title: String) async throws -> SlugResponse {

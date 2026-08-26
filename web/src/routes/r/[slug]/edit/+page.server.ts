@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { fail, redirect } from '@sveltejs/kit';
-import { ApiError, getRecipe, updateRecipe } from '$lib/api';
+import { ApiError, getRecipe, translateRecipe, updateRecipe } from '$lib/api';
 import type { RecipeUpdate } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -95,5 +95,20 @@ export const actions: Actions = {
     }
     const body = await res.json();
     return { draft: body.draft, source: body.source, gfRisks: body.gf_risks };
+  },
+
+  // Words only: the API keeps every amount, unit and timer, so a translation can
+  // never quietly change a quantity. Result reseeds the form for review.
+  translate: async ({ request, fetch }) => {
+    const form = await request.formData();
+    const raw = form.get('payload');
+    if (typeof raw !== 'string') return fail(400, { message: 'Missing form payload' });
+    try {
+      const draft = await translateRecipe(fetch, JSON.parse(raw), 'en');
+      return { draft };
+    } catch (e) {
+      if (e instanceof ApiError) return fail(e.status >= 500 ? 502 : e.status, { message: e.message });
+      return fail(400, { message: 'Could not translate this recipe' });
+    }
   }
 };

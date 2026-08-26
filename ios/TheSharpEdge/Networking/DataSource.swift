@@ -20,6 +20,8 @@ protocol DataSource: AnyObject {
     /// A photo of the cook's own page → structured draft, read by the local vision
     /// model on the server. Server mode only; local/sample throw `.localOnly`.
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft
+    /// A recipe's words in another language. Server mode only.
+    func translate(_ body: TranslateRequest) async throws -> TranslateResponse
     func slug(for title: String) async throws -> SlugResponse
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String?
 

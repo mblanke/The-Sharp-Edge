@@ -37,6 +37,7 @@ struct RecipeEditorView: View {
     @State private var notes: [NoteRow]
 
     @State private var saving = false
+    @State private var translating = false
     @State private var errorText: String?
     @State private var showSaveError = false
     @State private var slugEdited = false
@@ -136,9 +137,55 @@ struct RecipeEditorView: View {
                     Button("Save") { Task { await save() } }.disabled(!canSave)
                 }
             }
+            // A photographed page keeps the cook's own language; this rewrites it
+            // in English for review. The server keeps every amount as it is.
+            ToolbarItem(placement: .secondaryAction) {
+                if translating {
+                    ProgressView()
+                } else {
+                    Button {
+                        Task { await translateToEnglish() }
+                    } label: {
+                        Label("Translate to English", systemImage: "character.book.closed")
+                    }
+                    .disabled(saving || title.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
         }
         .onAppear { if isCreating && !title.isEmpty { scheduleSlugRefresh() } }
         .onDisappear { slugTask?.cancel() }
+    }
+
+    /// Words only — the server carries amounts, units and timers straight through,
+    /// so this can never alter a quantity. Lands in the form for review like every
+    /// other import; nothing is saved until the cook says so.
+    @MainActor
+    private func translateToEnglish() async {
+        translating = true
+        defer { translating = false }
+        let body = TranslateRequest(
+            target: "en",
+            title: title,
+            meta: meta.isEmpty ? nil : meta,
+            ingredients: ingredients.map(\.value),
+            steps: steps.map(\.value),
+            notes: notes.map(\.value)
+        )
+        do {
+            let translated = try await env.dataSource.translate(body)
+            title = translated.title
+            if let m = translated.meta, !m.isEmpty { meta = m }
+            ingredients = translated.ingredients.map { IngredientRow(value: $0) }
+            steps = translated.steps.map { StepRow(value: $0) }
+            notes = translated.notes.map { NoteRow(value: $0) }
+            if versionLabel.isEmpty { versionLabel = "translated to English" }
+        } catch let error as APIError {
+            errorText = error.errorDescription ?? "Could not translate this recipe."
+            showSaveError = true
+        } catch {
+            errorText = "Could not translate this recipe."
+            showSaveError = true
+        }
     }
 
     private var canSave: Bool {

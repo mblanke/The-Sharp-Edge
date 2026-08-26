@@ -46,6 +46,7 @@
   }
   let photoBusy = $state(false);
   let urlBusy = $state(false);
+  let translating = $state(false);
   let appliedDraft: unknown = null;
   $effect(() => {
     const draft = form && 'draft' in form ? (form.draft as PhotoDraft) : null;
@@ -61,9 +62,12 @@
     if (form && 'source' in form && typeof form.source === 'string') {
       source = form.source; // bare domain from URL import
       label = label || 'imported from url';
+    } else if (translating) {
+      label = label || 'translated to English';
     } else {
       label = label || 'from photo';
     }
+    translating = false;
   });
 
   let saving = $state(false);
@@ -533,6 +537,17 @@
       style="background: var(--green-deep); color: #F4F3EC"
     >
       {saving ? 'Saving…' : 'Save new version'}
+    </button>
+    <button
+      type="submit"
+      formaction="?/translate"
+      disabled={saving}
+      class="font-mono-label min-h-[48px] rounded-full border px-4 text-[11px] uppercase tracking-widest disabled:opacity-60"
+      style="border-color: var(--copper); color: var(--copper)"
+      title="Rewrite this recipe in English. Amounts stay exactly as they are."
+      onclick={() => (translating = true)}
+    >
+      ⇄ English
     </button>
     <a
       href="/r/{recipe.slug}"

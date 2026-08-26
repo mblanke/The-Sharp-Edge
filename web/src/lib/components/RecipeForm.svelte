@@ -449,6 +449,16 @@
     >
       {saving ? 'Saving…' : submitLabel}
     </button>
+    <button
+      type="submit"
+      formaction="?/translate"
+      disabled={saving}
+      class="font-mono-label min-h-[48px] rounded-full border px-4 text-[11px] uppercase tracking-widest disabled:opacity-60"
+      style="border-color: var(--accent); color: var(--accent)"
+      title="Rewrite this recipe in English. Amounts stay exactly as they are."
+    >
+      ⇄ English
+    </button>
     <a
       href={cancelHref}
       class="font-mono-label flex min-h-[48px] items-center rounded-full border px-5 text-[12px] uppercase tracking-widest no-underline"

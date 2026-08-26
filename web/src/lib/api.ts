@@ -186,6 +186,24 @@ export async function addRecipeToShopping(
   if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
 }
 
+/** Translate a draft's words into another language; amounts never change. */
+export async function translateRecipe(
+  fetchFn: typeof fetch,
+  payload: Record<string, unknown>,
+  target = 'en'
+): Promise<Record<string, unknown>> {
+  const res = await fetchFn(`${API_URL}/api/v1/recipes/translate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: JSON.stringify({ ...payload, target })
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export async function createRecipe(
   fetchFn: typeof fetch,
   payload: RecipeCreate
