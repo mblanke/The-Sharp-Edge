@@ -32,6 +32,9 @@ struct Endpoints {
     func createRecipe() -> URL? { url("/recipes") }
     func parsePhoto() -> URL? { url("/recipes/parse-photo") }
     func translate() -> URL? { url("/recipes/translate") }
+    func translation(_ slug: String, _ lang: String) -> URL? {
+        url("/recipes/\(slug)/translations/\(lang)")
+    }
 
     func parseIngredients() -> URL? { url("/parse/ingredients") }
     func parseSlug() -> URL? { url("/parse/slug") }

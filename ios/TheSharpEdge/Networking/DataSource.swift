@@ -22,6 +22,10 @@ protocol DataSource: AnyObject {
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft
     /// A recipe's words in another language. Server mode only.
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse
+    /// A cached translation of a saved recipe, if one exists. Reading needs no token.
+    func translation(_ slug: String, lang: String) async throws -> RecipeTranslation
+    /// Make one and keep it, so later reads are instant.
+    func makeTranslation(_ slug: String, lang: String) async throws -> RecipeTranslation
     func slug(for title: String) async throws -> SlugResponse
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String?
 

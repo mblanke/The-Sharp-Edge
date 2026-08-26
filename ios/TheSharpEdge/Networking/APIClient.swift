@@ -219,6 +219,17 @@ final class APIClient: DataSource {
                       as: TranslateResponse.self)
     }
 
+    func translation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        try await run(request(endpoints.translation(slug, lang)), as: RecipeTranslation.self)
+    }
+
+    func makeTranslation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        var req = try request(endpoints.translation(slug, lang), method: "POST", authed: true)
+        // The big local model is worth waiting for once; the result is cached.
+        req.timeoutInterval = 300
+        return try await run(req, as: RecipeTranslation.self)
+    }
+
     func slug(for title: String) async throws -> SlugResponse {
         let body = try JSONCoding.encoder.encode(SlugRequest(title: title))
         return try await run(request(endpoints.parseSlug(), method: "POST", body: body), as: SlugResponse.self)

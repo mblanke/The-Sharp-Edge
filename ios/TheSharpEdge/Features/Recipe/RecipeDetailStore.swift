@@ -8,6 +8,11 @@ final class RecipeDetailStore: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var flashing = false
+    /// Reading lens for a recipe kept in another language. The stored recipe is
+    /// never altered — this only changes what the screen shows.
+    @Published var english: RecipeTranslation?
+    @Published var readEnglish = false
+    @Published var translating = false
 
     private(set) var slug: String = ""
 
@@ -25,10 +30,60 @@ final class RecipeDetailStore: ObservableObject {
             target = full.baseYield
             // versions are best-effort; don't fail the screen if unavailable
             versions = (try? await source.versions(slug)) ?? []
+            // a translation may already be cached from an earlier read
+            let cached = try? await source.translation(slug, lang: "en")
+            english = (cached?.available == true) ? cached : nil
+            readEnglish = false
         } catch {
             self.error = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
         isLoading = false
+    }
+
+    /// Words the screen should show, honouring the lens. Amounts never come from
+    /// here — they stay the notebook's own.
+    /// Keyed by the original name rather than a position: ingredients are grouped
+    /// into sections for display, so row order is not the recipe's order.
+    private var englishNames: [String: String] {
+        guard let originals = recipe?.currentVersion.ingredients,
+              let translated = english?.ingredients else { return [:] }
+        return Dictionary(zip(originals.map(\.name), translated.map(\.name)),
+                          uniquingKeysWith: { first, _ in first })
+    }
+
+    func displayName(_ original: String) -> String {
+        guard readEnglish else { return original }
+        return englishNames[original] ?? original
+    }
+
+    func displayStep(_ index: Int, fallback: String) -> String {
+        guard readEnglish, let text = english?.steps?[safe: index]?.text else { return fallback }
+        return text
+    }
+
+    var displayTitle: String {
+        (readEnglish ? english?.title : nil) ?? recipe?.title ?? ""
+    }
+
+    var displayNotes: [String] {
+        (readEnglish ? english?.notes : nil) ?? recipe?.currentVersion.notes ?? []
+    }
+
+    /// Translate once and keep it; the API caches per version so later reads are
+    /// instant and a later edit invalidates it.
+    func translate(_ source: DataSource) async {
+        guard !translating else { return }
+        translating = true
+        defer { translating = false }
+        do {
+            let made = try await source.makeTranslation(slug, lang: "en")
+            if made.available {
+                english = made
+                readEnglish = true
+            }
+        } catch {
+            self.error = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     /// Scaled ingredient rows via the client mirror (instant; server /scale is canonical for export).

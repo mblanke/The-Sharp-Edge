@@ -10,6 +10,7 @@ from app.models.recipe import (
     Tag,
 )
 from app.models.shopping import ShoppingItem
+from app.models.translation import RecipeTranslation
 
 __all__ = [
     "Recipe",
@@ -24,4 +25,5 @@ __all__ = [
     "CookSession",
     "ShoppingItem",
     "RecipeAnnotation",
+    "RecipeTranslation",
 ]

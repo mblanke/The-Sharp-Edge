@@ -113,3 +113,13 @@ struct TranslateResponse: Decodable {
     var steps: [Step]
     var notes: [String]
 }
+
+/// A saved translation of one recipe version — the reading lens, not an edit.
+struct RecipeTranslation: Decodable {
+    var available: Bool
+    var title: String?
+    var meta: String?
+    var ingredients: [Ingredient]?
+    var steps: [Step]?
+    var notes: [String]?
+}

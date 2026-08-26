@@ -452,6 +452,98 @@ async def annotate_recipe(
     return {"annotated": bool(rows), "annotations": [_annotation_out(a) for a in rows]}
 
 
+def _translation_out(row) -> dict:
+    return {
+        "lang": row.lang,
+        "title": row.title,
+        "meta": row.meta,
+        "ingredients": row.ingredients,
+        "steps": row.steps,
+        "notes": row.notes,
+    }
+
+
+@router.get("/{slug}/translations/{lang}")
+async def get_translation(
+    slug: str, lang: str, session: AsyncSession = Depends(get_session)
+):
+    """A saved translation of the current version, if one has been made.
+
+    Reading needs no token, like the recipe itself — the point is to open a
+    recipe on a phone and read it.
+    """
+    from app.models import RecipeTranslation
+
+    recipe = await _resolve(session, slug, with_versions=True)
+    current = _current_version(recipe)
+    row = (
+        await session.execute(
+            select(RecipeTranslation).where(
+                RecipeTranslation.recipe_version_id == current.id,
+                RecipeTranslation.lang == lang,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return {"available": False, "lang": lang}
+    return {"available": True, **_translation_out(row)}
+
+
+@router.post("/{slug}/translations/{lang}", dependencies=[Depends(require_token)])
+async def make_translation(
+    slug: str,
+    lang: str,
+    force: bool = False,
+    session: AsyncSession = Depends(get_session),
+):
+    """Translate the current version and keep it, so the next read is instant.
+
+    The stored recipe is never touched: this is a reading aid beside the cook's
+    own words, not a replacement for them.
+    """
+    from app.models import RecipeTranslation
+    from app.services.translate import translate_recipe
+
+    recipe = await _resolve(session, slug, with_versions=True)
+    current = _current_version(recipe)
+    existing = (
+        await session.execute(
+            select(RecipeTranslation).where(
+                RecipeTranslation.recipe_version_id == current.id,
+                RecipeTranslation.lang == lang,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None and not force:
+        return {"available": True, **_translation_out(existing)}
+
+    translated = await translate_recipe(
+        {
+            "title": recipe.title,
+            "meta": recipe.meta,
+            "ingredients": current.ingredients,
+            "steps": current.steps,
+            "notes": current.notes,
+        },
+        lang,
+    )
+    if existing is not None:
+        await session.delete(existing)
+        await session.flush()
+    row = RecipeTranslation(
+        recipe_version_id=current.id,
+        lang=lang,
+        title=translated["title"],
+        meta=translated.get("meta"),
+        ingredients=translated["ingredients"],
+        steps=translated["steps"],
+        notes=translated["notes"],
+    )
+    session.add(row)
+    await session.commit()
+    return {"available": True, **_translation_out(row)}
+
+
 @router.get("/{slug}/qr")
 async def recipe_qr(slug: str, session: AsyncSession = Depends(get_session)):
     recipe = await _resolve(session, slug)

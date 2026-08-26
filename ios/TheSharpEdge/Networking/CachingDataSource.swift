@@ -129,6 +129,12 @@ final class CachingDataSource: DataSource {
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse {
         try await upstream.translate(body)
     }
+    func translation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        try await upstream.translation(slug, lang: lang)
+    }
+    func makeTranslation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        try await upstream.makeTranslation(slug, lang: lang)
+    }
     func category(for spoken: String, lang: CaptureLanguage) async throws -> String? {
         try await upstream.category(for: spoken, lang: lang)
     }

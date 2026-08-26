@@ -125,6 +125,14 @@ final class SampleDataSource: DataSource {
         throw APIError.localOnly("Translation")
     }
 
+    func translation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        RecipeTranslation(available: false)
+    }
+
+    func makeTranslation(_ slug: String, lang: String) async throws -> RecipeTranslation {
+        throw APIError.localOnly("Translation")
+    }
+
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {
         IngredientParse.parseLines(lines, lang: lang.rawValue, spoken: true)
     }

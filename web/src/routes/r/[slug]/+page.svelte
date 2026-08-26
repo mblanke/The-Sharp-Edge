@@ -17,6 +17,25 @@
     data.versions.find((v) => v.id === selectedVersionId) ?? recipe.current_version
   );
 
+  // Reading in English is a lens over the page, never a change to it: the stored
+  // recipe keeps the cook's own words, and the quantities shown stay the ones
+  // the notebook holds.
+  let readEnglish = $state(false);
+  let translating = $state(false);
+  const english = $derived(data.english);
+  const shownTitle = $derived(readEnglish && english ? english.title : recipe.title);
+  const shownMeta = $derived(readEnglish && english ? english.meta : recipe.meta);
+  const shownNotes = $derived(readEnglish && english ? english.notes : shown.notes);
+
+  function ingredientName(index: number, fallback: string): string {
+    return readEnglish && english?.ingredients[index]
+      ? english.ingredients[index].name
+      : fallback;
+  }
+  function stepText(index: number, fallback: string): string {
+    return readEnglish && english?.steps[index] ? english.steps[index].text : fallback;
+  }
+
   let target = $state(0);
   // The client mirror renders instantly; the server response is canonical
   // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
@@ -98,7 +117,7 @@
     {recipe.category}
   </div>
   <h2 class="font-display mt-1 text-[clamp(24px,5.6vw,32px)] leading-tight">
-    {recipe.title}
+    {shownTitle}
     {#if recipe.gf}
       <span
         class="font-mono-label ml-2 inline-block translate-y-[-3px] rounded-full px-2.5 py-1 align-middle text-[10.5px] uppercase tracking-widest"
@@ -108,8 +127,45 @@
       </span>
     {/if}
   </h2>
-  {#if recipe.meta}
-    <p class="mt-1 text-[13.5px]" style="color: var(--faint)">{recipe.meta}</p>
+  {#if shownMeta}
+    <p class="mt-1 text-[13.5px]" style="color: var(--faint)">{shownMeta}</p>
+  {/if}
+
+  <!-- Language lens. Only offered when the page is worth translating. -->
+  {#if english}
+    <button
+      class="font-mono-label mt-2 rounded-full border px-4 py-2 text-[10.5px] uppercase tracking-widest"
+      style={readEnglish
+        ? 'background: var(--green-deep); border-color: var(--green-deep); color: #F4F3EC'
+        : 'border-color: var(--line); color: var(--faint)'}
+      onclick={() => (readEnglish = !readEnglish)}
+      data-testid="english-toggle"
+    >
+      {readEnglish ? '⇄ showing English · tap for original' : '⇄ read in English'}
+    </button>
+  {:else if shown.is_current}
+    <form
+      method="POST"
+      action="?/translate"
+      use:enhance={() => {
+        translating = true;
+        return async ({ update }) => {
+          await update();
+          translating = false;
+          readEnglish = true;
+        };
+      }}
+    >
+      <button
+        type="submit"
+        disabled={translating}
+        class="font-mono-label mt-2 rounded-full border px-4 py-2 text-[10.5px] uppercase tracking-widest disabled:opacity-60"
+        style="border-color: var(--copper); color: var(--copper)"
+        data-testid="translate-recipe"
+      >
+        {translating ? 'translating…' : '⇄ read in English'}
+      </button>
+    </form>
   {/if}
   {#if recipe.source}
     <p class="mt-1 text-[12.5px] italic" style="color: var(--faint)">source: {recipe.source}</p>
@@ -202,7 +258,7 @@
           </li>
         {/if}
         <li class="flex items-baseline gap-2 py-2 text-[15px]">
-          <span class="min-w-0">{ing.name}</span>
+          <span class="min-w-0">{ingredientName(i, ing.name)}</span>
           <span class="leader-dots flex-1" aria-hidden="true"></span>
           <span class="qty shrink-0 text-right text-[14px]" class:flash={flashing}>
             {serverDisplays?.[i] ?? scaledDisplay(ing.amount, ing.unit, factor)}
@@ -228,7 +284,7 @@
         >
           {i + 1}
         </span>
-        {#each boldParts(step.text) as part, j (j)}
+        {#each boldParts(stepText(i, step.text)) as part, j (j)}
           {#if part.bold}<strong>{part.t}</strong>{:else}{part.t}{/if}
         {/each}
         {#if note}
@@ -277,7 +333,7 @@
     </form>
   {/if}
 
-  {#if shown.notes.length}
+  {#if shownNotes.length}
     <h3
       class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
       style="border-color: var(--line); color: var(--green)"
@@ -285,7 +341,7 @@
       Notes
     </h3>
     <ul class="mt-2 list-none rounded-xl border p-4" style="background: var(--card); border-color: var(--line)">
-      {#each shown.notes as note, i (i)}
+      {#each shownNotes as note, i (i)}
         <li class="py-1 text-[13.5px]" style="color: var(--faint)">
           —
           {#each boldParts(note) as part, j (j)}

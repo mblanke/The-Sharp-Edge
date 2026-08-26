@@ -128,7 +128,7 @@ struct RecipeDetailView: View {
     private func header(_ recipe: RecipeFull) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Eyebrow(text: recipe.category)
-            Text(recipe.title)
+            Text(store.displayTitle)
                 .font(Typography.display(34))
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -138,6 +138,7 @@ struct RecipeDetailView: View {
                     Text(meta).font(Typography.body(15)).foregroundStyle(Theme.faint)
                 }
             }
+            languageLens
             if let source = recipe.source, !source.isEmpty {
                 Text(source).font(Typography.body(13)).italic().foregroundStyle(Theme.faint)
             }
@@ -166,7 +167,7 @@ struct RecipeDetailView: View {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
                 MonoQuantity(text: row.display, flashing: store.flashing)
                     .frame(minWidth: 74, alignment: .leading)
-                Text(row.name)
+                Text(store.displayName(row.name))
                     .font(Typography.body(16))
                     .foregroundStyle(Theme.ink)
                     .strikethrough(isChecked, color: Theme.faint)
@@ -180,6 +181,36 @@ struct RecipeDetailView: View {
         .buttonStyle(.plain)
     }
 
+    /// Read a recipe kept in another language. Nothing here edits the recipe —
+    /// the notebook keeps the cook's own words, this only changes what is shown.
+    @ViewBuilder private var languageLens: some View {
+        if store.english != nil {
+            Button {
+                store.readEnglish.toggle()
+            } label: {
+                Label(store.readEnglish ? "Showing English" : "Read in English",
+                      systemImage: "character.book.closed")
+                    .font(Typography.mono(12))
+            }
+            .buttonStyle(.bordered)
+            .tint(store.readEnglish ? Theme.primaryDeep : Theme.faint)
+        } else if store.translating {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Translating…").font(Typography.mono(12)).foregroundStyle(Theme.faint)
+            }
+        } else {
+            Button {
+                Task { await store.translate(env.dataSource) }
+            } label: {
+                Label("Read in English", systemImage: "character.book.closed")
+                    .font(Typography.mono(12))
+            }
+            .buttonStyle(.bordered)
+            .tint(Theme.accent)
+        }
+    }
+
     private func steps(_ recipe: RecipeFull) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             Text("Method").font(Typography.display(22)).foregroundStyle(Theme.ink)
@@ -191,7 +222,7 @@ struct RecipeDetailView: View {
                         .frame(width: 28, height: 28)
                         .background(Theme.primary, in: Circle())
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(StepText.attributed(step.text))
+                        Text(StepText.attributed(store.displayStep(idx, fallback: step.text)))
                             .font(Typography.body(17))
                             .foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
@@ -209,7 +240,7 @@ struct RecipeDetailView: View {
     private func notes(_ recipe: RecipeFull) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Notes").font(Typography.display(20)).foregroundStyle(Theme.ink)
-            ForEach(Array(recipe.currentVersion.notes.enumerated()), id: \.offset) { _, note in
+            ForEach(Array(store.displayNotes.enumerated()), id: \.offset) { _, note in
                 HStack(alignment: .top, spacing: 8) {
                     Text("•").foregroundStyle(Theme.faint)
                     Text(note).font(Typography.body(15)).foregroundStyle(Theme.faint)

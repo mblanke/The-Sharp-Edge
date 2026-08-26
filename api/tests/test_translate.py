@@ -73,3 +73,83 @@ async def test_unknown_language_rejected():
 async def test_endpoint_requires_auth(client):
     res = await client.post("/api/v1/recipes/translate", json={"target": "en", "title": "x"})
     assert res.status_code == 401
+
+
+async def _make_recipe(client, auth):
+    payload = {
+        "slug": "salata-test", "title": "Salată de boeuf", "category": "Salads",
+        "base_yield": 8, "yield_word": "servings",
+        "ingredients": [{"amount": 500, "unit": "g", "name": "carne de vită"},
+                        {"amount": 0, "unit": "", "name": "sare, piper"}],
+        "steps": [{"text": "Fierbe carnea.", "timer_seconds": 3600}],
+        "notes": ["Mai bună a doua zi."],
+    }
+    res = await client.post("/api/v1/recipes", json=payload, headers=auth)
+    assert res.status_code == 201
+
+
+async def test_saved_translation_is_cached_per_version(client, auth, monkeypatch):
+    """Reading a recipe in English must not re-run the model on every view."""
+    calls = {"n": 0}
+
+    async def fake_translate(payload, target):
+        calls["n"] += 1
+        return {
+            "title": "Beef Salad",
+            "meta": payload.get("meta"),
+            "ingredients": [{**i, "name": "beef"} for i in payload["ingredients"]],
+            "steps": [{**s, "text": "Boil the meat."} for s in payload["steps"]],
+            "notes": ["Better the next day."],
+        }
+
+    monkeypatch.setattr("app.services.translate.translate_recipe", fake_translate)
+    await _make_recipe(client, auth)
+
+    # nothing cached yet — reading says so rather than blocking
+    res = await client.get("/api/v1/recipes/salata-test/translations/en")
+    assert res.json() == {"available": False, "lang": "en"}
+
+    res = await client.post("/api/v1/recipes/salata-test/translations/en", headers=auth)
+    body = res.json()
+    assert body["available"] is True and body["title"] == "Beef Salad"
+    # quantities and timers ride through untouched
+    assert body["ingredients"][0]["amount"] == 500
+    assert body["ingredients"][1]["amount"] == 0
+    assert body["steps"][0]["timer_seconds"] == 3600
+    assert calls["n"] == 1
+
+    # second read is served from the cache, and needs no token
+    res = await client.get("/api/v1/recipes/salata-test/translations/en")
+    assert res.json()["title"] == "Beef Salad"
+    assert calls["n"] == 1
+
+    # asking again does not re-run the model either
+    await client.post("/api/v1/recipes/salata-test/translations/en", headers=auth)
+    assert calls["n"] == 1
+
+
+async def test_editing_a_recipe_drops_the_stale_translation(client, auth, monkeypatch):
+    """A new version must not inherit the previous version's translated words."""
+    async def fake_translate(payload, target):
+        return {"title": "Beef Salad", "meta": None,
+                "ingredients": payload["ingredients"], "steps": payload["steps"],
+                "notes": payload["notes"]}
+
+    monkeypatch.setattr("app.services.translate.translate_recipe", fake_translate)
+    await _make_recipe(client, auth)
+    await client.post("/api/v1/recipes/salata-test/translations/en", headers=auth)
+
+    await client.put(
+        "/api/v1/recipes/salata-test",
+        json={"ingredients": [{"amount": 600, "unit": "g", "name": "carne de porc"}],
+              "steps": [{"text": "Fierbe."}], "notes": []},
+        headers=auth,
+    )
+    res = await client.get("/api/v1/recipes/salata-test/translations/en")
+    assert res.json()["available"] is False
+
+
+async def test_translation_requires_auth_to_create_but_not_to_read(client, auth):
+    await _make_recipe(client, auth)
+    assert (await client.post("/api/v1/recipes/salata-test/translations/en")).status_code == 401
+    assert (await client.get("/api/v1/recipes/salata-test/translations/en")).status_code == 200
