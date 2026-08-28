@@ -20,9 +20,20 @@ from __future__ import annotations
 
 import re
 import statistics
+from difflib import SequenceMatcher
 from typing import Any
 
-__all__ = ["Passage", "looks_like_index", "to_passages"]
+from app.services.shelf import resolve_path
+
+__all__ = ["Passage", "looks_like_index", "to_passages", "is_media"]
+
+#: Sources with no page structure at all — a "page" on these is a chunking artefact.
+_MEDIA_TYPES = frozenset({"mkv", "mp4", "webm", "avi", "mov", "m4v", "mp3", "wav", "m4a"})
+
+
+def is_media(file_type: str | None) -> bool:
+    """True for a transcript source, where a page number would be meaningless."""
+    return str(file_type or "").lower().lstrip(".") in _MEDIA_TYPES
 
 _SEGMENT_SPLIT = re.compile(r"\n\s*\n")
 
@@ -41,6 +52,50 @@ _SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
 _LEADING_QUANTITY = re.compile(r"^[\d¼½¾⅓⅔⅛⅜⅝⅞]")
 #: A page number closing a line.
 _TRAILING_PAGE = re.compile(r"\d\s*$")
+#: A segment ending in real sentence punctuation.
+_TERMINAL = re.compile(r"[.!?][\"')\]]?\s*$")
+#: The cross-reference that only ever appears in a back-of-book index.
+_SEE_ALSO = re.compile(r"\bsee also\b|\bsee\s+[A-Z]", re.I)
+
+
+def _first_letter(segment: str) -> str:
+    for ch in segment:
+        if ch.isalpha():
+            return ch.lower()
+    return ""
+
+
+def _looks_alphabetical(segments: list[str]) -> bool:
+    """A back-of-book index whose page numbers didn't survive extraction.
+
+    The contents detector keys on trailing page numbers and the generic detector keys on
+    short segments with no sentences. An alphabetical index from an EPUB defeats both: the
+    page numbers are gone, the entries run long ("Black Pepper-Crusted Filet Mignon with
+    Goat Cheese and Roasted Red Pepper-Ancho Chile Vinaigrette"), and one stray "Squash.
+    See also Zucchini" is enough to make `sentences == 0` false. That is how the FCI index
+    kept winning "onion soup gratinée" — it contains the dish name verbatim.
+
+    What actually separates it from prose is that every entry is a *heading*: title-case
+    start, no terminal punctuation, and first letters that broadly climb the alphabet.
+    """
+    if len(segments) < 8:
+        return False
+
+    starts = [_first_letter(s) for s in segments]
+    if not all(starts):
+        return False
+
+    titlecase = sum(1 for s in segments if s[:1].isupper()) / len(segments)
+    terminal = sum(1 for s in segments if _TERMINAL.search(s)) / len(segments)
+    pairs = list(zip(starts, starts[1:]))
+    monotone = sum(1 for a, b in pairs if b >= a) / len(pairs)
+
+    if titlecase < 0.85 or terminal > 0.1:
+        return False
+    # "See also" is decisive on its own — nothing but an index says it.
+    if _SEE_ALSO.search(" ".join(segments)):
+        return monotone >= 0.5
+    return monotone >= 0.7
 
 
 def _looks_like_contents(text: str) -> bool:
@@ -104,6 +159,12 @@ def looks_like_index(text: str) -> bool:
     short_fraction = sum(1 for n in lengths if n <= 5) / len(lengths)
     digit_fraction = sum(1 for s in segments if any(c.isdigit() for c in s)) / len(segments)
     sentences = len(_SENTENCE_END.findall(text))
+
+    # An alphabetical index survives the digit guard (its page numbers were stripped by
+    # extraction) and the shape guards below (its entries are long). Checked before the
+    # digit guard so an index that kept a few numbers is still caught.
+    if _looks_alphabetical(segments):
+        return True
 
     if digit_fraction >= 0.15:
         return False  # carries quantities — an ingredient list or a real passage
@@ -177,7 +238,50 @@ def to_passages(
         passages.extend(_merge([c]) for c in loose)
 
     passages.sort(key=lambda p: p.get("score") or 0.0, reverse=True)
-    return passages[:keep]
+    return _drop_duplicate_editions(passages)[:keep]
+
+
+#: How alike two passage openings must be before the lower-scoring one is a duplicate.
+_DUPLICATE_RATIO = 0.9
+_DUPLICATE_PREFIX = 200
+
+
+def _normalise(text: str) -> str:
+    return " ".join((text or "").split()).casefold()[:_DUPLICATE_PREFIX]
+
+
+def _drop_duplicate_editions(passages: list[Passage]) -> list[Passage]:
+    """Collapse one *work* that is indexed twice under two folder names.
+
+    The shelf holds several books twice — Franklin Barbecue and Medium Raw are each
+    indexed under two directories, 726 and 907 chunks apiece. Both copies match equally
+    well, so they arrive as two passages saying the same thing from two `doc_id`s: on one
+    real query six of twenty-four candidate slots went to two identical copies of one
+    book. The cook reads the same paragraph twice and the pool is a quarter smaller than
+    it looks.
+
+    Deliberately narrow. Two passages are only ever collapsed when `shelf.resolve_path`
+    says they are the same work; near-identical text from two genuinely different books
+    is kept, because that is a real corroboration between sources and not a duplicate.
+    Same-document repetition is left to merging.
+    """
+    kept: list[Passage] = []
+    for passage in passages:
+        prefix = _normalise(str(passage.get("text") or ""))
+        book = resolve_path(str(passage.get("source_path") or ""))
+        if not prefix or not book:
+            kept.append(passage)
+            continue
+        duplicate = any(
+            k.get("doc_id") != passage.get("doc_id")
+            and resolve_path(str(k.get("source_path") or "")) == book
+            and SequenceMatcher(None, prefix, _normalise(str(k.get("text") or ""))).ratio()
+            >= _DUPLICATE_RATIO
+            for k in kept
+        )
+        if not duplicate:
+            kept.append(passage)
+    return kept
 
 
 def marked_pages(text: str) -> list[int]:
@@ -209,11 +313,19 @@ def _merge(run: list[dict[str, Any]]) -> Passage:
     else:
         page_start = pages[0] if pages else head.get("page")
         page_last = pages[-1] if pages else head.get("page")
+    # A transcript has no pages. Whisper chunks still carry a `page`, so the Keller
+    # sous-vide lesson cites "p.2" and the UI offers to open page 2 of a book that is an
+    # .mkv — a link that can only 404. Confident and wrong is worse than silent.
+    file_type = str(head.get("file_type") or "").lower().lstrip(".")
+    if file_type in _MEDIA_TYPES:
+        page_start = page_last = None
+
     text = strip_page_markers(raw)
     return Passage(
         text=text,
         source_path=head.get("source_path"),
         title=head.get("title"),
+        file_type=head.get("file_type"),
         heading=head.get("heading") or next((c.get("heading") for c in run if c.get("heading")), None),
         page=page_start,
         page_end=page_last,

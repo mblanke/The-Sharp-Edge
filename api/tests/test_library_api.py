@@ -82,3 +82,52 @@ async def test_conversation_404(client):
     res = await client.get(f"/api/v1/conversations/{uuid.uuid4()}")
     assert res.status_code == 404
     assert res.headers["content-type"] == "application/problem+json"
+
+
+# --- shelf coverage on the book list --------------------------------------------------
+# The file list and the index were never compared, so a book that failed to ingest looked
+# exactly like one that worked.
+
+
+def _coverage(monkeypatch, mapping):
+    async def fake(*, force: bool = False):
+        return mapping
+
+    monkeypatch.setattr(library_module, "book_coverage", fake)
+
+
+async def test_book_list_reports_coverage(client, monkeypatch, tmp_path):
+    from app.services.coverage import BookCoverage
+
+    (tmp_path / "Culinary Institute of America - The Professional Chef.txt").write_bytes(b"x")
+    (tmp_path / "Thomas.Keller.Under.Pressure").mkdir()
+    monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
+    monkeypatch.setattr(settings, "library_dir", str(tmp_path))
+    _coverage(
+        monkeypatch,
+        {
+            "professional-chef": BookCoverage("professional-chef", "The Professional Chef", 5423, "indexed"),
+            "under-pressure": BookCoverage("under-pressure", "Under Pressure", 0, "missing"),
+        },
+    )
+
+    body = (await client.get("/api/v1/library/books")).json()
+    by_name = {b["name"]: b for b in body["books"]}
+    chef = by_name["Culinary Institute of America - The Professional Chef.txt"]
+    assert chef["status"] == "indexed" and chef["chunks"] == 5423
+
+    sealed = by_name["Thomas.Keller.Under.Pressure"]
+    assert sealed["status"] == "missing" and sealed["chunks"] == 0
+    assert "not indexed" in sealed["note"]
+
+
+async def test_unknown_coverage_is_null_not_missing(client, monkeypatch, tmp_path):
+    """The failure mode that matters: an unreachable index must not mark every book
+    missing. Null means "we don't know"."""
+    (tmp_path / "Culinary Institute of America - The Professional Chef.txt").write_bytes(b"x")
+    monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
+    monkeypatch.setattr(settings, "library_dir", str(tmp_path))
+    _coverage(monkeypatch, {})
+
+    book = (await client.get("/api/v1/library/books")).json()["books"][0]
+    assert book["status"] is None and book["chunks"] is None and book["note"] is None

@@ -7,9 +7,17 @@
     title: string | null;
     heading: string | null;
     page: number | null;
+    file_type?: string | null;
     score?: number | null;
     rerank_score: number | null;
   }
+
+  //: Sources with no page structure. A transcript chunk still carries a `page`, so
+  //: without this the Keller sous-vide lesson cites "p.2" and offers to open page 2 of
+  //: an .mkv — a link that can only 404.
+  const MEDIA = new Set(['mkv', 'mp4', 'webm', 'avi', 'mov', 'm4v', 'mp3', 'wav', 'm4a']);
+  const isMedia = (t?: string | null) =>
+    MEDIA.has((t ?? '').toLowerCase().replace(/^\./, ''));
 
   interface BookGroup {
     book: string;
@@ -191,7 +199,11 @@
         {#each g.hits as r, i (i)}
           <article class="mt-2 rounded-xl border p-3.5" style="background: var(--card); border-color: var(--line)">
             <div class="font-mono-label flex items-baseline gap-2 text-[10.5px] uppercase tracking-widest">
-              {#if r.page != null}
+              {#if isMedia(r.file_type)}
+                <!-- A transcript has no pages. Whisper chunks still carry one, so this
+                     used to read "p.2" and offer to open page 2 of an .mkv. -->
+                <span class="qty shrink-0 text-[12px]" style="color: var(--accent)">video</span>
+              {:else if r.page != null}
                 <span class="qty shrink-0 text-[12px]">p.{r.page}</span>
                 {#if r.source_path}
                   <!-- Extracted text is a good index and a poor recipe: a line lost by
@@ -231,8 +243,25 @@
           class="flex min-h-[44px] items-center justify-between gap-3 border-b border-dashed py-2 text-[14px]"
           style="border-color: var(--line)"
         >
-          <span>{book.kind === 'folder' ? '▸ ' : ''}{book.name}</span>
-          <span class="qty shrink-0 text-[12px]">{fmtSize(book.size_bytes)}</span>
+          <span class="min-w-0">
+            <span>{book.kind === 'folder' ? '▸ ' : ''}{book.name}</span>
+            <!-- Whether a book is actually searchable. Books had been broken here for
+                 months in silence: sealed archives, a stub .txt standing in for 875 MB
+                 of PDFs. A null status means the index couldn't be reached — unknown,
+                 not missing — so nothing is said. -->
+            {#if book.status && book.status !== 'indexed'}
+              <span
+                class="font-mono-label ml-1.5 whitespace-nowrap text-[10px] uppercase tracking-widest"
+                style="color: var(--accent)"
+                title={book.note ?? ''}
+              >{book.status === 'thin' ? '· barely indexed' : '· not indexed'}</span>
+            {/if}
+          </span>
+          <span class="qty shrink-0 text-[12px]" title={book.note ?? ''}>
+            {book.status === 'indexed' && book.chunks
+              ? `${book.chunks.toLocaleString()} passages`
+              : fmtSize(book.size_bytes)}
+          </span>
         </li>
       {/each}
     </ul>

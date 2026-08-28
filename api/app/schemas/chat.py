@@ -29,6 +29,9 @@ class ChunkOut(BaseModel):
     page_end: int | None = None
     #: How many retrieved chunks this passage is made of (1 = unmerged).
     chunk_count: int | None = None
+    #: pdf | epub | txt | mkv … Carried so the UI can tell an openable book page from a
+    #: video transcript, whose "page" is an artefact of chunking and means nothing.
+    file_type: str | None = None
     score: float | None = None
     rerank_score: float | None = None
 
@@ -67,6 +70,12 @@ class BookOut(BaseModel):
     name: str
     kind: str  # file | folder
     size_bytes: int | None = None
+    #: What the index actually holds for this shelf entry. All three are None when the
+    #: coverage lookup is unavailable — "unknown", which must never be read as "missing".
+    #: indexed | thin | missing (see services/coverage.py)
+    status: str | None = None
+    chunks: int | None = None
+    note: str | None = None
 
 
 class LibraryStatus(BaseModel):

@@ -5,7 +5,7 @@ query "French onion soup recipe" — the case that exposed the bug: the top thre
 were all page 53 of The French Laundry, i.e. its index.
 """
 
-from app.services.passages import looks_like_index, to_passages
+from app.services.passages import is_media, looks_like_index, to_passages
 
 # The French Laundry index, p.53 — the chunk that used to outrank the actual recipe.
 BOOK_INDEX = (
@@ -180,3 +180,152 @@ def test_a_marked_page_one_is_still_page_one():
 def test_a_genuine_page_two_is_untouched():
     chunks = [{"doc_id": "epub", "chunk_index": 9, "page": 2, "score": 3.0, "text": PROSE}]
     assert to_passages(chunks)[0]["page"] == 2
+
+
+# --- alphabetical indexes (real text from the Cooking corpus) ------------------------
+# Both of these outranked the recipe for "onion soup gratinée": an index contains the
+# dish name verbatim, so it is a near-perfect lexical match. They survived the existing
+# guards because EPUB extraction stripped their page numbers (defeating the contents
+# detector) and their entries run long (defeating the short-segment detector).
+
+FCI_INDEX = """
+Onion (Gratinée l’Oignon)
+
+Split Pea, with Croutons (Potage Saint-Germain aux Croutons)
+
+Vegetable (Potage Cultivateur)
+
+Soybean Vinaigrette, Pattypan Squash with Crabmeat and
+
+Sponge Cake (La Génoise)
+
+Spring vegetables:
+
+Chicken Fricassee with (Fricassée de Volaille Printaniére)
+
+Lamb Stew with (Navarin Printanier)
+
+Squash. See also Zucchini
+
+Acorn, Stuffed with Farro, Prunes, and Pears, Baked
+
+Steak:
+
+Black Pepper–Crusted Filet Mignon with Goat Cheese and Roasted Red Pepper–Ancho Chile Vinaigrette
+
+Grilled, with Choron Sauce (Faux Filets Grillés avec Sauce Choron)
+"""
+
+FRENCH_LAUNDRY_INDEX = """
+Caramelized Onion Compote
+
+Caramelized Onion Jus
+
+Caramelized Onion Oil
+
+Dehydrated Caramelized Onions
+
+French Onion Soup
+
+Onion Rings
+
+Pickled Onion Relish
+
+Pickled Pearl Onions
+
+Salade Rouge
+
+Smoked Sturgeon Rillettes
+"""
+
+
+def test_alphabetical_index_is_dropped():
+    assert looks_like_index(FCI_INDEX)
+    assert looks_like_index(FRENCH_LAUNDRY_INDEX)
+
+
+def test_a_recipe_that_names_the_same_dish_survives():
+    """The whole point: drop the index entry, keep the recipe it points at."""
+    recipe = """
+Onion Soup Gratinée
+
+Makes 1 gal/3.84 L
+
+3 lb/1.36 kg thinly sliced onions
+
+4 oz/113 g butter
+
+1 gal/3.84 L brown veal stock
+
+Caramelize the onions slowly in the butter until deeply browned, about 45 minutes.
+Add the stock and simmer for 30 minutes. Season with salt and pepper.
+Ladle into crocks, top with a crouton and grated Gruyère, and gratinée under a
+salamander until browned and bubbling.
+"""
+    assert not looks_like_index(recipe)
+
+
+def test_prose_about_onions_is_not_an_index():
+    assert not looks_like_index(PROSE)
+
+
+# --- one work indexed twice ----------------------------------------------------------
+
+
+def _copy(doc_id: str, path: str, score: float) -> dict:
+    return {
+        "doc_id": doc_id,
+        "chunk_index": 3,
+        "page": 12,
+        "score": score,
+        "source_path": path,
+        "title": "Franklin Barbecue",
+        "text": PROSE,
+    }
+
+
+def test_the_same_book_under_two_folders_is_collapsed():
+    """Franklin Barbecue is indexed twice; both copies match, halving the real pool."""
+    root = "/mnt/references/Cooking/"
+    chunks = [
+        _copy("a", root + "Franklin Barbecue - Aaron Franklin/x.epub", 9.0),
+        _copy("b", root + "Franklin Barbecue_ A Meat-Smoking Manifesto EPUB/y.epub", 8.0),
+    ]
+    passages = to_passages(chunks)
+    assert len(passages) == 1
+    assert passages[0]["score"] == 9.0  # the better-scoring copy survives
+
+
+def test_two_different_books_saying_the_same_thing_are_both_kept():
+    """Corroboration between sources is a feature, not a duplicate."""
+    root = "/mnt/references/Cooking/"
+    chunks = [
+        _copy("a", root + "Franklin Barbecue - Aaron Franklin/x.epub", 9.0),
+        _copy("b", root + "_acquired/On Food and Cooking.epub", 8.0),
+    ]
+    assert len(to_passages(chunks)) == 2
+
+
+def test_a_video_transcript_never_claims_a_page():
+    """Whisper chunks carry a `page`; the Keller sous-vide lesson cited "p.2" and the UI
+    offered to open page 2 of an .mkv — a link that could only 404."""
+    chunks = [{
+        "doc_id": "keller", "chunk_index": 2, "page": 2, "score": 3.0,
+        "file_type": "mkv", "text": PROSE,
+        "source_path": "/mnt/references/Cooking/MasterClass - Thomas Keller Teaches "
+                       "Cooking Techniques III/11.Sous Vide Cooking - Turbot.mkv",
+    }]
+    p = to_passages(chunks)[0]
+    assert p["page"] is None and p["page_end"] is None
+    assert p["file_type"] == "mkv"
+
+
+def test_a_pdf_page_is_still_a_page():
+    chunks = [{"doc_id": "cia", "chunk_index": 2, "page": 358, "score": 3.0,
+               "file_type": "pdf", "text": PROSE}]
+    assert to_passages(chunks)[0]["page"] == 358
+
+
+def test_is_media_covers_the_shelf_video_formats():
+    assert is_media("mkv") and is_media(".MKV") and is_media("mp4")
+    assert not is_media("pdf") and not is_media("epub") and not is_media(None)

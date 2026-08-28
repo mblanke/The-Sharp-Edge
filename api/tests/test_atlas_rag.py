@@ -2,6 +2,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
+from app.config import settings
 from app.services.atlas_rag import AtlasRag, _in_scope
 
 
@@ -72,7 +73,26 @@ def test_in_scope_variants():
     assert _in_scope({"source_path": "anything"}, "")  # empty folder = no filter
 
 
-async def test_retrieve_book_scope_filters_and_overfetches():
+async def test_retrieve_scopes_the_folder_server_side():
+    """rag-api grew a `source_folder` parameter, so the whole top_k budget buys cooking
+    results instead of being spent on the rest of the corpus and then discarded."""
+    seen: list[dict] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json={"chunks": CHUNKS})
+
+    rag = AtlasRag(base_url="http://rag.test", client=make_client(handler))
+    await rag.retrieve("espagnole", top_k=8)
+    assert seen[0]["source_folder"] == settings.rag_source_folder
+
+
+async def test_retrieve_book_scope_still_filters_client_side():
+    """rag-api can scope to a folder but not to a single file, so book scope keeps its
+    client-side filter — with extra recall, but no longer the doubled over-fetch that
+    existed only to survive filtering the whole corpus down to Cooking."""
     seen_top_k: list[int] = []
 
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -84,7 +104,7 @@ async def test_retrieve_book_scope_filters_and_overfetches():
     rag = AtlasRag(base_url="http://rag.test", client=make_client(handler))
     out = await rag.retrieve("espagnole", top_k=8, books=["professional-chef.pdf"])
     assert [c["source_path"] for c in out] == ["/mnt/references/Cooking/professional-chef.pdf"]
-    assert seen_top_k[0] >= 48  # deeper over-fetch for the harder client filter
+    assert seen_top_k[0] >= 32
 
 
 async def test_retrieve_book_scope_matches_basename_case_insensitive():

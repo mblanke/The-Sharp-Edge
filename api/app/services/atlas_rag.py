@@ -70,19 +70,31 @@ class AtlasRag:
         by the *index entry* for that recipe rather than the recipe, because the index
         contains the phrase verbatim. Pass False to see the unprocessed ranking.
 
-        `books` restricts results to the named source files (the /ask shelf
-        selector). rag-api takes only {question, top_k}, so book scope means a
-        deeper over-fetch then filtering here — DECISIONS.md flags the
-        server-side filter as a future Atlas improvement.
+        `books` restricts results to the named source files (the /ask shelf selector),
+        filtered here — rag-api can scope to a folder but not to a file.
+
+        The folder scope is now server-side: `/retrieve` grew a `source_folder`
+        parameter, so the whole `top_k` budget buys cooking results instead of being
+        spent and discarded. `_in_scope` stays as a cheap post-filter in case rag-api
+        regresses or is rolled back; it costs nothing when the server already did the
+        work. Measured honestly, this changed almost no rankings — on six sample queries
+        22-24 of 24 raw hits were already in the folder — but it makes `rag_fetch_k` mean
+        what it says, and it makes book scope reliable rather than a game of over-fetch.
         """
         keep = top_k or settings.rag_top_k
         fetch = max(settings.rag_fetch_k, keep)
         if books:
-            fetch = max(fetch * 2, 48)  # harder client filter needs more recall
+            # Still a client-side filter, so keep some extra recall — but the doubled
+            # fetch is gone now that every candidate is guaranteed to be from Cooking.
+            fetch = max(fetch, 32)
         try:
             res = await self._http().post(
                 "/retrieve",
-                json={"question": question, "top_k": fetch},
+                json={
+                    "question": question,
+                    "top_k": fetch,
+                    "source_folder": settings.rag_source_folder,
+                },
             )
             res.raise_for_status()
         except httpx.HTTPError as exc:

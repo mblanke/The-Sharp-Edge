@@ -12,6 +12,8 @@ from app.db import get_session
 from app.models import Conversation
 from app.schemas.chat import BookOut, ChunkOut, ConversationFull, ConversationSummary, LibraryStatus
 from app.services.atlas_rag import atlas_rag
+from app.services.coverage import book_coverage, describe
+from app.services.shelf import resolve_path
 from app.services.source_page import SourceError, extract_page, resolve_source
 
 router = APIRouter(tags=["library"])
@@ -32,8 +34,16 @@ async def search(
 
 @router.get("/library/books", response_model=LibraryStatus)
 async def library_books():
-    """Book list from the mounted NAS folder (when mounted) + rag-api health."""
+    """The shelf, reconciled against what is actually searchable.
+
+    The file list and the index were never compared, so a book that failed to ingest
+    looked exactly like one that worked. Several had been broken for months in silence —
+    Under Pressure and The Flavor Bible still sealed in split archives, Modernist Cuisine
+    represented by two chunks off a blurb file. Each entry now carries its coverage, and
+    a null status means the lookup was unavailable, not that the book is missing.
+    """
     health = await atlas_rag.health()
+    coverage = await book_coverage()
     books: list[BookOut] = []
     mounted = False
     lib = settings.library_dir
@@ -48,8 +58,27 @@ async def library_books():
                     size = entry.stat().st_size if entry.is_file() else None
                 except OSError:
                     size = None
+                status = chunks = note = None
+                if coverage:
+                    book_id = resolve_path(str(entry))
+                    found = coverage.get(book_id) if book_id else None
+                    if found:
+                        status, chunks = found.status, found.chunks
+                        note = describe(found.book_id, found.chunks)
+                    else:
+                        # On the shelf, claimed by no book in the table — a stray file, or
+                        # a book nobody has added yet. Either way it is not searchable.
+                        status, chunks = "missing", 0
+                        note = f"{entry.name} — not indexed"
                 books.append(
-                    BookOut(name=entry.name, kind="file" if entry.is_file() else "folder", size_bytes=size)
+                    BookOut(
+                        name=entry.name,
+                        kind="file" if entry.is_file() else "folder",
+                        size_bytes=size,
+                        status=status,
+                        chunks=chunks,
+                        note=note,
+                    )
                 )
     return LibraryStatus(mounted=mounted, library_dir=lib or None, books=books, rag_health=health)
 
