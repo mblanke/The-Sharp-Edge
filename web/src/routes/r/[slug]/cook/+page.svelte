@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { chime, createCountdown, formatDuration, matchIngredients, type Countdown } from '$lib/cook';
   import { listen, parseCommand, speak, type VoiceListener } from '$lib/voice-control';
+  import { readSse } from '$lib/sse';
   import { keepAwake, type WakeLockHandle } from '$lib/wakelock';
 
   let { data } = $props();
@@ -74,11 +75,54 @@
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
+  // --- mid-cook questions: a spoken question goes to the library, scoped to this
+  // recipe, and the answer comes back on a card and out loud. Recognition pauses
+  // while the answer is spoken so the mic doesn't transcribe our own voice. ---
+  let ask = $state<{ question: string; answer: string; busy: boolean; error: string } | null>(null);
+  let askConversationId: string | undefined; // one thread per cook session
+
+  async function askShelf(question: string) {
+    if (ask?.busy) return;
+    ask = { question, answer: '', busy: true, error: '' };
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          conversation_id: askConversationId,
+          scope: { recipe_slug: recipe.slug }
+        })
+      });
+      if (!res.ok) throw new Error(`ask failed (${res.status})`);
+      await readSse(res, (event, payload) => {
+        const p = payload as Record<string, unknown>;
+        if (event === 'meta') askConversationId = p.conversation_id as string;
+        else if (event === 'token' && ask) ask = { ...ask, answer: ask.answer + (p.t as string) };
+        else if (event === 'error' && ask) ask = { ...ask, error: String(p.detail ?? 'stream error') };
+      });
+      if (ask) {
+        ask = { ...ask, busy: false };
+        // speak the gist (first sentences), pausing the mic so it doesn't hear us
+        const gist = ask.answer.replace(/\[\d+\]/g, '').split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
+        if (gist && voiceOn) {
+          voice?.stop();
+          speak(gist.slice(0, 400), () => {
+            if (voiceOn) voice = listen(onVoice);
+          });
+        }
+      }
+    } catch (e) {
+      if (ask) ask = { ...ask, busy: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   function onVoice(transcript: string) {
     voiceHeard = transcript.trim();
     const intent = parseCommand(transcript, scaled);
     if (!intent) return;
-    if (intent.type === 'next') go(1);
+    if (intent.type === 'ask') askShelf(intent.question);
+    else if (intent.type === 'next') go(1);
     else if (intent.type === 'back') go(-1);
     else if (intent.type === 'repeat' && !finished) speak(steps[stepIndex].text.replace(/\*\*/g, ''));
     else if (intent.type === 'how-much') {
@@ -213,9 +257,33 @@
 
   {#if voiceOn}
     <p class="px-5 pb-1 text-center text-[11.5px]" style="color: var(--faint)">
-      listening — say "next", "back", "repeat", "start timer", or "how much …"
+      listening — say "next", "back", "repeat", "start timer", "how much …", or ask the library a question
       {#if voiceHeard}<span class="qty"> · “{voiceHeard}”</span>{/if}
     </p>
+  {/if}
+
+  {#if ask}
+    <!-- a question asked with flour on your hands: answered on a card and out loud -->
+    <div
+      class="mx-5 mb-1 rounded-xl border p-3 text-[13.5px]"
+      style="background: var(--card); border-color: var(--copper); color: var(--ink)"
+      role="status"
+    >
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="font-mono-label text-[10.5px] uppercase tracking-widest" style="color: var(--copper)">
+          “{ask.question}”
+        </span>
+        <button
+          class="font-mono-label shrink-0 text-[10.5px] uppercase tracking-widest"
+          style="color: var(--faint)"
+          onclick={() => (ask = null)}
+        >dismiss</button>
+      </div>
+      <div class="mt-1 max-h-[30vh] overflow-y-auto whitespace-pre-wrap">
+        {ask.answer.replace(/\[\d+\]/g, '')}{ask.busy ? ' …' : ''}
+      </div>
+      {#if ask.error}<p class="mt-1" style="color: var(--copper)">{ask.error}</p>{/if}
+    </div>
   {/if}
 
   <!-- progress dots -->

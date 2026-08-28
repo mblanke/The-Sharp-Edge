@@ -13,7 +13,21 @@ export type VoiceIntent =
   | { type: 'timer-pause' }
   | { type: 'timer-reset' }
   | { type: 'how-much'; ingredient: number } // index into the ingredient list
+  | { type: 'ask'; question: string } // a real question → the library, mid-cook
   | null;
+
+/** Question-shaped speech: an interrogative opener and enough words to mean it.
+ *  Deliberately strict — kitchen chatter must not fire LLM calls, so a bare
+ *  exclamation ("what!") or a two-word fragment never counts. */
+const QUESTION_OPENER =
+  /^(?:hey\s+library[,\s]+)?(how|what|why|when|which|where|can|could|should|do|does|is|are|will)\b/;
+
+export function questionOf(transcript: string): string | null {
+  const t = transcript.trim().replace(/\s+/g, ' ');
+  if (t.split(' ').length < 4) return null;
+  if (!QUESTION_OPENER.test(t.toLowerCase())) return null;
+  return t.replace(/^hey\s+library[,\s]+/i, '');
+}
 
 /** Map a spoken transcript to an intent. Later phrases win ("okay next"). */
 export function parseCommand(transcript: string, ingredients: Ingredient[]): VoiceIntent {
@@ -32,7 +46,9 @@ export function parseCommand(transcript: string, ingredients: Ingredient[]): Voi
         best = i;
       }
     });
-    return best >= 0 ? { type: 'how-much', ingredient: best } : null;
+    if (best >= 0) return { type: 'how-much', ingredient: best };
+    // No such ingredient in this recipe — fall through: the question is still real
+    // ("how much saffron does a paella need"), and the library can answer it.
   }
 
   if (/\b(start|begin|resume)\b.*\btimer\b|\btimer\b.*\b(start|begin|resume)\b/.test(t))
@@ -44,17 +60,28 @@ export function parseCommand(transcript: string, ingredients: Ingredient[]): Voi
   if (/\b(next|continue|forward|done|onwards?)\b/.test(t)) return { type: 'next' };
   if (/\b(back|previous|go back)\b/.test(t)) return { type: 'back' };
   if (/\b(repeat|again|read (it|that))\b/.test(t)) return { type: 'repeat' };
+
+  // Last, after every command has had its chance: a genuine question goes to the
+  // library. This also catches "how much saffron" when the recipe has no saffron —
+  // an unmatched how-much falls through to become a real question about the shelf.
+  const q = questionOf(transcript);
+  if (q) return { type: 'ask', question: q };
   return null;
 }
 
-export function speak(text: string): void {
+export function speak(text: string, onDone?: () => void): void {
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05;
+    if (onDone) {
+      u.onend = onDone;
+      u.onerror = onDone;
+    }
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   } catch {
     // no TTS — visual UI still shows everything
+    onDone?.();
   }
 }
 
