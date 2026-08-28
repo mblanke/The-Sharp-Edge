@@ -224,3 +224,86 @@ nothing — silent if you do not read the log.
 re-ingested *before* its old poisoned ids are purged will have its fresh chunks deleted
 by that purge. Purge first, then rebuild — which is the order `rebuild_corpus.py`
 assumes.
+
+
+---
+
+## Ingestion performance (2026-08-28)
+
+The repair surfaced why ingestion never finished. Three causes, none of them the GPUs.
+
+### 1. Atlas has no GPU, and docling was doing GPU work on a Xeon D
+
+`ghcr.io/docling-project/docling-serve:latest` ships `torch 2.13.0+cu130` and reports
+`cuda available: False` on Atlas — there is no card in the box. Layout detection, table
+structure and OCR have been running on 16 low-power Xeon cores. Measured during a real
+ingest: **docling ~500-800% CPU, rag-api 0.26%**. Embedding was never the constraint, so
+adding GB10 capacity would have accelerated nothing.
+
+### 2. OCR was running on PDFs that already had text
+
+Same 12 pages, same file, measured on both workers:
+
+| worker | OCR on | OCR off |
+|---|---|---|
+| Atlas | 118.8s | **55.1s** |
+| Cerberus | 46.7s | **18.8s** |
+
+The markdown differs by 0.01% (1,614,292 vs 1,614,131 chars) — on a text-layer PDF, OCR
+costs half the runtime and contributes nothing. `docling_client._has_text_layer` now
+samples the file's own content streams and sets `do_ocr` per file.
+
+It is dependency-free because rag-api's image has no pypdf, and it **fails safe**: only a
+confident text-layer reading skips OCR; scans and anything ambiguous keep it. Two traps
+found while writing it — counting `Tf` (font *selection*, present on scanned pages too)
+and running the operator regex over raw compressed bytes (4 MB of JPEG contains "Tj" by
+chance ~60 times) both misread a pure scan as having text, which is the dangerous
+direction.
+
+### 3. One worker, and the slower one
+
+**Cerberus** (`192.168.1.22`, 16 cores, 499 GB) runs a second docling and is **2.5×
+faster than Atlas at the same core count**. An nginx least-connections balancer
+(`docling-lb` on the `ai` network, weight 3:1 toward Cerberus) fronts both;
+`DOCLING_URL` points at it.
+
+### Result
+
+*Japanese Cooking — A Simple Art* (517 pages): **4+ hours → 15 minutes**. The three
+poisoned Cooking sources rebuilt in **23 minutes total**.
+
+## Whisper was never broken
+
+Every `.webm` failure was Whisper correctly refusing a corrupt file:
+
+```
+[matroska,webm] EBML header parsing failed
+Error opening input: Invalid data found when processing input
+```
+
+The SANS `.webm` files begin with megabytes of zero bytes (`file` reports `data`). A
+header scan of the whole video library:
+
+| corpus | valid | zero-filled |
+|---|---|---|
+| Cooking | **89** | 0 |
+| Hacking | 9,047 | 98 |
+
+Every Cooking video is valid; a Great Courses lecture transcribes to 42 chunks.
+
+`whisper_client.transcribe` now checks the container header before uploading (12 bytes of
+I/O against a 78 MB upload and a GPU slot), and `main.py` treats a container-parse
+failure as **permanent**. Previously these retried forever: 1,479 failed attempts in one
+day, one file at 435 retries.
+
+## Machine roles
+
+| machine | role |
+|---|---|
+| **Atlas** (16-core Xeon D, no GPU) | qdrant, rag-api, docling worker #2, the app |
+| **Cerberus** (16 cores, 499 GB) | docling worker #1 — 2.5× Atlas, weighted accordingly |
+| **Stronghold** (RTX 3060 Ti, 8 cores) | Docker installed; best used as a second Whisper node — documents are no longer the bottleneck, transcription is |
+| **Wile / RoadRunner** (GB10) | embeddings, vision, chat. Deliberately left alone: they serve the assistants and embedding was never the constraint |
+
+Stronghold's Tailscale ACL blocks SSH as `guapo`; reach it as `soadmin` over the LAN
+(`192.168.1.31`). Atlas's key is installed there.
