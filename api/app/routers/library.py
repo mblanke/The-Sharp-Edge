@@ -64,7 +64,11 @@ async def library_books():
                     # folder holding one book in three formats, or a folder of many
                     # books (`_acquired` holds six) — and "not indexed" on a folder
                     # whose contents are all indexed would be the report lying.
-                    prefix = str(entry)
+                    # The entry is translated onto the *index's* root: the shelf is
+                    # mounted at /library on Atlas while the index records
+                    # /mnt/references/Cooking, so local paths must never be compared
+                    # against facet keys directly.
+                    prefix = f"{settings.rag_corpus_root.rstrip('/')}/{entry.name}"
                     chunks = sum(
                         n
                         for p, n in counts.items()

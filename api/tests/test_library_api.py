@@ -103,7 +103,9 @@ async def test_book_list_reports_coverage(client, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "library_dir", str(tmp_path))
     _counts(
         monkeypatch,
-        {str(tmp_path / "Culinary Institute of America - The Professional Chef.pdf"): 5423},
+        # the index records its own root — never the local mount (which is /library
+        # on Atlas and tmp_path here)
+        {"/mnt/references/Cooking/Culinary Institute of America - The Professional Chef.pdf": 5423},
     )
 
     body = (await client.get("/api/v1/library/books")).json()
@@ -127,8 +129,8 @@ async def test_a_folder_of_many_books_sums_its_contents(client, monkeypatch, tmp
     _counts(
         monkeypatch,
         {
-            str(acquired / "On Food and Cooking.epub"): 3126,
-            str(acquired / "The Noma Guide to Fermentation.epub"): 835,
+            "/mnt/references/Cooking/_acquired/On Food and Cooking.epub": 3126,
+            "/mnt/references/Cooking/_acquired/The Noma Guide to Fermentation.epub": 835,
         },
     )
 

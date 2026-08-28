@@ -43,6 +43,11 @@ class Settings(BaseSettings):
 
     # Optional read-only mount of the NAS Cooking folder for the /library book list
     library_dir: str = ""
+    # The same folder as the *index* records it (rag-api's mount). The shelf can be
+    # mounted anywhere locally — /library on Atlas — so matching a shelf entry to its
+    # indexed chunks means translating the entry name onto this root, not comparing
+    # local paths.
+    rag_corpus_root: str = "/mnt/references/Cooking"
 
 
 settings = Settings()
