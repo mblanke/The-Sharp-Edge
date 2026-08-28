@@ -212,8 +212,10 @@ is a consumer, not an indexer.
 - Force an immediate sweep: `ssh soadmin@100.110.190.10 sudo systemctl start rag-ingest.service`.
 
 **Retrieval (`services/atlas_rag.py`):**
-- POST `{RAG_API_URL}/retrieve` (`http://100.110.190.10:8099`, or `http://rag-api:8099` on Atlas) with over-fetch `top_k=24`, then **client-side filter to `RAG_SOURCE_FOLDER=Cooking`** (rag-api has no server-side filter), keep top 8.
-- Chunks carry `text, source_path, page, heading, title, score, rerank_score`.
+- POST `{RAG_API_URL}/retrieve` (`http://100.110.190.10:8099`, or `http://rag-api:8099` on Atlas) with `source_folder=Cooking` — the filter **is** server-side now (`{question, top_k, source_folder, file_type, tags}`); `_in_scope` remains only as a cheap guard against a rollback. Book scope is still client-side: rag-api filters a folder, not a single file.
+- Chunks carry `text, source_path, page, heading, title, file_type, score, rerank_score` (plus `tags`, `entities`, `doc_summary`, which are empty for almost every cooking chunk).
+- **Book identity lives in `services/shelf.py`** — one table of id/title/authors/path globs. Nothing else in the codebase should learn a filename; the eval, attribution and coverage all read it.
+- **Coverage** (`services/coverage.py`) facets Qdrant's `source_path` payload to report what is genuinely searchable. Payload reads are fine; vector reads from this app are not.
 
 **Ask (`routers/ask.py` → SSE):**
 - Prompt = system (culinary assistant, cite `[n]`, admit gaps) + retrieved numbered chunks + conversation history + user question (+ current recipe JSON when scoped via `scope.recipe_slug`).
@@ -240,7 +242,7 @@ Known gaps to leave as editable placeholders: spaghetti-sauce herb quantities, b
 
 **Phase 2 — Editing & versions:** editor UI, append-only versions, version switcher, tags, notebook page mapping, master.md export. *Done when: a recipe can be corrected on the iPad and exported back to markdown.*
 
-**Phase 3 — RAG:** ingest watcher, chunker, embeddings, hybrid search, library UI, /ask with citations, provider abstraction + tier firewall. *Done when: "how does Escoffier build an espagnole?" answers with page-cited chunks.*
+**Phase 3 — RAG:** ingest watcher, chunker, embeddings, hybrid search, library UI, /ask with citations, provider abstraction + tier firewall. *Done when: "how does Escoffier build an espagnole?" answers with page-cited chunks — **or says plainly that this shelf has no Escoffier**. There is not, and never has been, an Escoffier on the shelf; writing the gate around a book nobody owned is how the app learned to answer confidently in his name from the CIA's pages. Either acquire it (the 1907 English* Le Guide Culinaire *is public domain, so it can be public tier) or hold the app to the honest version of the gate.*
 
 **Phase 4 — Kitchen features:** cook mode with timers + wake-lock, meal plan, shopping list, cards.pdf + QR export, offline caching. *Done when: a full cook happens without touching paper except by choice.*
 

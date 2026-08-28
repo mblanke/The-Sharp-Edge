@@ -98,13 +98,37 @@ Re-record the baseline **on purpose** once the shelf settles:
 RAG_EVAL=1 RAG_EVAL_WRITE_BASELINE=1 uv run --extra dev pytest tests/test_retrieval_eval.py
 ```
 
-## Step 6 is a hypothesis, not a certainty
+## Why step 6 matters more than any ranking change
 
-Deleting the `.txt` twins should make docling read the PDFs and record real pages. It is
-worth doing — the flagship reference currently cannot be cited to a page — but confirm
-before assuming: after the sweep, a retrieval for a Professional Chef topic should return
-`file_type: pdf` with plausible page numbers. If it comes back pageless or the PDF fails
-to extract, restore the `.txt` from a backup rather than leaving the book unsearchable.
+The `.txt` twins are not merely pageless — **their two-column pages are interleaved line
+by line**, which silently shreds every recipe in the book.
+
+Printed page 335 of the Professional Chef carries two recipes side by side, Onion Soup in
+the left column and Tortilla Soup in the right. The extracted text reads:
+
+```
+Onion Soup                                    Tortilla Soup
+Makes 1 gal/3.84 L                            Makes 1 gal/3.84 L
+    5 lb/2.27 kg thinly sliced onions             12 plum tomatoes, cored
+    2 oz/57 g clarified or whole butter           1 white onion, halved and peeled
+    4 fl oz/120 mL Calvados or sherry             4 garlic cloves, unpeeled
+```
+
+Every chunk covering this page is therefore half onion soup and half tortilla soup. That
+explains a failure that looked like a ranking bug: asking for the CIA's onion soup returns
+Tortilla Soup passages about "chile slices … not smoking", and a retrieval for "french
+onion soup" scoped to this book surfaces **zero** relevant chunks even though the complete
+recipe — caramelize 25–30 min, deglaze with Calvados, Gruyère crouton gratinée — is
+sitting right there in the file.
+
+No amount of query rewriting, fusion tuning or over-fetching fixes a chunk that is two
+unrelated recipes braided together. The embedding is diluted at ingestion time. Docling
+does layout-aware extraction and reads columns in order, which is the actual fix.
+
+Confirm rather than assume: after the sweep, a Professional Chef retrieval should return
+`file_type: pdf` with plausible pages, and the onion soup query should return onion soup.
+If the PDF fails to extract, restore the `.txt` from backup rather than leaving the book
+unsearchable — a shredded book still beats no book.
 
 Note also that a recorded page is a **PDF page index**, not the printed page number — one
 CIA chunk's marker read 311 while its own running footer read 287. That is correct for
