@@ -191,7 +191,10 @@ async def ask(
                 "source_path": c.get("source_path"),
                 "heading": c.get("heading"),
                 "page": c.get("page"),
-                "text": c.get("text", "")[:600],
+                # Enough to hold a complete recipe: the source panel's "draft into
+                # notebook" sends exactly this text, and a draft cut off mid-method
+                # would cook wrong. 600 was a display trim from before that existed.
+                "text": c.get("text", "")[:4000],
             }
             for i, c in enumerate(chunks)
         ]

@@ -48,6 +48,9 @@
   let gf = $state(recipe?.gf ?? seed.gf ?? false);
   let noscale = $state(recipe?.noscale ?? seed.noscale ?? false);
   let source = $state(recipe?.source ?? seed.source ?? '');
+  // From the library: corpus content stays inside this deployment (CLAUDE.md §1),
+  // so a private recipe never reaches master.md or the printed cards.
+  let isPrivate = $state((recipe as { private?: boolean } | undefined)?.private ?? seed.private ?? false);
   let label = $state('');
   // A half-finished recipe stays out of the index until reviewed. There is no DELETE
   // endpoint, so drafts are the only way back from an accidental save.
@@ -109,6 +112,7 @@
     gf,
     noscale,
     source: source.trim() || null,
+    private: isPrivate,
     status: draft ? 'draft' : 'active',
     label: label.trim() || null,
     ingredients: ingredients.map((i) => ({
@@ -252,6 +256,13 @@
         <input type="checkbox" class="h-5 w-5" bind:checked={draft} />
         <span class="{labelCls}" style="color: var(--primary)">Keep as draft</span>
       </label>
+      {#if isPrivate}
+        <span
+          class="{labelCls} self-center rounded-full border px-2.5 py-1"
+          style="border-color: var(--copper); color: var(--copper)"
+          title="Drafted from a library book — stays in the app, never in master.md or the printed cards"
+        >private · not exported</span>
+      {/if}
     </div>
 
     {#if !creating}

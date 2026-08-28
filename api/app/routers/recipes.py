@@ -35,6 +35,15 @@ class ImportUrlRequest(BaseModel):
     url: str = Field(min_length=8, max_length=2000)
 
 
+class ParsePassageRequest(BaseModel):
+    """A library passage on its way into the notebook (the read loop closing)."""
+
+    text: str = Field(min_length=20, max_length=20_000)
+    #: The citation's book title and page — becomes the bare source line.
+    source_title: str | None = Field(default=None, max_length=300)
+    page: int | None = Field(default=None, ge=1)
+
+
 class TranslateRequest(BaseModel):
     """A recipe's words on the way to another language. Amounts and units are
     carried through untouched — see services/translate.py."""
@@ -242,6 +251,7 @@ async def create_recipe(payload: RecipeCreate, session: AsyncSession = Depends(g
         gf=payload.gf,
         noscale=payload.noscale,
         source=payload.source,
+        private=payload.private,
         status=payload.status,
     )
     recipe.versions.append(
@@ -341,6 +351,34 @@ async def import_url_endpoint(payload: "ImportUrlRequest"):
     from app.services.llm import get_provider
 
     return await import_from_url(payload.url, get_provider())
+
+
+@router.post("/parse-passage", dependencies=[Depends(require_token)])
+async def parse_passage_endpoint(payload: ParsePassageRequest):
+    """A library passage → structured draft for the editor — the library finally able
+    to put a recipe *into* the notebook instead of only describing one.
+
+    Same review-first rule as photo and URL import: nothing saves until the form is
+    submitted. The draft is marked private (CLAUDE.md §1 — corpus content stays inside
+    this deployment), which keeps it out of master.md and cards.pdf. Deterministic
+    parsing first; a prose-shaped passage falls back to the local model, and the text
+    never leaves the house either way.
+    """
+    from app.services.gf_audit import scan_ingredients
+    from app.services.passage_import import passage_to_draft
+
+    draft = await passage_to_draft(
+        payload.text, fallback_title=(payload.source_title or "").split("—")[0].strip()
+    )
+    source = payload.source_title or "library"
+    if payload.page:
+        source += f" · p.{payload.page}"
+    return {
+        "draft": draft.model_dump(),
+        "source": source,
+        "private": True,
+        "gf_risks": scan_ingredients([i.model_dump() for i in draft.ingredients]),
+    }
 
 
 @router.get("/{slug}/sessions", response_model=list[CookSessionOut])

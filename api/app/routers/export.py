@@ -14,11 +14,19 @@ router = APIRouter(prefix="/export", tags=["export"])
 
 
 async def _active_recipes(session: AsyncSession) -> list[Recipe]:
+    """Everything the public-tier exports may carry.
+
+    `private` recipes are drafted out of copyrighted books (the library→notebook
+    bridge) and stay inside this deployment — CLAUDE.md §1. Excluding them here, at the
+    one query both exports share, is what makes the tier a property of the export
+    rather than a thing each renderer must remember.
+    """
     return list(
         (
             await session.execute(
                 select(Recipe)
                 .where(Recipe.status != "archived")
+                .where(Recipe.private.is_(False))
                 .options(selectinload(Recipe.versions))
             )
         )

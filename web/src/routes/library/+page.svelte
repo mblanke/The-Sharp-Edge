@@ -224,6 +224,16 @@
             <p class="mt-1.5 text-[14px]" style="color: var(--ink)">
               {r.text.slice(0, 500)}{r.text.length > 500 ? '…' : ''}
             </p>
+            <!-- passage → review-first notebook draft, marked private (out of exports) -->
+            <form method="POST" action="/new?/passage" class="mt-2">
+              <input type="hidden" name="text" value={r.text} />
+              <input type="hidden" name="source_title" value={g.book} />
+              {#if r.page != null}<input type="hidden" name="page" value={r.page} />{/if}
+              <button
+                class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] uppercase tracking-widest"
+                style="border-color: var(--copper); color: var(--copper)"
+              >draft into notebook →</button>
+            </form>
           </article>
         {/each}
       </section>

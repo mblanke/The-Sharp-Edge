@@ -75,6 +75,38 @@ export const actions: Actions = {
     return { draft: await res.json() };
   },
 
+  // A library passage → the same review-first draft form. The draft arrives marked
+  // private: corpus content stays inside this deployment (CLAUDE.md §1), so the
+  // recipe it becomes is excluded from master.md and cards.pdf.
+  passage: async ({ request, fetch }) => {
+    const form = await request.formData();
+    const text = String(form.get('text') ?? '').trim();
+    if (text.length < 20) return fail(400, { message: 'No passage text to draft from' });
+    const res = await fetch(`${API_URL}/api/v1/recipes/parse-passage`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${env.API_TOKEN ?? ''}`
+      },
+      body: JSON.stringify({
+        text,
+        source_title: String(form.get('source_title') ?? '') || null,
+        page: Number(form.get('page')) || null
+      })
+    });
+    if (!res.ok) {
+      const detail = await res
+        .json()
+        .then((b: { detail?: string }) => b.detail)
+        .catch(() => null);
+      return fail(res.status >= 500 ? 502 : res.status, {
+        message: detail ?? `could not draft from that passage (${res.status})`
+      });
+    }
+    const body = await res.json();
+    return { draft: body.draft, source: body.source, private: body.private, gfRisks: body.gf_risks };
+  },
+
   // Words only: the API keeps every amount, unit and timer, so a translation can
   // never quietly change a quantity. Result reseeds the form for review.
   translate: async ({ request, fetch }) => {

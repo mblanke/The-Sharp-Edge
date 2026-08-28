@@ -43,6 +43,7 @@ export interface RecipeVersion {
 
 export interface RecipeFull extends RecipeCard {
   source: string | null;
+  private?: boolean;
   pages: PageRef[];
   current_version: RecipeVersion;
 }
@@ -58,6 +59,8 @@ export interface RecipeUpdate {
   gf?: boolean;
   noscale?: boolean;
   source?: string | null;
+  /** Drafted from the copyrighted corpus — excluded from public-tier exports. */
+  private?: boolean;
   status?: string;
   label?: string | null;
   ingredients: Ingredient[];

@@ -214,7 +214,20 @@
                   <div class="font-mono-label mb-1 text-[10.5px] uppercase tracking-widest" style="color: var(--copper)">
                     {src.source_path}{src.page != null ? ` · p.${src.page}` : ''}
                   </div>
-                  {src.text}
+                  {src.text.slice(0, 600)}{src.text.length > 600 ? '…' : ''}
+                  {#if src.text.length >= 120}
+                    <!-- the read loop closes: a cited passage can become a notebook
+                         draft (review-first; lands marked private, out of exports) -->
+                    <form method="POST" action="/new?/passage" class="mt-2">
+                      <input type="hidden" name="text" value={src.text} />
+                      <input type="hidden" name="source_title" value={src.title ?? bookName(src.source_path)} />
+                      {#if src.page != null}<input type="hidden" name="page" value={src.page} />{/if}
+                      <button
+                        class="font-mono-label rounded-full border px-3 py-1.5 text-[10.5px] uppercase tracking-widest"
+                        style="border-color: var(--copper); color: var(--copper)"
+                      >draft into notebook →</button>
+                    </form>
+                  {/if}
                 </div>
               {/if}
             {/if}

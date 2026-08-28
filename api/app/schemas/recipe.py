@@ -43,6 +43,8 @@ class RecipeCard(BaseModel):
     yield_word: str
     gf: bool
     noscale: bool
+    #: Drafted from the copyrighted corpus — excluded from public-tier exports.
+    private: bool = False
     status: str
     tags: list[str] = []
 
@@ -86,6 +88,7 @@ class RecipeCreate(BaseModel):
     gf: bool = False
     noscale: bool = False
     source: str | None = None
+    private: bool = False
     status: str = "active"
     label: str | None = None
     ingredients: list[Ingredient] = []

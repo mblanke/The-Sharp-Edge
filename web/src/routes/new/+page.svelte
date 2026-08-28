@@ -146,6 +146,10 @@
       yield_word: draft.yield_word ?? 'servings',
       notes: draft.notes ?? []
     });
+    // a passage draft carries its book · page as the source line, and arrives
+    // private — corpus content stays out of the public exports
+    if (form && 'source' in form && form.source) Object.assign(seed, { source: form.source });
+    if (form && 'private' in form && form.private) Object.assign(seed, { private: true });
     formKey += 1;
     panelOpen = false;
   });

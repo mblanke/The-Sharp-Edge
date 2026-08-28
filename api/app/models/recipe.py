@@ -28,6 +28,9 @@ class Recipe(Base):
     gf: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     noscale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     source: Mapped[str | None] = mapped_column(Text)
+    # Drafted from the copyrighted corpus (CLAUDE.md §1): stays inside this deployment,
+    # excluded from the public-tier exports (master.md, cards.pdf).
+    private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
