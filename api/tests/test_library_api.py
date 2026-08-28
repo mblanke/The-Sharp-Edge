@@ -89,36 +89,53 @@ async def test_conversation_404(client):
 # exactly like one that worked.
 
 
-def _coverage(monkeypatch, mapping):
+def _counts(monkeypatch, mapping):
     async def fake(*, force: bool = False):
         return mapping
 
-    monkeypatch.setattr(library_module, "book_coverage", fake)
+    monkeypatch.setattr(library_module, "indexed_chunk_counts", fake)
 
 
 async def test_book_list_reports_coverage(client, monkeypatch, tmp_path):
-    from app.services.coverage import BookCoverage
-
-    (tmp_path / "Culinary Institute of America - The Professional Chef.txt").write_bytes(b"x")
+    (tmp_path / "Culinary Institute of America - The Professional Chef.pdf").write_bytes(b"x")
     (tmp_path / "Thomas.Keller.Under.Pressure").mkdir()
     monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
     monkeypatch.setattr(settings, "library_dir", str(tmp_path))
-    _coverage(
+    _counts(
         monkeypatch,
-        {
-            "professional-chef": BookCoverage("professional-chef", "The Professional Chef", 5423, "indexed"),
-            "under-pressure": BookCoverage("under-pressure", "Under Pressure", 0, "missing"),
-        },
+        {str(tmp_path / "Culinary Institute of America - The Professional Chef.pdf"): 5423},
     )
 
     body = (await client.get("/api/v1/library/books")).json()
     by_name = {b["name"]: b for b in body["books"]}
-    chef = by_name["Culinary Institute of America - The Professional Chef.txt"]
+    chef = by_name["Culinary Institute of America - The Professional Chef.pdf"]
     assert chef["status"] == "indexed" and chef["chunks"] == 5423
+    assert "5,423 passages" in chef["note"]
 
     sealed = by_name["Thomas.Keller.Under.Pressure"]
     assert sealed["status"] == "missing" and sealed["chunks"] == 0
     assert "not indexed" in sealed["note"]
+
+
+async def test_a_folder_of_many_books_sums_its_contents(client, monkeypatch, tmp_path):
+    """`_acquired` holds six indexed books. Reporting the folder as "not indexed"
+    because no single book claims the folder path would be the report lying."""
+    acquired = tmp_path / "_acquired"
+    acquired.mkdir()
+    monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
+    monkeypatch.setattr(settings, "library_dir", str(tmp_path))
+    _counts(
+        monkeypatch,
+        {
+            str(acquired / "On Food and Cooking.epub"): 3126,
+            str(acquired / "The Noma Guide to Fermentation.epub"): 835,
+        },
+    )
+
+    body = (await client.get("/api/v1/library/books")).json()
+    folder = body["books"][0]
+    assert folder["name"] == "_acquired"
+    assert folder["status"] == "indexed" and folder["chunks"] == 3961
 
 
 async def test_unknown_coverage_is_null_not_missing(client, monkeypatch, tmp_path):
@@ -127,7 +144,7 @@ async def test_unknown_coverage_is_null_not_missing(client, monkeypatch, tmp_pat
     (tmp_path / "Culinary Institute of America - The Professional Chef.txt").write_bytes(b"x")
     monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
     monkeypatch.setattr(settings, "library_dir", str(tmp_path))
-    _coverage(monkeypatch, {})
+    _counts(monkeypatch, {})
 
     book = (await client.get("/api/v1/library/books")).json()["books"][0]
     assert book["status"] is None and book["chunks"] is None and book["note"] is None

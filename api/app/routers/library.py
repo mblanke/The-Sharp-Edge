@@ -12,7 +12,7 @@ from app.db import get_session
 from app.models import Conversation
 from app.schemas.chat import BookOut, ChunkOut, ConversationFull, ConversationSummary, LibraryStatus
 from app.services.atlas_rag import atlas_rag
-from app.services.coverage import book_coverage, describe
+from app.services.coverage import THIN_CHUNKS, describe, indexed_chunk_counts
 from app.services.shelf import resolve_path
 from app.services.source_page import SourceError, extract_page, resolve_source
 
@@ -43,7 +43,7 @@ async def library_books():
     a null status means the lookup was unavailable, not that the book is missing.
     """
     health = await atlas_rag.health()
-    coverage = await book_coverage()
+    counts = await indexed_chunk_counts()
     books: list[BookOut] = []
     mounted = False
     lib = settings.library_dir
@@ -59,17 +59,29 @@ async def library_books():
                 except OSError:
                     size = None
                 status = chunks = note = None
-                if coverage:
-                    book_id = resolve_path(str(entry))
-                    found = coverage.get(book_id) if book_id else None
-                    if found:
-                        status, chunks = found.status, found.chunks
-                        note = describe(found.book_id, found.chunks)
-                    else:
-                        # On the shelf, claimed by no book in the table — a stray file, or
-                        # a book nobody has added yet. Either way it is not searchable.
-                        status, chunks = "missing", 0
+                if counts:
+                    # Sum by path prefix, not by book: a shelf entry can be one file, a
+                    # folder holding one book in three formats, or a folder of many
+                    # books (`_acquired` holds six) — and "not indexed" on a folder
+                    # whose contents are all indexed would be the report lying.
+                    prefix = str(entry)
+                    chunks = sum(
+                        n
+                        for p, n in counts.items()
+                        if p == prefix or p.startswith(prefix + "/")
+                    )
+                    status = (
+                        "indexed"
+                        if chunks >= THIN_CHUNKS
+                        else ("thin" if chunks else "missing")
+                    )
+                    book_id = resolve_path(prefix)
+                    if book_id and status != "missing":
+                        note = describe(book_id, chunks)
+                    elif status == "missing":
                         note = f"{entry.name} — not indexed"
+                    else:
+                        note = f"only {chunks} passages — probably not really indexed"
                 books.append(
                     BookOut(
                         name=entry.name,
