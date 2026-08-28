@@ -173,3 +173,69 @@ async def test_recipe_scope_augments_retrieval_and_cites_R(client, auth, monkeyp
     assert done["citations"][0]["source_path"] == "/r/goulash"
     assert done["citations"][1]["n"] == 1
     assert done["ungrounded"] is False
+
+
+# --- attribution ---------------------------------------------------------------------
+# Asked six times, "How does Escoffier build an espagnole?" was answered six times in
+# Escoffier's name, citing the CIA and the FCI. There is no Escoffier on this shelf.
+
+
+class CiaRag:
+    async def retrieve(self, question, top_k=None, books=None):
+        return [
+            {
+                "text": "Brown a roux, add mirepoix and brown stock, simmer and skim.",
+                "source_path": "/mnt/references/Cooking/Culinary Institute of America "
+                               "- The Professional Chef (9th edition).txt",
+                "source_folder": "Cooking",
+                "title": "The Professional Chef",
+                "heading": "Espagnole",
+                "page": 287,
+            }
+        ]
+
+
+async def test_absent_authority_reaches_both_the_prompt_and_the_client(client, monkeypatch):
+    events, provider = await ask_and_parse(
+        client,
+        monkeypatch,
+        {"question": "How does Escoffier build an espagnole?"},
+        provider=FakeProvider(tokens=("An espagnole is built on a brown roux [1].",)),
+        rag=CiaRag(),
+    )
+
+    # the constraint must be in front of the excerpts, not after them
+    user_msg = provider.calls[0]["messages"][-1]["content"]
+    assert "no Escoffier on this shelf" in user_msg
+    assert "Do not attribute anything below to Escoffier" in user_msg
+    assert user_msg.index("Shelf note") < user_msg.index("Source excerpts")
+
+    done = next(data for event, data in events if event == "done")
+    assert done["attribution"]["absent"] == ["Escoffier"]
+    # the answer still happened — attribute, don't refuse
+    assert done["citations"] and done["ungrounded"] is False
+
+
+async def test_no_attribution_note_when_the_named_book_answered(client, monkeypatch):
+    events, provider = await ask_and_parse(
+        client,
+        monkeypatch,
+        {"question": "How does The Professional Chef describe the espagnole?"},
+        provider=FakeProvider(tokens=("Brown roux and mirepoix [1].",)),
+        rag=CiaRag(),
+    )
+    assert "Shelf note" not in provider.calls[0]["messages"][-1]["content"]
+    assert next(d for e, d in events if e == "done")["attribution"] is None
+
+
+async def test_a_technique_question_never_triggers_a_note(client, monkeypatch):
+    """False positives would train the cook to ignore every note."""
+    events, provider = await ask_and_parse(
+        client,
+        monkeypatch,
+        {"question": "maillard reaction temperature"},
+        provider=FakeProvider(tokens=("Around 140C [1].",)),
+        rag=CiaRag(),
+    )
+    assert "Shelf note" not in provider.calls[0]["messages"][-1]["content"]
+    assert next(d for e, d in events if e == "done")["attribution"] is None

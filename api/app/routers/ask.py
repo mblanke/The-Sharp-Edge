@@ -12,6 +12,8 @@ from app.db import get_session, get_sessionmaker
 from app.models import Conversation, Message, Recipe
 from app.schemas.chat import AskRequest
 from app.services.atlas_rag import atlas_rag
+from app.services.attribution import check as check_attribution
+from app.services.attribution import prompt_preamble
 from app.services.citations import SYSTEM_PROMPT, chunks_block, extract_citations
 from app.services.llm import get_provider
 from app.services.query_rewrite import standalone_query
@@ -135,10 +137,17 @@ async def ask(
         retrieval_query, top_k=payload.top_k, books=payload.scope.books or None
     )
 
+    # A question can name an authority the shelf doesn't hold. Asked six times, "how does
+    # Escoffier build an espagnole?" was answered six times in Escoffier's name from the
+    # CIA and the FCI — there is no Escoffier here. The note goes in front of the
+    # excerpts, because a correction placed after them reads as commentary on the sources
+    # rather than as a constraint on the answer.
+    attribution = check_attribution(payload.question, chunks)
     user_content = payload.question
     if chunks:
-        user_content += (
-            "\n\nSource excerpts (cite these — put the bracket number, e.g. [2], "
+        preamble = prompt_preamble(attribution)
+        user_content += "\n\n" + (preamble + "\n\n" if preamble else "") + (
+            "Source excerpts (cite these — put the bracket number, e.g. [2], "
             "immediately after every claim you take from one):\n" + chunks_block(chunks)
         )
     gf_ctx = await _gf_guard(session, payload.question)
@@ -186,7 +195,17 @@ async def ask(
             }
             for i, c in enumerate(chunks)
         ]
-        yield _sse("done", {"citations": citations, "sources": sources, "ungrounded": ungrounded})
+        yield _sse(
+            "done",
+            {
+                "citations": citations,
+                "sources": sources,
+                "ungrounded": ungrounded,
+                # `ungrounded` catches an answer with no citations; this catches one whose
+                # citations point at an authority the shelf doesn't have.
+                "attribution": attribution.as_dict(),
+            },
+        )
 
     return StreamingResponse(
         stream(),

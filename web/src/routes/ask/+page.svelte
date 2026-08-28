@@ -19,6 +19,16 @@
     citations?: Citation[];
     sources?: Source[];
     ungrounded?: boolean;
+    attribution?: Attribution | null;
+  }
+  /** Set when the question named an authority the shelf can't actually answer for.
+   *  `ungrounded` catches an answer with no citations; this catches one whose
+   *  citations point at the wrong book. */
+  interface Attribution {
+    absent: string[];
+    unretrieved: string[];
+    sources: string[];
+    note: string;
   }
 
   let question = $state('');
@@ -59,7 +69,8 @@
             ...messages[idx],
             citations: p.citations as Citation[],
             sources: p.sources as Source[],
-            ungrounded: p.ungrounded as boolean
+            ungrounded: p.ungrounded as boolean,
+            attribution: p.attribution as Attribution | null
           };
         } else if (event === 'error') {
           errorMsg = String(p.detail ?? 'stream error');
@@ -153,6 +164,17 @@
             <div class="whitespace-pre-wrap">{msg.content}</div>
           {:else if busy && i === messages.length - 1}
             <div class="font-mono-label text-[12px]" style="color: var(--faint)">thinking…</div>
+          {/if}
+          {#if msg.attribution}
+            <!-- Asked about Escoffier, who isn't on this shelf, the model used to answer
+                 "according to Escoffier's method" and cite the CIA. The answer is still
+                 worth having — it just has to say whose book it came from. -->
+            <div
+              class="mt-3 rounded-xl border px-3 py-2 text-[13px]"
+              style="border-color: var(--accent); background: var(--accent-wash); color: var(--ink)"
+            >
+              {msg.attribution.note}
+            </div>
           {/if}
           {#if msg.ungrounded}
             <div
