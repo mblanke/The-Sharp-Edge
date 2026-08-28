@@ -199,6 +199,28 @@ runs, under 40 characters of prose remain — a security doc quoting a base64 pa
 *inside real prose* is kept. Outputs `/tmp/rag-poison-ids.txt` and a per-source report at
 `/tmp/rag-remediate-report.json`.
 
-After purging, re-ingest the affected sources through the fixed pipeline. Re-ingestion
-must clear the file's row in `processed_files` (`/data/state.db`) first, or `is_changed`
-sees an unchanged mtime/size and skips it.
+After purging, re-ingest with `docs/rebuild_corpus.py` (`plan` to preview, `run` to do
+it, optional folder names to scope). It clears each file's row in `processed_files`
+(`/data/state.db`) first — otherwise `is_changed` sees an unchanged mtime/size and skips
+the file — and works one file at a time so the GB10s stay available for the assistants.
+
+### Measured outcome (2026-08-28)
+
+* Scan: **1,703,946 of 2,354,545 points poisoned (72%)** across 743 sources.
+  Networking 99% · threat-intel 95% · Hacking 93% · Project Management 92% ·
+  Cooking 80% · Coding 79% · NIST 75% · AI 67%. 277 sources were >98% poison.
+* Purge: 1,703,946 points removed in 51s → **653,162 real points remain**.
+* Rebuild: 529 sources re-read through the fixed pipeline, Cooking first.
+* Proof the fix works: *Japanese Cooking — A Simple Art* went from **56,200 chunks of
+  base64** to **2,268 chunks of real text**; the Culinary Scrapbook came back with real
+  page numbers (50, 74, 59, 28…) instead of `page: 1`.
+
+### Two traps worth remembering
+
+**Qdrant point ids here are integers.** Sending them quoted is an HTTP 400 that deletes
+nothing — silent if you do not read the log.
+
+**Point ids are deterministic** (`make_point_id` over doc_id + chunk_index), so a file
+re-ingested *before* its old poisoned ids are purged will have its fresh chunks deleted
+by that purge. Purge first, then rebuild — which is the order `rebuild_corpus.py`
+assumes.
