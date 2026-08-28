@@ -66,6 +66,16 @@ REAL_PATHS = [
         "Hamelman PDF/_ DOWNLOAD.txt",
         "hamelman-bread",
     ),
+    # arrived 2026-08-28
+    (
+        "Larousse Gastronomique 4 cookbooks/Larousse_Gastronomique_-_Meat,_Poultry_and_Game 2.pdf",
+        "larousse",
+    ),
+    (
+        "Kitchen Confidential_ Adventures in the Culinary Underbelly - Insider's Edition "
+        "by Anthony Bourdain MOBI/Kitchen Confidential - Anthony Bourdain.epub",
+        "kitchen-confidential",
+    ),
 ]
 
 
@@ -96,6 +106,14 @@ def test_every_book_id_is_unique_and_resolvable():
 def test_absent_authority_is_named_with_no_books():
     found = authorities_in("How does Escoffier build an espagnole?")
     assert found == [("Escoffier", ())]
+
+
+def test_larousse_is_owned_now_not_absent():
+    """Four Larousse volumes landed on 2026-08-28. Naming it must resolve to the
+    book — the note may say retrieval missed it, never that the shelf lacks it."""
+    assert authorities_in("what does Larousse say about consommé") == [
+        ("Larousse Gastronomique", ("larousse",))
+    ]
 
 
 def test_present_authority_resolves_to_its_books():

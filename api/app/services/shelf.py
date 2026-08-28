@@ -217,6 +217,16 @@ BOOKS: tuple[Book, ...] = (
         ("hamelman",),
         ("hamelman",),
     ),
+    # Dropped on the shelf 2026-08-28 (four subject volumes). Until the sweep indexes
+    # them, coverage reports the book as missing — but it is no longer an *absent
+    # authority*: better to say "the shelf has Larousse but nothing matched" than to
+    # deny owning it while it ingests.
+    Book(
+        "larousse",
+        "Larousse Gastronomique",
+        ("larousse",),
+        ("larousse",),
+    ),
 )
 
 # Authorities a cook might name that are NOT on this shelf at all. Listed explicitly so
@@ -224,7 +234,7 @@ BOOKS: tuple[Book, ...] = (
 # from somebody else's book — the failure this module exists to stop.
 ABSENT_AUTHORITIES: dict[str, str] = {
     "escoffier": "Escoffier",
-    "larousse": "Larousse Gastronomique",
+    # "larousse" graduated to BOOKS on 2026-08-28 — four volumes landed on the shelf.
     "careme": "Carême",
     "julia child": "Julia Child",
     "pepin": "Jacques Pépin",

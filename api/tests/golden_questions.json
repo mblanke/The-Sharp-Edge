@@ -26,6 +26,9 @@
     { "q": "Sichuan dry frying technique", "expect_any": ["food-of-sichuan"] },
     { "q": "how to build a brisket bark", "expect_any": ["franklin-barbecue"] },
     { "q": "lacto fermentation salt percentage", "expect_any": ["noma-fermentation"] },
-    { "q": "wok hei and seasoning a carbon steel wok", "expect_any": ["the-wok"] }
+    { "q": "wok hei and seasoning a carbon steel wok", "expect_any": ["the-wok"] },
+
+    { "q": "how does Larousse prepare a classic consommé", "expect_any": ["larousse"] },
+    { "q": "Larousse Gastronomique technique for filleting flat fish", "expect_any": ["larousse"] }
   ]
 }
