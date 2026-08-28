@@ -135,3 +135,70 @@ CIA chunk's marker read 311 while its own running footer read 287. That is corre
 `/library/source`, which slices by PDF index, and wrong for a cook holding the book. How
 general the offset is across the shelf is not yet known; it needs its own investigation
 before anything tries to "correct" it.
+
+---
+
+## The base64 poisoning (2026-08-28)
+
+The single worst defect found on the stack, and it was never a Sharp Edge bug — it was
+in rag-api's docling client, and it affected **every corpus on Atlas**.
+
+`docling_client._call_docling` extracts embedded images so a vision model can describe
+them. It never removed them from the text it returned. Worse, `_IMG_RE` didn't allow
+whitespace inside the base64 group, and docling line-wraps its base64 — so the regex
+matched *nothing*: no image was ever described, and every byte of every embedded image
+was chunked and embedded as if it were prose.
+
+Measured on a 10,000-point random sample of `references_v2`:
+
+| corpus | poisoned |
+|---|---|
+| Networking | 96% |
+| threat-intel | 92% |
+| Hacking | 81% |
+| NIST | 70% |
+| AI | 66% |
+| **Cooking** | **67%** |
+| **whole collection** | **73%** (~1.7M of 2.33M points) |
+
+Symptoms this explains, all of which looked like unrelated problems:
+
+* Ingest runs that "hung" and died before reaching the back of the queue. *Japanese
+  Cooking — A Simple Art* (507 illustrated pages) produced **56,200 chunks of pure
+  base64** in 100 minutes of GPU time.
+* The Great Courses guidebook's 10,145 "passages" — all base64.
+* Retrieval quality across every corpus, fighting through noise on every query.
+* No image was ever actually described, despite `IMAGE_EXTRACTION_ENABLED=true`.
+
+### The fix
+
+`/opt/ai-stack/rag-api-src/docling_client.py` (backup: `.bak-imagescrub`):
+
+1. `_IMG_RE` now allows `\s` inside the base64 group, so it matches real docling output.
+2. New `_scrub_images()` replaces each image with `[image: caption]` in `full_text` and
+   in every page before chunking — the position of a figure stays readable, the pixels
+   go to the vision model as originally intended.
+3. `_extract_images` strips whitespace from the base64 before handing it to the vision
+   client.
+4. The convert request now sends `md_page_break_placeholder="\f"`. `_parse_docling_response`
+   already split pages on `\f`; nothing had ever asked docling to emit it, which is why
+   **every docling-ingested PDF reported page 1**.
+
+### Remediation
+
+`/tmp/remediate_corpus.py` (source kept in the repo's scratchpad):
+
+```bash
+python3 -u /tmp/remediate_corpus.py scan   # read-only: classify + write ids/report
+python3 -u /tmp/remediate_corpus.py purge  # delete what scan found
+```
+
+Two passes, so scroll pagination never races its own deletes. The classifier is
+deliberately conservative: a chunk counts as poison only if, after removing long base64
+runs, under 40 characters of prose remain — a security doc quoting a base64 payload
+*inside real prose* is kept. Outputs `/tmp/rag-poison-ids.txt` and a per-source report at
+`/tmp/rag-remediate-report.json`.
+
+After purging, re-ingest the affected sources through the fixed pipeline. Re-ingestion
+must clear the file's row in `processed_files` (`/data/state.db`) first, or `is_changed`
+sees an unchanged mtime/size and skips it.
