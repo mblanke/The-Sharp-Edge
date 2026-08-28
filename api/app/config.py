@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     rag_fetch_k: int = 24  # over-fetch before the client-side folder filter
     annotation_min_score: float = 0.4  # floor for technique margin notes (F5)
 
+    # Qdrant, read-only and payload-only: the coverage report facets `source_path` to
+    # count what is actually indexed. No vector is ever read from this app (CLAUDE.md §9).
+    qdrant_url: str = "http://qdrant:6333"
+    qdrant_collection: str = "references_v2"
+
     # LiteLLM router on Atlas — OpenAI-compatible; 'cluster' balances Wile + RoadRunner
     llm_router_url: str = "http://100.110.190.10:4000/v1"
     llm_router_key: str = ""

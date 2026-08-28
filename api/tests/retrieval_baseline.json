@@ -1,0 +1,30 @@
+{
+  "comment": "Per-question outcomes from the last deliberate recording. CI asserts no HIT becomes a MISS. Re-record with RAG_EVAL=1 RAG_EVAL_WRITE_BASELINE=1 pytest tests/test_retrieval_eval.py and commit the diff on purpose.",
+  "outcomes": {
+    "how does Escoffier build an espagnole sauce": "ABSENT",
+    "what temperature and time for sous vide short ribs": "HIT",
+    "mother sauces of French cuisine": "HIT",
+    "how to make a beurre blanc": "HIT",
+    "proper way to temper chocolate": "HIT",
+    "brining ratios for poultry": "HIT",
+    "why rest meat after roasting": "HIT",
+    "maillard reaction temperature": "HIT",
+    "knife cuts brunoise julienne dimensions": "HIT",
+    "emulsion breaking and how to rescue it": "HIT",
+    "stock clarification with a raft": "HIT",
+    "hungarian goulash paprika technique": "HIT",
+    "pressure cooker stock advantages": "HIT",
+    "gluten free flour substitution ratios": "HIT",
+    "how to butcher a whole chicken into eight pieces": "HIT",
+    "Is there a French onion soup recipe? If so, how is it made?": "HIT",
+    "How does the CIA make french onion soup": "MISS",
+    "How does The Professional Chef describe the standard breading procedure?": "HIT",
+    "What is a beurre blanc?": "HIT",
+    "bone broth for French onion soup": "HIT",
+    "how does Keller cook turbot sous vide": "HIT",
+    "Sichuan dry frying technique": "HIT",
+    "how to build a brisket bark": "HIT",
+    "lacto fermentation salt percentage": "HIT",
+    "wok hei and seasoning a carbon steel wok": "HIT"
+  }
+}
