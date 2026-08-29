@@ -6,6 +6,10 @@ struct LibraryView: View {
     @StateObject private var store = LibraryStore()
     /// The book page a result points at, once someone asks to see it.
     @State private var opening: SourceTarget?
+    /// A passage on its way into the notebook: the draft the editor will open on.
+    @State private var passageDraft: RecipeCreate?
+    @State private var draftingHit: String?
+    @State private var draftError: String?
 
     struct SourceTarget: Identifiable {
         let id = UUID()
@@ -34,6 +38,17 @@ struct LibraryView: View {
             SourcePageView(title: target.title, path: target.path, page: target.page)
                 .environmentObject(env)
         }
+        .sheet(item: $passageDraft) { draft in
+            NavigationStack {
+                // Review-first, exactly like photo import: the passage seeds the form
+                // and nothing is saved until the cook says so.
+                RecipeEditorView(mode: .create(draft)) { _ in passageDraft = nil }
+            }
+        }
+        .alert("Could not draft that passage", isPresented: Binding(
+            get: { draftError != nil }, set: { if !$0 { draftError = nil } })) {
+            Button("OK", role: .cancel) { draftError = nil }
+        } message: { Text(draftError ?? "") }
         .task(id: env.generation) {
             await store.loadStatus(env.dataSource)
             #if DEBUG
@@ -104,6 +119,23 @@ struct LibraryView: View {
                 store.pendingRefilter = false
                 Task { await store.search(env.dataSource) }
             }
+        }
+    }
+
+    /// Turn a retrieved passage into a notebook draft. The server parses it with the
+    /// same engine photo import uses and marks it private — corpus content stays in
+    /// this deployment and never reaches master.md or the printed cards (§1).
+    private func draft(_ hit: ChunkOut, book: String) async {
+        draftingHit = hit.id
+        defer { draftingHit = nil }
+        do {
+            let result = try await env.dataSource.parsePassage(
+                PassageDraftRequest(text: hit.text, sourceTitle: book,
+                                    page: hit.isMedia ? nil : hit.page))
+            let slug = (try? await env.dataSource.slug(for: result.draft.title))?.slug ?? ""
+            passageDraft = result.toRecipeCreate(slug: slug)
+        } catch {
+            draftError = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
@@ -190,6 +222,21 @@ struct LibraryView: View {
                                 // Extracted text is a good index and a poor recipe —
                                 // a line lost by the text layer is a step never cooked.
                                 // Read it in the book instead.
+                                // The library could answer questions but never *give*
+                                // anything: finding a recipe meant retyping it.
+                                Button {
+                                    Task { await draft(hit, book: group.book) }
+                                } label: {
+                                    if draftingHit == hit.id {
+                                        HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Drafting…") }
+                                            .font(Typography.body(13, weight: .semibold))
+                                    } else {
+                                        Label("Draft into notebook", systemImage: "square.and.pencil")
+                                            .font(Typography.body(13, weight: .semibold))
+                                    }
+                                }
+                                .disabled(draftingHit != nil)
+                                .padding(.top, 2)
                                 if !hit.isMedia, let page = hit.page, let path = hit.sourcePath {
                                     Button {
                                         opening = SourceTarget(title: group.book,

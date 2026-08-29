@@ -121,6 +121,10 @@ final class SampleDataSource: DataSource {
         throw APIError.localOnly("Photo import")
     }
 
+    func parsePassage(_ req: PassageDraftRequest) async throws -> PassageDraft {
+        throw APIError.localOnly("Library import")
+    }
+
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse {
         throw APIError.localOnly("Translation")
     }

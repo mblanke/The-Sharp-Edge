@@ -54,6 +54,7 @@ struct Endpoints {
         if let book, !book.isEmpty { query["book"] = book }
         return url("/search", query: query)
     }
+    func parsePassage() -> URL? { url("/recipes/parse-passage") }
     func libraryBooks() -> URL? { url("/library/books") }
     func conversations() -> URL? { url("/conversations") }
     func conversation(_ id: UUID) -> URL? { url("/conversations/\(id.uuidString.lowercased())") }

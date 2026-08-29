@@ -78,6 +78,11 @@ final class LocalDataSource: DataSource {
         throw APIError.localOnly("Photo import")
     }
 
+    func parsePassage(_ req: PassageDraftRequest) async throws -> PassageDraft {
+        // A device-hosted notebook has no corpus to draft from (CLAUDE.md §1).
+        throw APIError.localOnly("Library import")
+    }
+
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse {
         throw APIError.localOnly("Translation")
     }

@@ -126,6 +126,9 @@ final class CachingDataSource: DataSource {
     }
     func slug(for title: String) async throws -> SlugResponse { try await upstream.slug(for: title) }
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft { try await upstream.parsePhoto(jpeg) }
+    func parsePassage(_ req: PassageDraftRequest) async throws -> PassageDraft {
+        try await upstream.parsePassage(req)
+    }
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse {
         try await upstream.translate(body)
     }

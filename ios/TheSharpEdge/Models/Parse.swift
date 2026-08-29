@@ -94,6 +94,54 @@ struct PhotoDraft: Decodable {
     }
 }
 
+/// One hidden-gluten hit the server found in a drafted recipe. Mirrors
+/// api/app/services/gf_audit.scan_ingredients. Celiac safety is load-bearing
+/// (CLAUDE.md §1), so a warning the server computed is never dropped on the floor.
+struct GFRisk: Decodable, Hashable, Identifiable {
+    var ingredient: String
+    var term: String
+    var why: String
+
+    var id: String { "\(ingredient)|\(term)" }
+}
+
+/// A library passage on its way into the notebook — the read loop closing.
+/// Mirrors POST /recipes/parse-passage. Review-first like photo import: the draft
+/// seeds the editor and nothing saves until the cook says so. The draft arrives
+/// marked private, because corpus content stays inside this deployment (§1).
+struct PassageDraftRequest: Encodable {
+    var text: String
+    var sourceTitle: String?
+    var page: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case text
+        case sourceTitle = "source_title"
+        case page
+    }
+}
+
+struct PassageDraft: Decodable {
+    var draft: PhotoDraft          // same shape: our parser produced both
+    var source: String?
+    var isPrivate: Bool
+    var gfRisks: [GFRisk]?
+
+    enum CodingKeys: String, CodingKey {
+        case draft, source
+        case isPrivate = "private"
+        case gfRisks = "gf_risks"
+    }
+
+    /// Seed the editor, carrying the book · page as the source line and the tier flag.
+    func toRecipeCreate(slug: String) -> RecipeCreate {
+        var create = draft.toRecipeCreate(slug: slug)
+        create.source = source
+        create.isPrivate = isPrivate
+        return create
+    }
+}
+
 /// Mirrors api/app/services/translate.py — a recipe's words in another language.
 /// Only strings travel; amounts, units and timers are carried through untouched
 /// by the server, so a translation can never change a quantity.

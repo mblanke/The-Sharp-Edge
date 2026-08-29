@@ -152,6 +152,9 @@ struct RecipeCreate: Codable, Identifiable {
     var gf: Bool
     var noscale: Bool
     var source: String?
+    /// Drafted from a copyrighted book in the library. Stays inside this deployment:
+    /// the public-tier exports (master.md, cards.pdf) exclude it — CLAUDE.md §1.
+    var isPrivate: Bool
     var status: String
     var label: String?
     var ingredients: [Ingredient]
@@ -161,6 +164,7 @@ struct RecipeCreate: Codable, Identifiable {
     init(slug: String = "", title: String = "", category: String = Category.order[0],
          meta: String? = nil, baseYield: Int = 4, yieldWord: String = "servings",
          gf: Bool = false, noscale: Bool = false, source: String? = nil,
+         isPrivate: Bool = false,
          status: String = "draft", label: String? = nil,
          ingredients: [Ingredient] = [], steps: [Step] = [], notes: [String] = []) {
         self.slug = slug
@@ -172,6 +176,7 @@ struct RecipeCreate: Codable, Identifiable {
         self.gf = gf
         self.noscale = noscale
         self.source = source
+        self.isPrivate = isPrivate
         self.status = status
         self.label = label
         self.ingredients = ingredients
@@ -184,6 +189,7 @@ struct RecipeCreate: Codable, Identifiable {
         case baseYield = "base_yield"
         case yieldWord = "yield_word"
         case gf, noscale, source, status, label
+        case isPrivate = "private"
         case ingredients, steps, notes
     }
 }

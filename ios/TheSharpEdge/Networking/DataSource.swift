@@ -20,6 +20,7 @@ protocol DataSource: AnyObject {
     /// A photo of the cook's own page → structured draft, read by the local vision
     /// model on the server. Server mode only; local/sample throw `.localOnly`.
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft
+    func parsePassage(_ req: PassageDraftRequest) async throws -> PassageDraft
     /// A recipe's words in another language. Server mode only.
     func translate(_ body: TranslateRequest) async throws -> TranslateResponse
     /// A cached translation of a saved recipe, if one exists. Reading needs no token.

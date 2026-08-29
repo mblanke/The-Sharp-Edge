@@ -172,6 +172,13 @@ final class APIClient: DataSource {
         return URLSession(configuration: config)
     }()
 
+    /// A library passage -> a notebook draft. Review-first: nothing is saved here.
+    func parsePassage(_ req: PassageDraftRequest) async throws -> PassageDraft {
+        let body = try JSONCoding.encoder.encode(req)
+        return try await run(request(endpoints.parsePassage(), method: "POST", authed: true, body: body),
+                             as: PassageDraft.self)
+    }
+
     func parsePhoto(_ jpeg: Data) async throws -> PhotoDraft {
         guard let url = endpoints.parsePhoto() else { throw APIError.badURL }
         let boundary = "sharp-edge-\(UUID().uuidString)"
