@@ -77,3 +77,36 @@ final class AskPayloadTests: XCTestCase {
         XCTAssertNil(unknown.isSearchable)
     }
 }
+
+// MARK: book scope — the phone could never say "just the CIA"
+
+extension AskPayloadTests {
+
+    func testAskRequestEncodesBookScope() throws {
+        let req = AskRequest(question: "how is the onion soup made",
+                             scope: AskScope(recipeSlug: nil, books: ["Culinary Institute of America.pdf"]))
+        let json = try JSONEncoder().encode(req)
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: json) as? [String: Any])
+        let scope = try XCTUnwrap(obj["scope"] as? [String: Any])
+        XCTAssertEqual(scope["books"] as? [String], ["Culinary Institute of America.pdf"])
+    }
+
+    func testAskRequestOmitsBooksWhenUnscoped() throws {
+        let req = AskRequest(question: "what is a beurre blanc")
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(req)) as? [String: Any])
+        let scope = try XCTUnwrap(obj["scope"] as? [String: Any])
+        // nil, not [] — an empty list would be a scope matching no book at all
+        XCTAssertNil(scope["books"])
+    }
+
+    func testRecipeAndBookScopeCoexist() throws {
+        let req = AskRequest(question: "can I use tamari",
+                             scope: AskScope(recipeSlug: "goulash", books: ["The Food Lab"]))
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(req)) as? [String: Any])
+        let scope = try XCTUnwrap(obj["scope"] as? [String: Any])
+        XCTAssertEqual(scope["recipe_slug"] as? String, "goulash")
+        XCTAssertEqual(scope["books"] as? [String], ["The Food Lab"])
+    }
+}

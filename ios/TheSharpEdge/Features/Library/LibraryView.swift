@@ -19,6 +19,7 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 header
                 searchBar
+                bookScopePicker
                 results
                 shelf
             }
@@ -80,6 +81,29 @@ struct LibraryView: View {
                 }
             }
             .padding(.top, Theme.Space.m)
+        }
+    }
+
+    /// Scope the search to one book. Only books the index actually holds are offered —
+    /// scoping to an unindexed book would narrow the search down to silence.
+    @ViewBuilder private var bookScopePicker: some View {
+        let books = store.searchableBooks.filter { $0.kind == "file" || $0.chunks != nil }
+        if !books.isEmpty {
+            HStack(spacing: Theme.Space.s) {
+                Text("In").font(Typography.mono(11)).textCase(.uppercase).foregroundStyle(Theme.faint)
+                Picker("Restrict search to one book", selection: $store.bookFilter) {
+                    Text("All books").tag("")
+                    ForEach(books) { book in Text(book.name).tag(book.name) }
+                }
+                .pickerStyle(.menu)
+                .tint(store.bookFilter.isEmpty ? Theme.faint : Theme.inkAccent)
+                Spacer()
+            }
+            .onChange(of: store.bookFilter) { _, _ in
+                guard store.pendingRefilter else { return }
+                store.pendingRefilter = false
+                Task { await store.search(env.dataSource) }
+            }
         }
     }
 

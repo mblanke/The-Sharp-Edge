@@ -21,6 +21,17 @@ final class AskStore: ObservableObject {
     @Published var conversationId: UUID?
     @Published var recent: [ConversationSummary] = []
     @Published var errorText: String?
+    /// Restrict the answer to one book. Empty = the whole shelf. The server has taken
+    /// this since book scope shipped; the phone never sent it, so naming a book only
+    /// worked by typing it into the question and hoping retrieval noticed.
+    @Published var bookScope = ""
+    /// Books the index actually holds — scoping to an unindexed one answers with silence.
+    @Published var books: [BookOut] = []
+
+    func loadBooks(_ source: DataSource) async {
+        let status = try? await source.libraryStatus()
+        books = (status?.books ?? []).filter { $0.status == nil || $0.status == "indexed" }
+    }
 
     private var streamTask: Task<Void, Never>?
 
@@ -54,7 +65,9 @@ final class AskStore: ObservableObject {
         isStreaming = true
 
         let req = AskRequest(question: question, conversationId: conversationId,
-                             scope: AskScope(recipeSlug: scopeSlug), topK: 8)
+                             scope: AskScope(recipeSlug: scopeSlug,
+                                             books: bookScope.isEmpty ? nil : [bookScope]),
+                             topK: 8)
 
         streamTask = Task { [weak self] in
             guard let self else { return }

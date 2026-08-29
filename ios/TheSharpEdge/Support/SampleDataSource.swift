@@ -152,9 +152,11 @@ final class SampleDataSource: DataSource {
         throw APIError.localOnly("Opening a cookbook page")
     }
 
-    func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
+    func search(_ q: String, topK: Int, book: String?) async throws -> [ChunkOut] {
         try? await Task.sleep(nanoseconds: 250_000_000)
-        return SampleData.searchHits(q)
+        let hits = SampleData.searchHits(q)
+        guard let book, !book.isEmpty else { return hits }
+        return hits.filter { ($0.sourcePath ?? "").contains(book) || ($0.title ?? "").contains(book) }
     }
 
     func libraryStatus() async throws -> LibraryStatus { SampleData.libraryStatus }

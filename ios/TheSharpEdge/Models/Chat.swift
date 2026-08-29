@@ -4,7 +4,14 @@ import Foundation
 
 struct AskScope: Codable {
     var recipeSlug: String?
-    enum CodingKeys: String, CodingKey { case recipeSlug = "recipe_slug" }
+    /// Source file names to restrict the answer to. The server has accepted this since
+    /// book scope shipped; the phone never sent it, which is why naming a book only
+    /// worked by typing it into the question and hoping retrieval noticed.
+    var books: [String]?
+    enum CodingKeys: String, CodingKey {
+        case recipeSlug = "recipe_slug"
+        case books
+    }
 }
 
 struct AskRequest: Codable {
@@ -13,7 +20,7 @@ struct AskRequest: Codable {
     var scope: AskScope
     var topK: Int
 
-    init(question: String, conversationId: UUID? = nil, scope: AskScope = AskScope(recipeSlug: nil), topK: Int = 8) {
+    init(question: String, conversationId: UUID? = nil, scope: AskScope = AskScope(recipeSlug: nil, books: nil), topK: Int = 8) {
         self.question = question
         self.conversationId = conversationId
         self.scope = scope

@@ -277,8 +277,8 @@ final class APIClient: DataSource {
         }
     }
 
-    func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
-        try await run(request(endpoints.search(q: q, topK: topK)), as: [ChunkOut].self)
+    func search(_ q: String, topK: Int, book: String?) async throws -> [ChunkOut] {
+        try await run(request(endpoints.search(q: q, topK: topK, book: book)), as: [ChunkOut].self)
     }
 
     func libraryStatus() async throws -> LibraryStatus {

@@ -235,7 +235,7 @@ final class LocalNotebookTests: XCTestCase {
             }
         }
 
-        await expectLocalOnly({ _ = try await self.source.search("onion soup", topK: 8) }, "search")
+        await expectLocalOnly({ _ = try await self.source.search("onion soup", topK: 8, book: nil) }, "search")
         await expectLocalOnly({ _ = try await self.source.libraryStatus() }, "libraryStatus")
         await expectLocalOnly({ _ = try await self.source.conversations() }, "conversations")
         await expectLocalOnly({ _ = try await self.source.conversation(UUID()) }, "conversation")

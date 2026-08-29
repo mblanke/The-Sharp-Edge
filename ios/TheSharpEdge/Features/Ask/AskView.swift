@@ -11,6 +11,8 @@ struct AskView: View {
         VStack(spacing: 0) {
             if let slug = scopeSlug {
                 scopeBanner(slug)
+            } else {
+                bookScopePicker
             }
             chatScroll
             inputBar
@@ -23,7 +25,10 @@ struct AskView: View {
                 Button { store.newConversation() } label: { Image(systemName: "square.and.pencil") }
             }
         }
-        .task(id: env.generation) { await store.loadRecent(env.dataSource) }
+        .task(id: env.generation) {
+            await store.loadRecent(env.dataSource)
+            await store.loadBooks(env.dataSource)
+        }
         .onAppear {
             #if DEBUG
             if ProcessInfo.processInfo.environment["UITEST_ASK"] == "1", store.turns.isEmpty {
@@ -31,6 +36,26 @@ struct AskView: View {
                 store.send(env.dataSource, scopeSlug: scopeSlug)
             }
             #endif
+        }
+    }
+
+    /// Ask one book rather than the whole shelf. Without this the only way to say
+    /// "the CIA's version" was to write it into the question and hope.
+    @ViewBuilder private var bookScopePicker: some View {
+        let files = store.books.filter { $0.kind == "file" || $0.chunks != nil }
+        if !files.isEmpty {
+            HStack(spacing: Theme.Space.s) {
+                Text("Ask").font(Typography.mono(11)).textCase(.uppercase).foregroundStyle(Theme.faint)
+                Picker("Restrict the answer to one book", selection: $store.bookScope) {
+                    Text("the whole library").tag("")
+                    ForEach(files) { book in Text(book.name).tag(book.name) }
+                }
+                .pickerStyle(.menu)
+                .tint(store.bookScope.isEmpty ? Theme.faint : Theme.inkAccent)
+                Spacer()
+            }
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.vertical, Theme.Space.s)
         }
     }
 

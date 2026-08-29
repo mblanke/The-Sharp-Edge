@@ -49,8 +49,10 @@ struct Endpoints {
         url("/shopping", query: ["checked_only": checkedOnly ? "true" : "false"])
     }
 
-    func search(q: String, topK: Int) -> URL? {
-        url("/search", query: ["q": q, "top_k": String(topK)])
+    func search(q: String, topK: Int, book: String? = nil) -> URL? {
+        var query = ["q": q, "top_k": String(topK)]
+        if let book, !book.isEmpty { query["book"] = book }
+        return url("/search", query: query)
     }
     func libraryBooks() -> URL? { url("/library/books") }
     func conversations() -> URL? { url("/conversations") }

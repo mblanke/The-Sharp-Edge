@@ -158,7 +158,7 @@ final class LocalDataSource: DataSource {
         throw APIError.localOnly("Opening a cookbook page")
     }
 
-    func search(_ q: String, topK: Int) async throws -> [ChunkOut] {
+    func search(_ q: String, topK: Int, book: String?) async throws -> [ChunkOut] {
         throw APIError.localOnly("Library search")
     }
 
