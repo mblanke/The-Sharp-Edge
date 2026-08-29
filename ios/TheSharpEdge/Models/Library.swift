@@ -6,12 +6,21 @@ struct BookOut: Codable, Hashable, Identifiable {
     var name: String
     var kind: String            // file | folder
     var sizeBytes: Int?
+    /// What the index actually holds for this shelf entry: indexed | thin | missing.
+    /// All three are nil when the coverage lookup was unavailable — "unknown", which
+    /// must never be shown as "missing".
+    var status: String?
+    var chunks: Int?
+    var note: String?
 
     var id: String { name }
+    /// nil status means we could not tell, so say nothing rather than something wrong.
+    var isSearchable: Bool? { status.map { $0 == "indexed" } }
 
     enum CodingKeys: String, CodingKey {
         case name, kind
         case sizeBytes = "size_bytes"
+        case status, chunks, note
     }
 }
 

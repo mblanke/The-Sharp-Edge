@@ -20,6 +20,7 @@ struct LibraryView: View {
                 header
                 searchBar
                 results
+                shelf
             }
             .padding(Theme.Space.xl)
             .frame(maxWidth: 820)
@@ -42,6 +43,43 @@ struct LibraryView: View {
                 await store.search(env.dataSource)
             }
             #endif
+        }
+    }
+
+    /// What the shelf holds, and — more usefully — what of it is actually searchable.
+    /// The file list and the index were never compared before, so a book that failed to
+    /// ingest looked exactly like one that worked. A nil status means the coverage
+    /// lookup was unavailable; that is "unknown" and must not be drawn as "missing".
+    @ViewBuilder private var shelf: some View {
+        if let books = store.status?.books, !books.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("On the shelf")
+                    .font(Typography.mono(12, weight: .semibold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.primary)
+                ForEach(books) { book in
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        Text(book.name)
+                            .font(Typography.body(14)).foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: Theme.Space.s)
+                        if let status = book.status {
+                            if status == "indexed", let n = book.chunks {
+                                Text("\(n) passages")
+                                    .font(Typography.mono(11)).foregroundStyle(Theme.faint)
+                            } else {
+                                Text(status == "thin" ? "barely indexed" : "not indexed")
+                                    .font(Typography.mono(11))
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                    Divider().overlay(Theme.line)
+                }
+            }
+            .padding(.top, Theme.Space.m)
         }
     }
 
@@ -113,7 +151,12 @@ struct LibraryView: View {
                                     if let heading = hit.heading {
                                         Text(heading).font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.accent)
                                     }
-                                    if let page = hit.page {
+                                    if hit.isMedia {
+                                        // Whisper chunks carry a page that is an artefact
+                                        // of chunking; /library/source is PDF-only, so
+                                        // offering to open it could only 404.
+                                        Text("video").font(Typography.mono(12)).foregroundStyle(Theme.accent)
+                                    } else if let page = hit.page {
                                         Text("p. \(page)").font(Typography.mono(12)).foregroundStyle(Theme.faint)
                                     }
                                 }
@@ -123,7 +166,7 @@ struct LibraryView: View {
                                 // Extracted text is a good index and a poor recipe —
                                 // a line lost by the text layer is a step never cooked.
                                 // Read it in the book instead.
-                                if let page = hit.page, let path = hit.sourcePath {
+                                if !hit.isMedia, let page = hit.page, let path = hit.sourcePath {
                                     Button {
                                         opening = SourceTarget(title: group.book,
                                                                path: path, page: page)

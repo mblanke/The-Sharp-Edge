@@ -118,6 +118,29 @@ struct AskView: View {
                             .font(Typography.body(16)).foregroundStyle(Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if let attribution = turn.attribution {
+                        // Asked about Escoffier, who is not on this shelf, the model used
+                        // to answer "according to Escoffier's method" and cite the CIA.
+                        // The answer is still worth having — it just has to say whose
+                        // book it actually came from.
+                        Text(attribution.note)
+                            .font(Typography.body(14))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(Theme.Space.s)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.accentWash, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                    .stroke(Theme.accent, lineWidth: 1)
+                            )
+                    }
+                    if turn.ungrounded {
+                        Text("No citations — not grounded in the library")
+                            .font(Typography.mono(11))
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.accent)
+                    }
                     if !turn.citations.isEmpty {
                         citationChips(turn)
                     }
@@ -146,7 +169,13 @@ struct AskView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             Text(src.title ?? "Source").font(Typography.mono(12, weight: .semibold)).foregroundStyle(Theme.inkAccent)
-                            if let p = src.page { Text("p. \(p)").font(Typography.mono(12)).foregroundStyle(Theme.faint) }
+                            if src.isMedia {
+                                // Whisper chunks carry a page that means nothing; this
+                                // used to read "p. 2" for a lesson on video.
+                                Text("video").font(Typography.mono(12)).foregroundStyle(Theme.accent)
+                            } else if let p = src.page {
+                                Text("p. \(p)").font(Typography.mono(12)).foregroundStyle(Theme.faint)
+                            }
                         }
                         if let heading = src.heading { Text(heading).font(Typography.mono(12)).foregroundStyle(Theme.accent) }
                         if let text = src.text { Text(text).font(Typography.body(14)).foregroundStyle(Theme.ink) }

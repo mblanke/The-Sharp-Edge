@@ -7,6 +7,10 @@ struct ChatTurn: Identifiable {
     var citations: [Citation] = []
     var sources: [Source] = []
     var streaming: Bool = false
+    /// The answer carried no citations at all.
+    var ungrounded: Bool = false
+    /// The question named an authority this shelf cannot answer for.
+    var attribution: Attribution?
 }
 
 @MainActor
@@ -84,6 +88,8 @@ final class AskStore: ObservableObject {
                             withTurn {
                                 $0.citations = done.citations
                                 $0.sources = done.sources
+                                $0.ungrounded = done.ungrounded ?? false
+                                $0.attribution = done.attribution
                             }
                         }
                     case "error":

@@ -22,6 +22,7 @@ enum Theme {
     static let primaryDeep = Color(light: 0x14315F, dark: 0x2F5F9E) // button / nav fills
     static let inkAccent = Color(light: 0x14315F, dark: 0x8FB6EE)   // that blue, as text
     static let accent = Color(light: 0x8A5E17, dark: 0xD9A441)      // eyebrow, flash, focus
+    static let accentWash = Color(light: 0xF4EFE6, dark: 0x2A2113) // quiet ochre fill (CLAUDE.md §7)
     static let line = Color(light: 0xDCDEE3, dark: 0x2A2F39)        // borders / dashed rules
     static let card = Color(light: 0xFBFCFD, dark: 0x171B22)        // card fill
     static let offWhite = Color(light: 0xF7F8FA, dark: 0xF7F8FA)    // text on primaryDeep

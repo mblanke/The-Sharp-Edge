@@ -34,13 +34,27 @@ struct Citation: Codable, Hashable, Identifiable {
     var sourcePath: String?
     var heading: String?
     var page: Int?
+    /// pdf | epub | mkv … A transcript carries a `page` that is an artefact of
+    /// chunking, so media sources must not offer to open one.
+    var fileType: String?
 
     var id: Int { n }
+    var isMedia: Bool { MediaKinds.contains(fileType) }
 
     enum CodingKeys: String, CodingKey {
         case n, title
         case sourcePath = "source_path"
         case heading, page
+        case fileType = "file_type"
+    }
+}
+
+/// Sources with no page structure at all.
+enum MediaKinds {
+    static let all: Set<String> = ["mkv", "mp4", "webm", "avi", "mov", "m4v", "mp3", "wav", "m4a"]
+    static func contains(_ fileType: String?) -> Bool {
+        guard let t = fileType?.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")) else { return false }
+        return all.contains(t)
     }
 }
 
@@ -52,13 +66,16 @@ struct Source: Codable, Hashable, Identifiable {
     var heading: String?
     var page: Int?
     var text: String?
+    var fileType: String?
 
     var id: Int { n }
+    var isMedia: Bool { MediaKinds.contains(fileType) }
 
     enum CodingKeys: String, CodingKey {
         case n, title
         case sourcePath = "source_path"
         case heading, page, text
+        case fileType = "file_type"
     }
 }
 
@@ -68,15 +85,19 @@ struct ChunkOut: Codable, Hashable, Identifiable {
     var title: String?
     var heading: String?
     var page: Int?
+    var fileType: String?
     var score: Double?
     var rerankScore: Double?
 
     var id: String { "\(title ?? "")|\(page ?? -1)|\(heading ?? "")" }
 
+    var isMedia: Bool { MediaKinds.contains(fileType) }
+
     enum CodingKeys: String, CodingKey {
         case text
         case sourcePath = "source_path"
         case title, heading, page, score
+        case fileType = "file_type"
         case rerankScore = "rerank_score"
     }
 }
@@ -133,9 +154,22 @@ struct AskToken: Codable {
     var t: String
 }
 
+/// Set when the question named an authority this shelf cannot answer for.
+/// `ungrounded` catches an answer with no citations at all; this catches one whose
+/// citations point at the wrong book — the failure that had "how does Escoffier build
+/// an espagnole?" answered six times in Escoffier's name from the CIA's pages.
+struct Attribution: Codable, Hashable {
+    var absent: [String]
+    var unretrieved: [String]
+    var sources: [String]
+    var note: String
+}
+
 struct AskDone: Codable {
     var citations: [Citation]
     var sources: [Source]
+    var ungrounded: Bool?
+    var attribution: Attribution?
 }
 
 struct AskError: Codable {
