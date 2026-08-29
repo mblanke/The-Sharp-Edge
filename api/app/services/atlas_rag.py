@@ -7,14 +7,20 @@ This client only retrieves, filtered to the Cooking source folder.
 
 from typing import Any
 
+import logging
+
 import httpx
 from fastapi import HTTPException
 
 from app.config import settings
 from app.services.expand import expand_passages
 from app.services.lexical import hybrid_order
+from app.services.named_book import merge_named_first, named_book_globs
 from app.services.passages import to_passages
 
+
+
+logger = logging.getLogger("sharp-edge")
 
 class RagChunk(dict):
     """Chunk dict from rag-api /retrieve: text, source_path, page, heading,
@@ -103,6 +109,7 @@ class AtlasRag:
         scoped = [c for c in chunks if _in_scope(c, settings.rag_source_folder)]
         if books:
             scoped = [c for c in scoped if _in_books(c, books)]
+
         if not as_passages:
             return scoped[:keep]
 
@@ -112,10 +119,62 @@ class AtlasRag:
         passages = list(to_passages(scoped, keep=len(scoped) or keep))
         order = hybrid_order(question, passages)
         ranked = [passages[i] for i in order[:keep]]
+
+        # Naming a book in prose is a weak signal to a vector search, and it weakens as
+        # the shelf grows: "How does the CIA make french onion soup" was answered from
+        # The Food Lab while the Professional Chef's onion soup sat indexed at rank 25.
+        # Applied *after* ranking — the passage pipeline re-sorts by score, so a
+        # reservation made before it is simply undone. Skipped when the caller scoped
+        # explicitly: they have already said what they want.
+        if not books:
+            ranked = await self._with_named_book(question, ranked, keep)
         # Pull the neighbouring chunks for the best few so a result reads as a recipe
         # rather than a window that starts mid-sentence — and so text-extracted books
         # recover their page numbers from the markers in those neighbours.
         return await expand_passages(ranked, self._http())
+
+    async def _with_named_book(
+        self, question: str, general: list[dict], keep: int
+    ) -> list[dict]:
+        """Blend in a second search scoped to a book the question named.
+
+        Best-effort: any failure returns the general ranking untouched, because a
+        retrieval that names a book must never be worse than one that does not.
+        """
+        globs = named_book_globs(question)
+        if not globs:
+            return general
+
+        try:
+            res = await self._http().post(
+                "/retrieve",
+                json={
+                    "question": question,
+                    "top_k": max(settings.rag_named_book_fetch_k, keep),
+                    "source_folder": settings.rag_source_folder,
+                },
+            )
+            res.raise_for_status()
+            candidates = res.json().get("chunks", [])
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("named-book retrieval failed, using general ranking: %s", exc)
+            return general
+
+        raw = [
+            c
+            for c in candidates
+            if any(g in str(c.get("source_path") or "").casefold() for g in globs)
+        ]
+        if not raw:
+            return general
+        # Same treatment the general ranking got: index pages dropped, adjacent chunks
+        # merged, then ranked against the question — otherwise the reserved slots would
+        # be raw fragments sitting beside finished passages.
+        merged = list(to_passages(raw, keep=len(raw)))
+        order = hybrid_order(question, merged)
+        from_named = [merged[i] for i in order]
+        logger.info("question names a shelf book: reserving slots for %d passages", len(from_named))
+        return merge_named_first(general, from_named, keep=max(len(general), keep))
 
     async def health(self) -> dict:
         try:

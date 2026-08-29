@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     rag_source_folder: str = "Cooking"
     rag_top_k: int = 8
     rag_fetch_k: int = 24  # over-fetch before the client-side folder filter
+    # A question that names a book runs a second, deeper search that is then filtered
+    # down to that book. It has to be deep because a named book can sit well below the
+    # normal cut: measured, the Professional Chef's onion soup was at rank 25 for
+    # "How does the CIA make french onion soup". Only paid when a book is named.
+    rag_named_book_fetch_k: int = 150
     annotation_min_score: float = 0.4  # floor for technique margin notes (F5)
 
     # Qdrant, read-only and payload-only: the coverage report facets `source_path` to
