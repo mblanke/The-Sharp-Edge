@@ -6,6 +6,13 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>The Sharp Edge</string>
+	<!-- Declaring CFBundleDocumentTypes without one of the document-browser keys is
+	     an App Store Connect warning on every upload. A .sharpedge file arrives by
+	     AirDrop or the Files picker and is read in place — it is never edited on
+	     disk — so opening in place is the honest declaration, and the document
+	     browser (which we do not use) is not. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
