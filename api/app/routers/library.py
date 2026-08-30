@@ -69,10 +69,20 @@ async def library_books():
                     # /mnt/references/Cooking, so local paths must never be compared
                     # against facet keys directly.
                     prefix = f"{settings.rag_corpus_root.rstrip('/')}/{entry.name}"
+                    # A book can be indexed under a *sibling* filename: a scan that OCR
+                    # cannot read is transcribed to a `<stem>.txt` sidecar, and the
+                    # chunks live there rather than under the PDF. Matching the exact
+                    # name would report the PDF as "not indexed" while the book is in
+                    # fact fully searchable — the report lying, which is the one thing
+                    # it exists not to do. Same stem, same book (mirrors the .txt→.pdf
+                    # indirection in services/source_page.resolve_source).
+                    stem = prefix.rsplit(".", 1)[0] if entry.is_file() else prefix
                     chunks = sum(
                         n
                         for p, n in counts.items()
-                        if p == prefix or p.startswith(prefix + "/")
+                        if p == prefix
+                        or p.startswith(prefix + "/")
+                        or (entry.is_file() and p.rsplit(".", 1)[0] == stem)
                     )
                     status = (
                         "indexed"

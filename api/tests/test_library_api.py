@@ -150,3 +150,17 @@ async def test_unknown_coverage_is_null_not_missing(client, monkeypatch, tmp_pat
 
     book = (await client.get("/api/v1/library/books")).json()["books"][0]
     assert book["status"] is None and book["chunks"] is None and book["note"] is None
+
+
+async def test_a_book_indexed_via_its_sidecar_is_not_reported_missing(client, monkeypatch, tmp_path):
+    """Institut Paul Bocuse is a scan docling cannot read, so it is transcribed to a
+    `<stem>.txt` beside the PDF and the chunks live there. Matching the exact filename
+    reported the PDF as "not indexed" while the book was fully searchable."""
+    (tmp_path / "Institut Paul Bocuse.pdf").write_bytes(b"x" * 10)
+    monkeypatch.setattr(library_module, "atlas_rag", FakeRag())
+    monkeypatch.setattr(settings, "library_dir", str(tmp_path))
+    _counts(monkeypatch, {"/mnt/references/Cooking/Institut Paul Bocuse.txt": 1177})
+
+    book = (await client.get("/api/v1/library/books")).json()["books"][0]
+    assert book["status"] == "indexed"
+    assert book["chunks"] == 1177
