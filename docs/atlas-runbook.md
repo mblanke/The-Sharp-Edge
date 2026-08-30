@@ -307,3 +307,46 @@ day, one file at 435 retries.
 
 Stronghold's Tailscale ACL blocks SSH as `guapo`; reach it as `soadmin` over the LAN
 (`192.168.1.31`). Atlas's key is installed there.
+
+---
+
+## Repair complete (2026-08-29)
+
+All 529 poisoned sources rebuilt through the fixed pipeline — Hacking 126, Networking
+159, AI/NIST/Coding/threat-intel/PM/MITRE 241, Cooking 3 — with **zero failures**.
+
+| | before | after |
+|---|---|---|
+| index poison | **72%** (1,703,946 of 2,354,545) | **0.1%** (sampled 8,000) |
+| Cooking shelf | ~18 entries, half unreadable | **23 of 28 searchable, 50,825 passages** |
+
+The scheduled sweep is re-enabled. Its first run failed 99 files: 98 are the corrupt
+SANS `.webm`s, now rejected by the header check in twelve bytes rather than a 78 MB
+upload and a GPU slot, and one is Modernist Bread — a 471 MB scan that 502'd through the
+load balancer.
+
+Two things learned re-enabling it, both worth repeating:
+
+* **`systemctl enable --now` fires a sweep immediately.** Retrieval then runs ~31s
+  instead of ~4s for the duration, exactly as `atlas_rag`'s 60s timeout comment
+  predicted, and a retrieval eval run during it will time out. Enable without `--now`
+  unless you want the sweep.
+* **nginx buffered whole conversion responses to disk.** `proxy_request_buffering off`
+  covered uploads; responses need `proxy_buffering off` and
+  `proxy_max_temp_file_size 0` as well. A 500 MB scan converts to a very large body
+  (images arrive base64-embedded before rag-api scrubs them), and spooling it gave a
+  worker restart a window to become a 502 for the whole document.
+
+## Still not searchable, and why
+
+Four books are scans docling's OCR cannot read — proven on Institut Paul Bocuse: 13
+words per three pages, identical across `auto`/`easyocr`/`tesseract` and across render
+scales 2/4/6/8. The pages are legible; the vision model transcribes them perfectly from
+the same images ("Makes 425 g. Preparation: 10 minutes • Chilling: at least 1 hour…").
+
+That leaves one route: transcribe scans with the vision model instead of OCR, at roughly
+one GB10 call per page — Bocuse 721pp, Modernist Bread 804pp, Fat Duck 527pp, Modernist
+vols ~2,000pp. Ten-plus hours of GPU that competes with the assistants, so it is a
+deliberate decision rather than something to switch on. Worth doing one book first.
+
+The fifth entry, *Parts Unknown*, contains only a `.nfo` — there is no video to index.
