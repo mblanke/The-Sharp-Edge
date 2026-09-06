@@ -18,6 +18,8 @@ struct ShoppingView: View {
         Group {
             if store.isLoading && store.items.isEmpty {
                 LoadingView()
+            } else if let error = store.error, store.items.isEmpty {
+                ErrorStateView(message: error) { Task { await store.load(env.dataSource) } }
             } else if store.items.isEmpty {
                 emptyState
             } else {
@@ -86,8 +88,14 @@ struct ShoppingView: View {
         List(selection: $selection) {
             if let error = store.error {
                 Section {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(Typography.body(14)).foregroundStyle(Theme.accent)
+                    HStack(alignment: .firstTextBaseline) {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(Typography.body(14)).foregroundStyle(Theme.accent)
+                        Spacer()
+                        Button("Try again") { Task { await store.load(env.dataSource) } }
+                            .font(Typography.body(14, weight: .semibold))
+                            .foregroundStyle(Theme.inkAccent)
+                    }
                 }
             }
 
@@ -175,5 +183,8 @@ struct ShoppingView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(item.display) \(item.name)")
+        .accessibilityValue(item.checked ? "in the basket" : "to buy")
+        .sensoryFeedback(.selection, trigger: item.checked)
     }
 }

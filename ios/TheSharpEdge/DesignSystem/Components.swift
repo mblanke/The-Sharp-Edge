@@ -155,6 +155,7 @@ struct ScaleStepper: View {
                 value = min(maxValue, value + 1); onChange()
             }
         }
+        .sensoryFeedback(.selection, trigger: value)
     }
 
     private func stepButton(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -166,6 +167,7 @@ struct ScaleStepper: View {
                 .background(enabled ? Theme.primaryDeep : Theme.faint.opacity(0.4), in: Circle())
         }
         .disabled(!enabled)
+        .accessibilityLabel(system == "plus" ? "More \(unitWord)" : "Fewer \(unitWord)")
     }
 }
 

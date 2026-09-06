@@ -53,6 +53,15 @@ final class AskStore: ObservableObject {
         errorText = nil
     }
 
+    /// After a failed stream: drop the empty answer and ask the last question again.
+    func retry(_ source: DataSource, scopeSlug: String?) {
+        guard !isStreaming, let lastUser = turns.last(where: { $0.role == "user" }) else { return }
+        if let last = turns.last, last.role == "assistant" { turns.removeLast() }
+        if let i = turns.lastIndex(where: { $0.id == lastUser.id }) { turns.remove(at: i) }
+        input = lastUser.text
+        send(source, scopeSlug: scopeSlug)
+    }
+
     func send(_ source: DataSource, scopeSlug: String?) {
         let question = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isStreaming else { return }

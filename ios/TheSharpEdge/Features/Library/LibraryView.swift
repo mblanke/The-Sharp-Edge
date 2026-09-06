@@ -195,7 +195,12 @@ struct LibraryView: View {
             ErrorStateView(message: error) { Task { await store.search(env.dataSource) } }
                 .frame(minHeight: 220)
         } else if store.didSearch && store.groups.isEmpty {
-            Text("No passages found.").font(Typography.body(15)).foregroundStyle(Theme.faint).padding(.top, 30)
+            ContentUnavailableView {
+                Label("No passages found", systemImage: "books.vertical")
+            } description: {
+                Text("Try fewer words, the dish's other name, or the whole library instead of one book.")
+            }
+            .padding(.top, 20)
         } else {
             ForEach(store.groups) { group in
                 CardSurface {

@@ -78,7 +78,14 @@ struct AskView: View {
                         turnView(turn).id(turn.id)
                     }
                     if let error = store.errorText {
-                        Text(error).font(Typography.body(14)).foregroundStyle(Theme.accent)
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                            Text(error).font(Typography.body(14)).foregroundStyle(Theme.accent)
+                            if !store.isStreaming, store.turns.contains(where: { $0.role == "user" }) {
+                                Button("Try again") { store.retry(env.dataSource, scopeSlug: scopeSlug) }
+                                    .font(Typography.body(14, weight: .semibold))
+                                    .foregroundStyle(Theme.inkAccent)
+                            }
+                        }
                     }
                 }
                 .padding(Theme.Space.xl)

@@ -390,9 +390,11 @@ struct RecipeEditorView: View {
                     source: source.isEmpty ? nil : source, status: status, label: nil,
                     ingredients: cleanedIngredients, steps: cleanedSteps, notes: cleanedNotes))
             }
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             onSaved(saved)
             dismiss()
         } catch let error as APIError {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
             if case let .slugTaken(detail) = error {
                 slugWarning = detail
                 errorText = "Pick a different web address and save again."
