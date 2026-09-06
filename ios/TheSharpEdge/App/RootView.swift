@@ -34,6 +34,9 @@ struct RootView: View {
             .environmentObject(store)
         }
         .navigationSplitViewStyle(.balanced)
+        // Scale all the way up to the largest accessibility size that still leaves a
+        // two-column iPad usable; beyond it the step text is one word per line.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         // Gated on setup: loading behind the cover would fire a request at whatever URL
         // happens to be stored, which on a stranger's iPad is the owner's tailnet.
         .task(id: env.generation) {
