@@ -27,6 +27,7 @@ struct RootView: View {
             NavigationStack {
                 VStack(spacing: 0) {
                     OfflineBanner()
+                    TimerTrayView { timer in selection = .recipe(timer.slug) }
                     detailView
                 }
             }

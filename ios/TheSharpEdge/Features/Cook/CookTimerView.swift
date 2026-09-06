@@ -1,26 +1,29 @@
 import SwiftUI
 
-/// Inline countdown timer for a step (seeded from timer_seconds).
+/// Inline countdown for a step. The state lives in `TimerCenter`, so swiping to the
+/// next step, closing cook mode, or locking the iPad does not stop the clock.
 struct CookTimerView: View {
+    @EnvironmentObject var center: TimerCenter
+    let slug: String
+    let title: String
+    let step: Int
     let seconds: Int
-    @State private var remaining: Int
-    @State private var running = false
-    @State private var ticker: Timer?
 
-    init(seconds: Int) {
-        self.seconds = seconds
-        _remaining = State(initialValue: seconds)
-    }
+    private var timer: CookTimer? { center.timer(slug: slug, step: step) }
+    private var remaining: TimeInterval { timer?.remaining(at: center.now) ?? TimeInterval(seconds) }
+    private var running: Bool { timer?.isRunning ?? false }
+    private var done: Bool { timer?.isDone(at: center.now) ?? false }
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
             Image(systemName: "timer").foregroundStyle(Theme.accent)
-            Text(timeString(remaining))
+            Text(Self.timeString(remaining))
                 .font(Typography.mono(26, weight: .semibold))
-                .foregroundStyle(remaining == 0 ? Theme.accent : Theme.ink)
+                .foregroundStyle(done ? Theme.accent : Theme.ink)
                 .monospacedDigit()
+                .accessibilityLabel(done ? "Timer done" : "\(Self.timeString(remaining)) remaining")
             Button {
-                running ? stop() : start()
+                toggle()
             } label: {
                 Image(systemName: running ? "pause.fill" : "play.fill")
                     .font(.system(size: 16, weight: .bold))
@@ -28,8 +31,9 @@ struct CookTimerView: View {
                     .frame(width: 40, height: 40)
                     .background(Theme.primaryDeep, in: Circle())
             }
+            .accessibilityLabel(running ? "Pause timer" : (done ? "Start timer again" : "Start timer"))
             Button {
-                stop(); remaining = seconds
+                reset()
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 15, weight: .bold))
@@ -38,32 +42,33 @@ struct CookTimerView: View {
                     .background(Theme.card, in: Circle())
                     .overlay(Circle().stroke(Theme.line, lineWidth: 1))
             }
+            .accessibilityLabel("Reset timer")
         }
         .padding(Theme.Space.m)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).stroke(Theme.line, lineWidth: 1))
-        .onDisappear { stop() }
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+            .stroke(done ? Theme.accent : Theme.line, lineWidth: 1))
+        .sensoryFeedback(.success, trigger: done)
     }
 
-    private func start() {
-        guard remaining > 0 else { return }
-        running = true
-        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if remaining > 0 {
-                remaining -= 1
-            } else {
-                stop()
-            }
+    func toggle() {
+        let id = CookTimer.id(slug: slug, step: step)
+        if running {
+            center.pause(id: id)
+        } else {
+            let t = center.ensure(slug: slug, title: title, step: step, total: TimeInterval(seconds))
+            if t.isDone(at: center.now) { center.reset(id: id) }
+            center.start(id: id)
         }
     }
 
-    private func stop() {
-        running = false
-        ticker?.invalidate()
-        ticker = nil
+    func reset() {
+        center.reset(id: CookTimer.id(slug: slug, step: step))
     }
 
-    private func timeString(_ s: Int) -> String {
-        String(format: "%d:%02d", s / 60, s % 60)
+    static func timeString(_ seconds: TimeInterval) -> String {
+        let s = Int(seconds.rounded(.up))
+        if s >= 3600 { return String(format: "%d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60) }
+        return String(format: "%d:%02d", s / 60, s % 60)
     }
 }
