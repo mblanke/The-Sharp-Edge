@@ -350,3 +350,36 @@ vols ~2,000pp. Ten-plus hours of GPU that competes with the assistants, so it is
 deliberate decision rather than something to switch on. Worth doing one book first.
 
 The fifth entry, *Parts Unknown*, contains only a `.nfo` — there is no video to index.
+
+## The retrieval eval, nightly (2026-09-06)
+
+The eval (`api/tests/test_retrieval_eval.py`) only runs with `RAG_EVAL=1` against the live
+rag-api, and it only grows when somebody adds a question. Two things close that loop:
+
+- **Questions come from use.** Every answer in Ask takes a thumbs up or down (stored on
+  `message.feedback`). `uv run python scripts/promote_golden.py` turns thumbs-up answers into
+  golden questions with `expect_any` filled from the books the cook saw cited — the verdict is
+  the label that `harvest_questions.py` deliberately refuses to invent. `--write` appends; then
+  re-record the baseline on purpose.
+- **The ratchet runs without anyone remembering.** On Atlas, a timer beside `rag-ingest.timer`:
+
+  ```
+  # /etc/systemd/system/sharp-edge-eval.service
+  [Service]
+  Type=oneshot
+  WorkingDirectory=/opt/sharp-edge/api
+  Environment=RAG_EVAL=1
+  ExecStart=/usr/bin/env uv run --extra dev pytest tests/test_retrieval_eval.py -q
+  ```
+  ```
+  # /etc/systemd/system/sharp-edge-eval.timer
+  [Timer]
+  OnCalendar=*-*-* 04:30
+  Persistent=true
+  [Install]
+  WantedBy=timers.target
+  ```
+
+  `journalctl -u sharp-edge-eval` shows the per-question outcomes; a HIT that became a MISS
+  fails the unit, which is the only alarm this needs. Operator action — nothing in this repo
+  installs it.
