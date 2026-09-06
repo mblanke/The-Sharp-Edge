@@ -66,3 +66,26 @@ test('a search with no hits says so and can be cleared; the query survives a rel
   await expect(page.getByTestId('no-results')).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Gluten-Free Hungarian Beef Goulash/ })).toBeVisible();
 });
+
+test('amounts can be read in metric or imperial, and ticks survive a reload', async ({ page }) => {
+  await page.goto('/r/goulash');
+  const beefRow = page.locator('li', { hasText: 'beef chuck' });
+  await expect(beefRow.locator('.qty')).toHaveText(/^2 lb/);
+
+  // the lens converts the scaled amount; the recipe itself is untouched
+  await page.getByTestId('units-metric').click();
+  await expect(beefRow.locator('.qty')).toHaveText(/^900 g/);
+  await page.getByRole('button', { name: /More/ }).click();
+  await expect(beefRow.locator('.qty')).toHaveText(/^1050 g/);
+  await page.getByTestId('units-recipe').click();
+  await expect(beefRow.locator('.qty')).toHaveText(/^2 ⅓ lb/);
+
+  // tick an ingredient as it goes in; a reload keeps it
+  const row = beefRow.getByTestId('ingredient-row');
+  await row.click();
+  await expect(row).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.locator('li', { hasText: 'beef chuck' }).getByTestId('ingredient-row')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: /clear/ }).click();
+  await expect(page.locator('li', { hasText: 'beef chuck' }).getByTestId('ingredient-row')).toHaveAttribute('aria-pressed', 'false');
+});

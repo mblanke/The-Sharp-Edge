@@ -14,6 +14,20 @@ final class ScalingParityTests: XCTestCase {
         }
     }
 
+    struct ConvertArgs: Decodable { let amount: Double; let unit: String; let system: String }
+    struct ConvertExpect: Decodable { let amount: Double; let unit: String; let display: String }
+
+    func testConvertAmountMatchesTheServer() {
+        forEachCase("scaling.convert_amount") { (id, args: ConvertArgs, expect: ConvertExpect, tolerance) in
+            let system = try XCTUnwrap(UnitSystem(rawValue: args.system), "unknown system in \(id)")
+            let (amount, unit) = ScalingEngine.convertAmount(args.amount, unit: args.unit, system: system)
+            XCTAssertEqual(amount, expect.amount, accuracy: tolerance ?? 0.001, id)
+            XCTAssertEqual(unit, expect.unit, id)
+            XCTAssertEqual(ScalingEngine.convertDisplay(args.amount, unit: args.unit, system: system),
+                           expect.display, id)
+        }
+    }
+
     /// CLAUDE.md §8: quantities render as unicode kitchen fractions, never decimals.
     func testNoScaledQuantityEverRendersADecimalPoint() {
         forEachCase("scaling.format_amount") { (id, args: ValueUnitArg, _: String, _) in
@@ -30,6 +44,7 @@ final class FixtureHygieneTests: XCTestCase {
     /// test reads is worse than no fixture — it looks like the port is covered.
     static let consumed: Set<String> = [
         "scaling.format_amount",
+        "scaling.convert_amount",
         "shopping.normalise_name",
         "shopping.check_gluten",
         "shopping.merge_lines",

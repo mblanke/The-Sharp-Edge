@@ -8,6 +8,8 @@ final class RecipeDetailStore: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var flashing = false
+    /// Mirrors AppConfig.units; the view keeps it in sync so rows re-render on change.
+    @Published var units: UnitSystem = .recipe
     /// Reading lens for a recipe kept in another language. The stored recipe is
     /// never altered — this only changes what the screen shows.
     @Published var english: RecipeTranslation?
@@ -89,7 +91,8 @@ final class RecipeDetailStore: ObservableObject {
     /// Scaled ingredient rows via the client mirror (instant; server /scale is canonical for export).
     var scaledRows: [ScaledRow] {
         guard let recipe else { return [] }
-        return ScalingEngine.scale(recipe.currentVersion.ingredients, baseYield: recipe.baseYield, targetYield: target)
+        return ScalingEngine.scale(recipe.currentVersion.ingredients, baseYield: recipe.baseYield,
+                                   targetYield: target, units: units)
     }
 
     var sections: [Grouping.IngredientSection] { Grouping.sections(scaledRows) }

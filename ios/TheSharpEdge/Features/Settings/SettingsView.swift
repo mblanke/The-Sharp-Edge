@@ -101,6 +101,17 @@ struct SettingsView: View {
             }
             #endif
 
+            Section {
+                Picker("Show amounts", selection: Binding(
+                    get: { config.units }, set: { config.units = $0 })) {
+                    ForEach(UnitSystem.allCases) { Text($0.label).tag($0) }
+                }
+            } header: {
+                Text("Units")
+            } footer: {
+                Text("A reading lens over the scaled amounts. The recipe, the shopping list and the printed cards keep the units they were written in.")
+            }
+
             Section("Recipes") {
                 if config.mode == .local {
                     if let doc = notebookDoc, !doc.recipes.isEmpty {

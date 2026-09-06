@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "function": "convert_amount",
+  "note": "Metric/imperial reading lens over a scaled amount. Household factors: 240 ml/cup, 15/tbsp, 5/tsp, 450 g/lb, 28 g/oz. Display goes through format_amount.",
+  "tolerance": 0.001,
+  "cases": [
+    {
+      "id": "a cup is 240 ml",
+      "args": {
+        "amount": 1,
+        "unit": "cup",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 240.0,
+        "unit": "ml",
+        "display": "240 ml"
+      }
+    },
+    {
+      "id": "three-quarter cup is 180 ml",
+      "args": {
+        "amount": 0.75,
+        "unit": "cup",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 180.0,
+        "unit": "ml",
+        "display": "180 ml"
+      }
+    },
+    {
+      "id": "two tablespoons are 30 ml",
+      "args": {
+        "amount": 2,
+        "unit": "tbsp",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 30.0,
+        "unit": "ml",
+        "display": "30 ml"
+      }
+    },
+    {
+      "id": "a teaspoon is 5 ml",
+      "args": {
+        "amount": 1,
+        "unit": "tsp",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 5.0,
+        "unit": "ml",
+        "display": "5 ml"
+      }
+    },
+    {
+      "id": "a pound is the household 450 g",
+      "args": {
+        "amount": 1,
+        "unit": "lb",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 450.0,
+        "unit": "g",
+        "display": "450 g"
+      }
+    },
+    {
+      "id": "two pounds round to the nearest 5 g",
+      "args": {
+        "amount": 2,
+        "unit": "lb",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 900.0,
+        "unit": "g",
+        "display": "900 g"
+      }
+    },
+    {
+      "id": "eight ounces land on 225 g after rounding",
+      "args": {
+        "amount": 8,
+        "unit": "oz",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 224.0,
+        "unit": "g",
+        "display": "225 g"
+      }
+    },
+    {
+      "id": "metric stays metric",
+      "args": {
+        "amount": 250,
+        "unit": "g",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 250,
+        "unit": "g",
+        "display": "250 g"
+      }
+    },
+    {
+      "id": "100 g reads as ounces",
+      "args": {
+        "amount": 100,
+        "unit": "g",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 3.5714285714285716,
+        "unit": "oz",
+        "display": "3 ⅝ oz"
+      }
+    },
+    {
+      "id": "500 g reads as a pound and an eighth",
+      "args": {
+        "amount": 500,
+        "unit": "g",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 1.1111111111111112,
+        "unit": "lb",
+        "display": "1 ⅛ lb"
+      }
+    },
+    {
+      "id": "450 g is exactly a pound",
+      "args": {
+        "amount": 450,
+        "unit": "g",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 1.0,
+        "unit": "lb",
+        "display": "1 lb"
+      }
+    },
+    {
+      "id": "250 ml is about a cup",
+      "args": {
+        "amount": 250,
+        "unit": "ml",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 1.0416666666666667,
+        "unit": "cup",
+        "display": "1 cup"
+      }
+    },
+    {
+      "id": "100 ml is three-eighths of a cup",
+      "args": {
+        "amount": 100,
+        "unit": "ml",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 0.4166666666666667,
+        "unit": "cup",
+        "display": "⅜ cup"
+      }
+    },
+    {
+      "id": "60 ml is a quarter cup, not four tablespoons",
+      "args": {
+        "amount": 60,
+        "unit": "ml",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 0.25,
+        "unit": "cup",
+        "display": "¼ cup"
+      }
+    },
+    {
+      "id": "30 ml is two tablespoons",
+      "args": {
+        "amount": 30,
+        "unit": "ml",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tbsp",
+        "display": "2 tbsp"
+      }
+    },
+    {
+      "id": "10 ml is two teaspoons",
+      "args": {
+        "amount": 10,
+        "unit": "ml",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 2.0,
+        "unit": "tsp",
+        "display": "2 tsp"
+      }
+    },
+    {
+      "id": "imperial stays imperial",
+      "args": {
+        "amount": 1.5,
+        "unit": "cup",
+        "system": "imperial"
+      },
+      "expect": {
+        "amount": 1.5,
+        "unit": "cup",
+        "display": "1 ½ cup"
+      }
+    },
+    {
+      "id": "a count is a count in any system",
+      "args": {
+        "amount": 3,
+        "unit": "",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 3,
+        "unit": "",
+        "display": "3"
+      }
+    },
+    {
+      "id": "to taste never converts",
+      "args": {
+        "amount": 0,
+        "unit": "cup",
+        "system": "metric"
+      },
+      "expect": {
+        "amount": 0,
+        "unit": "cup",
+        "display": "—"
+      }
+    },
+    {
+      "id": "the recipe's own units pass through",
+      "args": {
+        "amount": 0.5,
+        "unit": "cup",
+        "system": "recipe"
+      },
+      "expect": {
+        "amount": 0.5,
+        "unit": "cup",
+        "display": "½ cup"
+      }
+    }
+  ]
+}

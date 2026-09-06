@@ -26,7 +26,7 @@ from app.services.ingredients import (
     split_run_on,
     strip_diacritics,
 )
-from app.services.scaling import format_amount
+from app.services.scaling import convert_amount, convert_display, format_amount
 from app.services.shopping import ShoppingLine, as_text, merge_lines, normalise_name
 from tests.fixtures import all_fixture_names, cases, load
 
@@ -35,6 +35,7 @@ REPO = Path(__file__).resolve().parents[2]
 #: Every fixture file must be listed here AND consumed by a test below.
 CONSUMED = {
     "scaling.format_amount",
+    "scaling.convert_amount",
     "shopping.normalise_name",
     "shopping.check_gluten",
     "shopping.merge_lines",
@@ -54,6 +55,14 @@ def _lines(specs):
     return [ShoppingLine(name=s["name"], amount=s["amount"], unit=s["unit"],
                          to_taste=s["amount"] == 0, recipes=[s["recipe"]])
             for s in specs]
+
+
+@pytest.mark.parametrize("case_id,args,expect", cases("scaling.convert_amount"))
+def test_convert_amount_matches_fixture(case_id, args, expect):
+    amount, unit = convert_amount(args["amount"], args["unit"], args["system"])
+    assert abs(amount - expect["amount"]) < 0.001, case_id
+    assert unit == expect["unit"], case_id
+    assert convert_display(args["amount"], args["unit"], args["system"]) == expect["display"], case_id
 
 
 @pytest.mark.parametrize("case_id,args,expect", cases("scaling.format_amount"))

@@ -37,7 +37,7 @@ from app.services.ingredients import (  # noqa: E402
     split_run_on,
     strip_diacritics,
 )
-from app.services.scaling import format_amount  # noqa: E402
+from app.services.scaling import convert_amount, convert_display, format_amount  # noqa: E402
 from app.services.shopping import ShoppingLine, as_text, merge_lines, normalise_name  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
@@ -436,8 +436,46 @@ def _line_out(ln: ShoppingLine) -> dict:
     }
 
 
+# (id, amount, unit, system). The lens over a scaled amount: household conversions,
+# and the imperial side picks the measure a cook reaches for.
+CONVERT_AMOUNT_INPUTS = [
+    ("a cup is 240 ml", 1, "cup", "metric"),
+    ("three-quarter cup is 180 ml", 0.75, "cup", "metric"),
+    ("two tablespoons are 30 ml", 2, "tbsp", "metric"),
+    ("a teaspoon is 5 ml", 1, "tsp", "metric"),
+    ("a pound is the household 450 g", 1, "lb", "metric"),
+    ("two pounds round to the nearest 5 g", 2, "lb", "metric"),
+    ("eight ounces land on 225 g after rounding", 8, "oz", "metric"),
+    ("metric stays metric", 250, "g", "metric"),
+    ("100 g reads as ounces", 100, "g", "imperial"),
+    ("500 g reads as a pound and an eighth", 500, "g", "imperial"),
+    ("450 g is exactly a pound", 450, "g", "imperial"),
+    ("250 ml is about a cup", 250, "ml", "imperial"),
+    ("100 ml is three-eighths of a cup", 100, "ml", "imperial"),
+    ("60 ml is a quarter cup, not four tablespoons", 60, "ml", "imperial"),
+    ("30 ml is two tablespoons", 30, "ml", "imperial"),
+    ("10 ml is two teaspoons", 10, "ml", "imperial"),
+    ("imperial stays imperial", 1.5, "cup", "imperial"),
+    ("a count is a count in any system", 3, "", "metric"),
+    ("to taste never converts", 0, "cup", "metric"),
+    ("the recipe's own units pass through", 0.5, "cup", "recipe"),
+]
+
+
 def build() -> dict[str, dict]:
     out: dict[str, dict] = {}
+
+    out["scaling.convert_amount"] = {
+        "version": 1, "function": "convert_amount",
+        "note": "Metric/imperial reading lens over a scaled amount. Household factors: 240 ml/cup, 15/tbsp, 5/tsp, 450 g/lb, 28 g/oz. Display goes through format_amount.",
+        "tolerance": 0.001,
+        "cases": [
+            {"id": i, "args": {"amount": a, "unit": u, "system": sys},
+             "expect": {"amount": convert_amount(a, u, sys)[0], "unit": convert_amount(a, u, sys)[1],
+                        "display": convert_display(a, u, sys)}}
+            for i, a, u, sys in CONVERT_AMOUNT_INPUTS
+        ],
+    }
 
     out["scaling.format_amount"] = {
         "version": 1, "function": "format_amount",

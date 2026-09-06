@@ -60,3 +60,39 @@ export function scaledDisplay(amount: number, unit: string, factor: number): str
   if (amount === 0) return EM_DASH;
   return formatAmount(amount * factor, unit);
 }
+
+// --- unit systems -------------------------------------------------------------
+// Mirror of convert_amount / convert_display in scaling.py; the shared fixture
+// scaling.convert_amount.json holds both to the same answers.
+
+export type UnitSystem = 'recipe' | 'metric' | 'imperial';
+export const UNIT_SYSTEMS: UnitSystem[] = ['recipe', 'metric', 'imperial'];
+
+const TO_ML: Record<string, number> = { cup: 240, tbsp: 15, tsp: 5 };
+const TO_G: Record<string, number> = { lb: 450, oz: 28 };
+
+/** Express an amount in `system`. Counts, to-taste rows and same-system units pass through. */
+export function convertAmount(amount: number, unit: string, system: UnitSystem): [number, string] {
+  if (amount === 0 || system === 'recipe') return [amount, unit];
+  if (system === 'metric') {
+    if (unit in TO_ML) return [amount * TO_ML[unit], 'ml'];
+    if (unit in TO_G) return [amount * TO_G[unit], 'g'];
+    return [amount, unit];
+  }
+  if (unit === 'ml') {
+    if (amount >= 60) return [amount / 240, 'cup'];
+    if (amount >= 15) return [amount / 15, 'tbsp'];
+    return [amount / 5, 'tsp'];
+  }
+  if (unit === 'g') {
+    if (amount >= 450) return [amount / 450, 'lb'];
+    return [amount / 28, 'oz'];
+  }
+  return [amount, unit];
+}
+
+/** `convertAmount` rendered through `formatAmount` — what the screen shows. */
+export function convertDisplay(amount: number, unit: string, system: UnitSystem): string {
+  const [value, outUnit] = convertAmount(amount, unit, system);
+  return formatAmount(value, outUnit);
+}

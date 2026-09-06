@@ -89,6 +89,65 @@ enum ScalingEngine {
     }
 }
 
+// MARK: - Unit systems
+
+/// A recipe keeps the units it was written in; this is a reading lens over the scaled
+/// amount. Port of `convert_amount` / `convert_display` in scaling.py, held to the same
+/// answers by `shared/fixtures/scaling.convert_amount.json`.
+enum UnitSystem: String, CaseIterable, Identifiable, Codable {
+    case recipe, metric, imperial
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .recipe: return "As written"
+        case .metric: return "Metric"
+        case .imperial: return "Imperial"
+        }
+    }
+}
+
+extension ScalingEngine {
+    private static let toMl: [String: Double] = ["cup": 240, "tbsp": 15, "tsp": 5]
+    private static let toG: [String: Double] = ["lb": 450, "oz": 28]
+
+    /// Counts, to-taste rows and same-system units pass through unchanged.
+    static func convertAmount(_ amount: Double, unit: String, system: UnitSystem) -> (amount: Double, unit: String) {
+        if amount == 0 || system == .recipe { return (amount, unit) }
+        if system == .metric {
+            if let f = toMl[unit] { return (amount * f, "ml") }
+            if let f = toG[unit] { return (amount * f, "g") }
+            return (amount, unit)
+        }
+        if unit == "ml" {
+            if amount >= 60 { return (amount / 240, "cup") }
+            if amount >= 15 { return (amount / 15, "tbsp") }
+            return (amount / 5, "tsp")
+        }
+        if unit == "g" {
+            if amount >= 450 { return (amount / 450, "lb") }
+            return (amount / 28, "oz")
+        }
+        return (amount, unit)
+    }
+
+    /// `convertAmount` rendered through `formatAmount` — what the screen shows.
+    static func convertDisplay(_ amount: Double, unit: String, system: UnitSystem) -> String {
+        let (value, outUnit) = convertAmount(amount, unit: unit, system: system)
+        return formatAmount(value, unit: outUnit)
+    }
+
+    /// Scale, then read in a unit system. `.recipe` is the plain `scale`.
+    static func scale(_ ingredients: [Ingredient], baseYield: Int, targetYield: Int,
+                      units: UnitSystem) -> [ScaledRow] {
+        scale(ingredients, baseYield: baseYield, targetYield: targetYield).map { row in
+            guard units != .recipe, row.scaledAmount != 0 else { return row }
+            var out = row
+            out.display = convertDisplay(row.scaledAmount, unit: row.ingredient.unit, system: units)
+            return out
+        }
+    }
+}
+
 /// A locally-scaled ingredient row (client mirror of ScaledIngredient).
 struct ScaledRow: Identifiable, Hashable {
     var ingredient: Ingredient

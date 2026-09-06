@@ -43,6 +43,7 @@ struct RecipeDetailView: View {
                 }
             }
         }
+        .task(id: config.units) { store.units = config.units }
         .task(id: env.generation) {
             await store.load(env.dataSource, slug: slug)
             #if DEBUG
@@ -108,6 +109,13 @@ struct RecipeDetailView: View {
                                 Text("scaled from \(recipe.baseYield)")
                                     .font(Typography.mono(12)).foregroundStyle(Theme.faint)
                             }
+                            Picker("Units", selection: Binding(
+                                get: { config.units }, set: { config.units = $0 })) {
+                                ForEach(UnitSystem.allCases) { Text($0.label).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(maxWidth: 360)
+                            .accessibilityLabel("Show amounts as written, metric, or imperial")
                         }
                         .frame(maxWidth: .infinity)
                     }

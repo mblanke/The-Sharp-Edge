@@ -83,3 +83,50 @@ def scale_ingredients(ingredients: list[dict], base_yield: int, target_yield: in
             }
         )
     return out
+
+
+# --- unit systems -------------------------------------------------------------
+# A recipe keeps the units it was written in; the toggle is a reading lens over the
+# scaled amount. Household conversions, not laboratory ones: a cook measuring 240 ml
+# for a cup is right, and 236.588 ml is a number nobody has ever measured.
+
+UNIT_SYSTEMS = ("recipe", "metric", "imperial")
+_TO_ML = {"cup": 240.0, "tbsp": 15.0, "tsp": 5.0}
+_TO_G = {"lb": 450.0, "oz": 28.0}
+
+
+def convert_amount(amount: float, unit: str, system: str) -> tuple[float, str]:
+    """Express an amount in `system` ("recipe" | "metric" | "imperial").
+
+    Countable units (""), to-taste rows (amount 0) and units already in the target
+    system pass through unchanged. Imperial picks the unit a cook would reach for:
+    ml → tsp under 15, tbsp under 60 (¼ cup), cups from there; g → oz under 450, lb above.
+    """
+    if system not in UNIT_SYSTEMS:
+        raise ValueError(f"unknown unit system {system!r}")
+    if amount == 0 or system == "recipe":
+        return amount, unit
+    if system == "metric":
+        if unit in _TO_ML:
+            return amount * _TO_ML[unit], "ml"
+        if unit in _TO_G:
+            return amount * _TO_G[unit], "g"
+        return amount, unit
+    # imperial
+    if unit == "ml":
+        if amount >= 60:
+            return amount / 240.0, "cup"
+        if amount >= 15:
+            return amount / 15.0, "tbsp"
+        return amount / 5.0, "tsp"
+    if unit == "g":
+        if amount >= 450:
+            return amount / 450.0, "lb"
+        return amount / 28.0, "oz"
+    return amount, unit
+
+
+def convert_display(amount: float, unit: str, system: str) -> str:
+    """`convert_amount` rendered through `format_amount` — what the screen shows."""
+    value, out_unit = convert_amount(amount, unit, system)
+    return format_amount(value, out_unit)

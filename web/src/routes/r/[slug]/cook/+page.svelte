@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import TimerTray from '$lib/components/TimerTray.svelte';
   import { formatDuration, matchIngredients } from '$lib/cook';
+  import { convertDisplay, UNIT_SYSTEMS, type UnitSystem } from '$lib/scaling';
   import { isDone, isRunning, remaining, requestNotifyPermission, timerId, timerStore } from '$lib/timers';
   import { listen, parseCommand, speak, type VoiceListener } from '$lib/voice-control';
   import { readSse } from '$lib/sse';
@@ -12,7 +13,13 @@
 
   const recipe = $derived(data.recipe);
   const steps = $derived(data.recipe.current_version.steps);
-  const scaled = $derived(data.scaled);
+  // the same unit lens as the recipe page; the server's display is the recipe's own units
+  let units = $state<UnitSystem>('recipe');
+  const scaled = $derived(
+    units === 'recipe'
+      ? data.scaled
+      : data.scaled.map((i) => (i.amount === 0 ? i : { ...i, display: convertDisplay(i.scaled_amount, i.unit, units) }))
+  );
 
   let stepIndex = $state(0);
   const finished = $derived(stepIndex >= steps.length);
@@ -97,6 +104,8 @@
       const savedScale = Number(localStorage.getItem('sharp-edge-cook-text'));
       if (Number.isInteger(savedScale) && savedScale >= 0 && savedScale < SCALES.length) scaleIdx = savedScale;
       showHint = !localStorage.getItem('sharp-edge-cook-hint');
+      const savedUnits = localStorage.getItem('sharp-edge-units') as UnitSystem | null;
+      if (savedUnits && UNIT_SYSTEMS.includes(savedUnits)) units = savedUnits;
 
       // ?step=N (1-based, from the timer tray) wins; otherwise offer the saved position
       const wanted = Number(new URL(location.href).searchParams.get('step'));

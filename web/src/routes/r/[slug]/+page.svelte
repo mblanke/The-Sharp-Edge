@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
+  import { gfRisks } from '$lib/gf';
   import { notify } from '$lib/toast';
-  import { scaledDisplay } from '$lib/scaling';
+  import { convertDisplay, scaledDisplay, UNIT_SYSTEMS, type UnitSystem } from '$lib/scaling';
   import type { Ingredient } from '$lib/types';
 
   let { data, form } = $props();
@@ -40,6 +42,102 @@
   }
 
   let target = $state(0);
+
+  // --- ticks: tap an ingredient as it goes in; persisted per recipe so a reload
+  // mid-prep keeps them. Cleared with one tap or when the version changes.
+  let checked = $state<Set<number>>(new Set());
+  const checkKey = $derived(`sharp-edge-checked-${recipe.slug}`);
+  function toggleCheck(i: number) {
+    const next = new Set(checked);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
+    checked = next;
+    try {
+      if (next.size) localStorage.setItem(checkKey, JSON.stringify([...next]));
+      else localStorage.removeItem(checkKey);
+    } catch {
+      // storage blocked
+    }
+  }
+  function clearChecks() {
+    checked = new Set();
+    try {
+      localStorage.removeItem(checkKey);
+    } catch {
+      // storage blocked
+    }
+  }
+
+  // --- units: a reading lens over the scaled amount, never a change to the recipe
+  let units = $state<UnitSystem>('recipe');
+  function setUnits(u: UnitSystem) {
+    units = u;
+    try {
+      localStorage.setItem('sharp-edge-units', u);
+    } catch {
+      // storage blocked
+    }
+  }
+  const UNIT_LABEL: Record<UnitSystem, string> = { recipe: 'as written', metric: 'metric', imperial: 'imperial' };
+
+  onMount(() => {
+    try {
+      const saved = localStorage.getItem('sharp-edge-units') as UnitSystem | null;
+      if (saved && UNIT_SYSTEMS.includes(saved)) units = saved;
+      const ticks = JSON.parse(localStorage.getItem(checkKey) ?? '[]');
+      if (Array.isArray(ticks)) checked = new Set(ticks.filter((n) => Number.isInteger(n)));
+    } catch {
+      // storage blocked — fresh page
+    }
+  });
+
+  /** What one ingredient row shows: server display when reconciled and unconverted,
+   *  otherwise the client mirror (which the unit lens always goes through). */
+  function rowDisplay(ing: Ingredient, i: number): string {
+    if (ing.amount === 0) return '—';
+    if (units === 'recipe') return serverDisplays?.[i] ?? scaledDisplay(ing.amount, ing.unit, factor);
+    return convertDisplay(ing.amount * factor, ing.unit, units);
+  }
+
+  // hidden-gluten flags on the read page, not just in the editor (CLAUDE.md §1)
+  const risky = $derived(new Set(gfRisks(shown.ingredients)));
+
+  // --- stepper: hold to repeat, tap the number to type, ½× / 2× presets
+  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  let holdInterval: ReturnType<typeof setInterval> | undefined;
+  function holdStart(delta: number) {
+    holdStop();
+    holdTimer = setTimeout(() => {
+      holdInterval = setInterval(() => setTarget(target + delta), 120);
+    }, 400);
+  }
+  function holdStop() {
+    clearTimeout(holdTimer);
+    clearInterval(holdInterval);
+    holdTimer = undefined;
+    holdInterval = undefined;
+  }
+  let typingYield = $state(false);
+  let typedYield = $state('');
+  function commitTyped() {
+    const n = Number(typedYield);
+    if (Number.isFinite(n) && n >= 1) setTarget(Math.round(n));
+    typingYield = false;
+  }
+
+  async function share() {
+    const url = location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: shownTitle, text: `${shownTitle} — The Sharp Edge`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        notify.ok('Link copied');
+      }
+    } catch {
+      // cancelled or unsupported
+    }
+  }
   // The client mirror renders instantly; the server response is canonical
   // (CLAUDE.md §8) and reconciles shortly after the stepper settles.
   let serverDisplays = $state<string[] | null>(null);
@@ -50,6 +148,7 @@
     target = data.recipe.base_yield;
     serverDisplays = null;
     selectedVersionId = null;
+    checked = new Set();
   });
 
   const factor = $derived(target / recipe.base_yield);
@@ -218,39 +317,130 @@
       <span class="font-mono-label text-[11px] uppercase tracking-widest opacity-80">Scale</span>
       <button
         aria-label="Fewer {recipe.yield_word}"
-        class="h-11 w-11 rounded-xl text-xl"
+        class="h-11 w-11 rounded-xl text-xl select-none"
         style="background: rgba(255,255,255,.14); color: #F4F3EC"
         onclick={() => setTarget(target - 1)}
+        onpointerdown={() => holdStart(-1)}
+        onpointerup={holdStop}
+        onpointerleave={holdStop}
+        onpointercancel={holdStop}
+        oncontextmenu={(e) => e.preventDefault()}
       >
         −
       </button>
-      <span class="font-display min-w-[2.2ch] text-center text-[26px]">{target}</span>
+      {#if typingYield}
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max={maxYield}
+          bind:value={typedYield}
+          autofocus
+          aria-label="Type the number of {recipe.yield_word}"
+          class="font-display h-11 w-[4ch] rounded-lg text-center text-[22px]"
+          style="background: rgba(255,255,255,.14); color: #F4F3EC"
+          onblur={commitTyped}
+          onkeydown={(e) => {
+            if (e.key === 'Enter') commitTyped();
+            if (e.key === 'Escape') typingYield = false;
+          }}
+        />
+      {:else}
+        <button
+          class="font-display min-w-[2.2ch] rounded-lg px-1 text-center text-[26px]"
+          aria-label="{target} {recipe.yield_word} — tap to type a number"
+          onclick={() => {
+            typedYield = String(target);
+            typingYield = true;
+          }}
+        >
+          {target}
+        </button>
+      {/if}
       <button
         aria-label="More {recipe.yield_word}"
-        class="h-11 w-11 rounded-xl text-xl"
+        class="h-11 w-11 rounded-xl text-xl select-none"
         style="background: rgba(255,255,255,.14); color: #F4F3EC"
         onclick={() => setTarget(target + 1)}
+        onpointerdown={() => holdStart(1)}
+        onpointerup={holdStop}
+        onpointerleave={holdStop}
+        onpointercancel={holdStop}
+        oncontextmenu={(e) => e.preventDefault()}
       >
         +
       </button>
       <span class="text-[13px] opacity-80">{recipe.yield_word}</span>
-      <button
-        class="font-mono-label ml-auto min-h-[44px] rounded-full border px-3 text-[11px] uppercase tracking-widest"
-        style="border-color: rgba(255,255,255,.4); color: #F4F3EC"
-        onclick={() => setTarget(recipe.base_yield)}
-      >
-        base {recipe.base_yield}
-      </button>
+      <span class="ml-auto flex gap-1">
+        <button
+          class="font-mono-label min-h-[44px] rounded-full border px-2.5 text-[11px] uppercase tracking-widest"
+          style="border-color: rgba(255,255,255,.4); color: #F4F3EC"
+          aria-label="Halve the recipe"
+          onclick={() => setTarget(Math.max(1, Math.round(recipe.base_yield / 2)))}
+        >
+          ½×
+        </button>
+        <button
+          class="font-mono-label min-h-[44px] rounded-full border px-2.5 text-[11px] uppercase tracking-widest"
+          style="border-color: rgba(255,255,255,.4); color: #F4F3EC"
+          aria-label="Double the recipe"
+          onclick={() => setTarget(recipe.base_yield * 2)}
+        >
+          2×
+        </button>
+        <button
+          class="font-mono-label min-h-[44px] rounded-full border px-3 text-[11px] uppercase tracking-widest"
+          style="border-color: rgba(255,255,255,.4); color: #F4F3EC"
+          onclick={() => setTarget(recipe.base_yield)}
+        >
+          base {recipe.base_yield}
+        </button>
+      </span>
+    </div>
+    <div class="mt-2 flex flex-wrap items-center gap-1" role="group" aria-label="Units" data-print="hide">
+      <span class="font-mono-label mr-1 text-[10.5px] uppercase tracking-widest" style="color: var(--faint)">amounts</span>
+      {#each UNIT_SYSTEMS as u (u)}
+        <button
+          class="font-mono-label min-h-[36px] rounded-full border px-3 text-[10.5px] uppercase tracking-widest"
+          style={units === u
+            ? 'background: var(--green-deep); border-color: var(--green-deep); color: #F4F3EC'
+            : 'border-color: var(--line); color: var(--faint)'}
+          aria-pressed={units === u}
+          onclick={() => setUnits(u)}
+          data-testid="units-{u}"
+        >
+          {UNIT_LABEL[u]}
+        </button>
+      {/each}
     </div>
   {/if}
 
   {#if shown.ingredients.length}
-    <h3
-      class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
-      style="border-color: var(--line); color: var(--green)"
-    >
-      Ingredients
-    </h3>
+    <div class="mt-6 flex items-end justify-between border-b pb-1" style="border-color: var(--line)">
+      <h3 class="font-mono-label text-xs uppercase tracking-widest" style="color: var(--green)">
+        Ingredients
+      </h3>
+      {#if checked.size}
+        <button
+          class="font-mono-label min-h-[32px] text-[10.5px] uppercase tracking-widest"
+          style="color: var(--faint)"
+          onclick={clearChecks}
+          data-print="hide"
+        >
+          {checked.size}/{shown.ingredients.length} in · clear
+        </button>
+      {/if}
+    </div>
+    {#if risky.size}
+      <p
+        class="mt-2 rounded-lg border px-3 py-2 text-[12.5px]"
+        style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)"
+        data-testid="gf-risks"
+      >
+        ⚠ check the label for gluten: {[...risky].map((n) => n.split(',')[0]).join(' · ')}
+      </p>
+    {/if}
     <ul class="list-none p-0">
       {#each shown.ingredients as ing, i (i)}
         {#if sectionChanged(shown.ingredients, i)}
@@ -261,12 +451,31 @@
             {ing.section}
           </li>
         {/if}
-        <li class="flex items-baseline gap-2 py-2 text-[15px]">
-          <span class="min-w-0">{ingredientName(i, ing.name)}</span>
-          <span class="leader-dots flex-1" aria-hidden="true"></span>
-          <span class="qty shrink-0 text-right text-[14px]" class:flash={flashing}>
-            {serverDisplays?.[i] ?? scaledDisplay(ing.amount, ing.unit, factor)}
-          </span>
+        <li class="flex items-baseline gap-2 text-[15px]">
+          <button
+            class="flex min-h-[44px] min-w-0 flex-1 items-baseline gap-2 text-left"
+            aria-pressed={checked.has(i)}
+            onclick={() => toggleCheck(i)}
+            data-testid="ingredient-row"
+          >
+            <span
+              class="min-w-0"
+              style="text-decoration: {checked.has(i) ? 'line-through' : 'none'}; opacity: {checked.has(i) ? 0.45 : 1}"
+            >
+              {ingredientName(i, ing.name)}
+              {#if risky.has(ing.name)}
+                <span class="font-mono-label ml-1 text-[9.5px] uppercase tracking-widest" style="color: var(--copper)" title="check the label for gluten">gf?</span>
+              {/if}
+            </span>
+            <span class="leader-dots flex-1" aria-hidden="true"></span>
+            <span
+              class="qty shrink-0 text-right text-[14px]"
+              class:flash={flashing && ing.amount !== 0}
+              style="opacity: {checked.has(i) ? 0.45 : 1}"
+            >
+              {rowDisplay(ing, i)}
+            </span>
+          </button>
         </li>
       {/each}
     </ul>
@@ -412,6 +621,21 @@
     >
       Edit
     </a>
+    <button
+      class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest"
+      style="border-color: var(--line); color: var(--faint)"
+      onclick={share}
+      aria-label="Share this recipe"
+    >
+      ↗ share
+    </button>
+    <button
+      class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest"
+      style="border-color: var(--line); color: var(--faint)"
+      onclick={() => window.print()}
+    >
+      print
+    </button>
     <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"

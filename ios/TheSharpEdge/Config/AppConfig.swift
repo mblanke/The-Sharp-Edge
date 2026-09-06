@@ -11,6 +11,7 @@ final class AppConfig: ObservableObject {
         static let gfOnly = "sharpedge.gfOnly"
         static let useSampleData = "sharpedge.useSampleData"
         static let captureLanguage = "sharpedge.captureLanguage"
+        static let units = "sharpedge.units"
         static let mode = "sharpedge.mode"
         static let setupComplete = "sharpedge.setupComplete"
         static let modeOrigin = "sharpedge.modeOrigin"
@@ -36,6 +37,12 @@ final class AppConfig: ObservableObject {
     /// cook in one or two languages, not four.
     @Published var captureLanguage: CaptureLanguage {
         didSet { UserDefaults.standard.set(captureLanguage.rawValue, forKey: Keys.captureLanguage) }
+    }
+
+    /// Reading lens over scaled amounts: the recipe's own units, metric, or imperial.
+    /// The stored recipe, the shopping list and the printed cards never change.
+    @Published var units: UnitSystem {
+        didSet { UserDefaults.standard.set(units.rawValue, forKey: Keys.units) }
     }
 
     /// Token is read/written through the Keychain, mirrored here only for UI binding.
@@ -84,6 +91,7 @@ final class AppConfig: ObservableObject {
         #endif
         gfOnly = d.bool(forKey: Keys.gfOnly)
         captureLanguage = CaptureLanguage(rawValue: d.string(forKey: Keys.captureLanguage) ?? "") ?? .en
+        units = UnitSystem(rawValue: d.string(forKey: Keys.units) ?? "") ?? .recipe
         token = Keychain.get() ?? ""
         #if DEBUG
         // QA hook: the write token lives in the Keychain, which no simctl command can
