@@ -75,8 +75,10 @@
 	<string>Dictated recipes are transcribed on this device where the language supports it. Romanian has no on-device model, so that audio is transcribed by Apple's speech service.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
+		<!-- One window. The claim used to be true with no scene restoration behind it, so a
+		     second window opened a blank duplicate. -->
 		<key>UIApplicationSupportsMultipleScenes</key>
-		<true/>
+		<false/>
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>

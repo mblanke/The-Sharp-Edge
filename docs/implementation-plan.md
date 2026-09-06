@@ -1,6 +1,6 @@
 # The Sharp Edge — re-theme + voice recipe capture
 
-> Execution plan for the two docs in this folder. Approved 2026-07-25.
+> Execution plan for the two docs in this folder. Approved 2026-07-25; executed by 2026-08. Kept as the record.
 
 ## Context
 

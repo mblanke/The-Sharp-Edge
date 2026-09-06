@@ -1,6 +1,6 @@
 # Add a recipe — typed, then by voice
 
-Status: **designed, not built.** Decisions locked; implementation not started.
+Status: **built** (2026-08). Kept as the design record. The typed form is `/new`, dictation is `web/src/lib/voice.ts` and `ios/…/Features/Capture/`; photo, URL and library-passage import were added on top of the same review-first form.
 
 ## Why
 

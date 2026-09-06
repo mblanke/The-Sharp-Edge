@@ -1,13 +1,15 @@
 # docs/
 
-Design notes for work that is planned but not yet built. Each doc states its own status.
+Design notes. Each doc states its own status; the table is the summary. The engineering
+log that explains *why* things are the way they are is `DECISIONS.md` at the repo root.
 
 | Doc | What it covers | Status |
 |---|---|---|
-| [`theme-french-kitchen.md`](theme-french-kitchen.md) | Re-theme to a "professional French kitchen" palette | **Decided: C · Faïence.** Ready to build |
+| [`theme-french-kitchen.md`](theme-french-kitchen.md) | Re-theme to a "professional French kitchen" palette | **Built.** iOS is on C · Faïence (`Theme.swift`); the web ships the washi / bottle-green tokens with Faïence aliases (DECISIONS 2026-08-24) |
 | [`palette-preview.html`](palette-preview.html) | The three candidate palettes on a real recipe screen — open in a browser | Reference; C was chosen |
-| [`voice-recipe-capture.md`](voice-recipe-capture.md) | Add a recipe — typed form first, voice on top | Designed, not built |
-| [`implementation-plan.md`](implementation-plan.md) | Approved execution plan across both | Approved, not started |
+| [`voice-recipe-capture.md`](voice-recipe-capture.md) | Add a recipe — typed form first, voice on top | **Built** (`/new`, `web/src/lib/voice.ts`, `ios/…/Capture/`) — plus photo, URL and library-passage import since |
+| [`implementation-plan.md`](implementation-plan.md) | Execution plan across both | Executed |
+| [`atlas-runbook.md`](atlas-runbook.md) | Operating the RAG stack on Atlas | Live |
 
 ## Decisions already made
 
@@ -16,8 +18,8 @@ Don't re-open these; they were settled deliberately.
 - **Palette: C · Faïence** — tile blue `#1f4a8f` / deep `#14315f`, ochre accent `#8a5e17`, on a
   `#f4f3ee` ground. Contrast-checked to WCAG AA; the accent is deliberately darker than a
   decorative ochre because the lighter version fails at the 10–11px label sizes the app uses.
-- **Light theme only** this pass. Dark mode is explicitly out of scope, but tokenising the 16 stray
-  colour literals (theme doc, step 2) is its prerequisite and happens now.
+- **Both colour schemes ship.** The web has a header toggle (and cook mode defaults to kitchen-dark
+  in the evening); iOS follows the OS. Every colour is a token — there are no stray literals left.
 - **Add recipe is two stages, one form.** A plain typed form at `/new` first, then voice as a way
   to fill that same form. Not two parallel flows — the "editable draft" voice needs *is* the
   add-recipe form.
@@ -25,13 +27,12 @@ Don't re-open these; they were settled deliberately.
 - **Slug is auto-generated from the title and confirmed before save.** It can never change
   afterwards; QR codes are printed against it.
 
-## Picking up this work in a fresh session
+## Picking up work in a fresh session
 
-Both docs name the files to change, the constraints that will bite, and how to verify — they're
-written to be executed without the conversation that produced them.
-
-Start with the theme. It's mechanical, self-contained, and its step 2 unblocks dark mode later.
-The two workstreams are otherwise independent.
+The theme and add-recipe docs are kept as the record of what was decided and why; both are
+built. Open work lives in `DECISIONS.md` (dated entries, newest last) and the plan for the
+current polish pass; the retrieval eval (`api/tests/test_retrieval_eval.py`) is the gate for
+anything that touches search.
 
 ## Atlas / deployment
 
