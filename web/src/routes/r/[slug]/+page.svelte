@@ -4,6 +4,7 @@
   import { gfRisks } from '$lib/gf';
   import { notify } from '$lib/toast';
   import { convertDisplay, scaledDisplay, UNIT_SYSTEMS, type UnitSystem } from '$lib/scaling';
+  import { recordRecent } from '$lib/prefs';
   import type { Ingredient } from '$lib/types';
 
   let { data, form } = $props();
@@ -81,6 +82,7 @@
   const UNIT_LABEL: Record<UnitSystem, string> = { recipe: 'as written', metric: 'metric', imperial: 'imperial' };
 
   onMount(() => {
+    recordRecent(recipe.slug, recipe.title);
     try {
       const saved = localStorage.getItem('sharp-edge-units') as UnitSystem | null;
       if (saved && UNIT_SYSTEMS.includes(saved)) units = saved;

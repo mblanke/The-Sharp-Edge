@@ -1,18 +1,27 @@
 <script lang="ts">
   import '../app.css';
   import { onMount } from 'svelte';
-  import { onNavigate } from '$app/navigation';
+  import { goto, onNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import OfflineBanner from '$lib/components/OfflineBanner.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import TimerTray from '$lib/components/TimerTray.svelte';
   import { startTicker } from '$lib/timers';
+  import { applyTheme } from '$lib/prefs';
 
   let { children } = $props();
 
   // one ticker for every cook timer in the app; cook mode renders its own strip
   onMount(() => startTicker());
   const inCookMode = $derived(/\/cook$/.test(page.url.pathname));
+
+  // ⌘K / Ctrl+K from any page: the home search box (home handles it locally)
+  function onKey(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && page.url.pathname !== '/') {
+      e.preventDefault();
+      goto('/?focus=1');
+    }
+  }
 
   // gentle page crossfade where supported (reduced-motion handled in CSS)
   onNavigate((navigation) => {
@@ -33,14 +42,11 @@
   });
   function toggleTheme() {
     dark = !dark;
-    document.documentElement.dataset.theme = dark ? 'dark' : '';
-    try {
-      localStorage.setItem('sharp-edge-theme', dark ? 'dark' : 'light');
-    } catch {
-      // private mode — theme just won't persist
-    }
+    applyTheme(dark ? 'dark' : 'light');
   }
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <a
   href="#main"
@@ -65,6 +71,7 @@
       <a href="/plan" aria-current={page.url.pathname.startsWith('/plan') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Plan</a>
       <a href="/shopping" aria-current={page.url.pathname.startsWith('/shopping') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">List</a>
       <a href="/new" aria-current={page.url.pathname.startsWith('/new') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Add</a>
+      <a href="/settings" aria-label="Settings" aria-current={page.url.pathname.startsWith('/settings') ? 'page' : undefined} class="rounded-full border px-3 py-2 no-underline" style="border-color: var(--line); color: var(--faint)">⚙</a>
       <button
         aria-label={dark ? 'Switch to daylight' : 'Switch to evening kitchen mode'}
         class="rounded-full border px-3 py-2"

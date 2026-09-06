@@ -3,6 +3,7 @@
   import { replaceState } from '$app/navigation';
   import { categoryRank } from '$lib/types';
   import type { RecipeCard } from '$lib/types';
+  import { readRecent, type RecentRecipe } from '$lib/prefs';
 
   let { data } = $props();
 
@@ -19,12 +20,22 @@
   let searchSeq = 0;
   let searchEl = $state<HTMLInputElement | null>(null);
 
+  let recent = $state<RecentRecipe[]>([]);
   onMount(() => {
-    const q = new URL(location.href).searchParams.get('q') ?? '';
+    const url = new URL(location.href);
+    const q = url.searchParams.get('q') ?? '';
     if (q) {
       search = q;
       runSearch(q, 0);
     }
+    if (url.searchParams.get('focus')) {
+      searchEl?.focus();
+      url.searchParams.delete('focus');
+      replaceState(url, {});
+    }
+    // only recipes that still exist — a renamed or drafted one drops out quietly
+    const live = new Set(data.recipes.map((r: RecipeCard) => r.slug));
+    recent = readRecent().filter((r) => live.has(r.slug)).slice(0, 6);
   });
 
   function syncUrl(term: string) {
@@ -188,6 +199,23 @@
     </a>
   {/each}
 </nav>
+
+{#if recent.length && !filtered}
+  <nav aria-label="Recently viewed" class="pt-5" data-testid="recent">
+    <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">Recently viewed</span>
+    <div class="mt-2 flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none">
+      {#each recent as r (r.slug)}
+        <a
+          href="/r/{r.slug}"
+          class="font-display shrink-0 rounded-2xl border px-4 py-2.5 text-[15px] no-underline"
+          style="border-color: var(--line); background: var(--card); color: var(--ink); max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"
+        >
+          {r.title}
+        </a>
+      {/each}
+    </div>
+  </nav>
+{/if}
 
 <main>
   {#if data.unavailable}

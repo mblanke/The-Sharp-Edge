@@ -10,7 +10,11 @@ test('goulash scales 6 → 14 with copper flash and server parity', async ({ pag
   await page.goto('/');
   await page.getByRole('link', { name: /Gluten-Free Hungarian Beef Goulash/ }).click();
   await expect(page).toHaveURL(/\/r\/goulash$/);
-  await expect(page.getByText('GF', { exact: true })).toBeVisible();
+  // wait for the recipe itself, not just the URL — the view transition keeps the
+  // home list in the DOM for a frame, and it has a GF badge on every other row
+  const title = page.getByRole('heading', { name: /Goulash/ });
+  await expect(title).toBeVisible();
+  await expect(title.getByText('GF', { exact: true })).toBeVisible();
 
   // 2 lb beef chuck at base 6
   const beefRow = page.locator('li', { hasText: 'beef chuck' });
@@ -88,4 +92,30 @@ test('amounts can be read in metric or imperial, and ticks survive a reload', as
   await expect(page.locator('li', { hasText: 'beef chuck' }).getByTestId('ingredient-row')).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: /clear/ }).click();
   await expect(page.locator('li', { hasText: 'beef chuck' }).getByTestId('ingredient-row')).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('settings persist units and theme on this device, and home remembers what you opened', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByTestId('units-metric').click();
+  await page.getByTestId('theme-dark').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await page.goto('/r/goulash');
+  await expect(page.locator('li', { hasText: 'beef chuck' }).locator('.qty')).toHaveText(/^900 g/);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await page.goto('/');
+  const recent = page.getByTestId('recent');
+  await expect(recent).toBeVisible();
+  await expect(recent.getByRole('link', { name: /Goulash/ })).toBeVisible();
+
+  // ⌘K from another page lands in the search box
+  await page.goto('/shopping');
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('searchbox', { name: 'Search recipes' })).toBeFocused();
+
+  await page.goto('/settings');
+  await page.getByTestId('theme-system').click();
+  await page.getByTestId('units-recipe').click();
 });
