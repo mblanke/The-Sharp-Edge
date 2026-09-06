@@ -13,6 +13,18 @@ struct ShoppingView: View {
     @State private var confirmClear = false
     @State private var selection = Set<ShoppingItem.ID>()
     @State private var editMode: EditMode = .inactive
+    @State private var remindersNote: String?
+
+    /// Every unticked line into a Reminders list; the phone and the watch carry it into
+    /// the shop without this app being open.
+    private func sendToReminders() async {
+        do {
+            let n = try await RemindersExport.send(store.items.filter { !$0.checked })
+            remindersNote = n == 0 ? "Nothing left to buy." : "\(n) item\(n == 1 ? "" : "s") sent to Reminders."
+        } catch {
+            remindersNote = error.localizedDescription
+        }
+    }
 
     var body: some View {
         Group {
@@ -49,6 +61,11 @@ struct ShoppingView: View {
             }
             ToolbarItem(placement: .secondaryAction) {
                 Menu {
+                    Button {
+                        Task { await sendToReminders() }
+                    } label: {
+                        Label("Send to Reminders", systemImage: "checklist")
+                    }
                     Button("Clear ticked items") {
                         Task { await store.clear(env.dataSource, checkedOnly: true) }
                     }
@@ -68,6 +85,13 @@ struct ShoppingView: View {
         }
         .task(id: env.generation) { await store.load(env.dataSource) }
         .refreshable { await store.load(env.dataSource) }
+        .alert("Reminders", isPresented: Binding(
+            get: { remindersNote != nil }, set: { if !$0 { remindersNote = nil } })
+        ) {
+            Button("OK", role: .cancel) { remindersNote = nil }
+        } message: {
+            Text(remindersNote ?? "")
+        }
     }
 
     private var emptyState: some View {

@@ -68,6 +68,7 @@ struct SidebarView: View {
             }
 
             Section {
+                navRow("Meal plan", systemImage: "calendar", route: .plan)
                 navRow("Shopping list", systemImage: "cart", route: .shopping)
                 // Absent rather than disabled on a device-hosted notebook. These read
                 // the owner's private cookbook corpus, which is not part of what gets

@@ -63,6 +63,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Send the shopping list to Reminders so it shows up on your phone and watch in the shop.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Photograph a recipe page to import it into your notebook.</string>
 	<key>NSLocalNetworkUsageDescription</key>

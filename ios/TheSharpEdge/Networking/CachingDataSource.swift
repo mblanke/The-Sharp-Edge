@@ -152,6 +152,12 @@ final class CachingDataSource: DataSource {
     func removeShoppingItem(_ id: UUID) async throws { try await upstream.removeShoppingItem(id) }
     func removeShoppingItems(_ ids: [UUID]) async throws { try await upstream.removeShoppingItems(ids) }
     func clearShopping(checkedOnly: Bool) async throws { try await upstream.clearShopping(checkedOnly: checkedOnly) }
+    func weekPlan(_ week: String?) async throws -> WeekPlan { try await upstream.weekPlan(week) }
+    func planUpsert(_ entry: PlanEntryCreate) async throws -> WeekPlan { try await upstream.planUpsert(entry) }
+    func planRemove(_ id: UUID) async throws -> WeekPlan { try await upstream.planRemove(id) }
+    func planPushToShopping(week: String) async throws -> [ShoppingItem] {
+        try await upstream.planPushToShopping(week: week)
+    }
     func search(_ q: String, topK: Int, book: String?) async throws -> [ChunkOut] {
         try await upstream.search(q, topK: topK, book: book)
     }

@@ -86,6 +86,7 @@ actor LocalStore {
     private let store: JSONStore
     private let infoFile = "notebook.json"
     private let shoppingFile = "shopping.json"
+    private let planFile = "plan.json"
 
     init(directory: URL? = nil) {
         let base = directory ?? FileManager.default
@@ -229,6 +230,16 @@ actor LocalStore {
 
     func saveShopping(_ items: [ShoppingItem]) {
         store.write(items, to: shoppingFile)
+    }
+
+    // MARK: - Meal plan
+
+    func plan() -> PlanBook {
+        store.read(PlanBook.self, from: planFile) ?? PlanBook()
+    }
+
+    func savePlan(_ plan: PlanBook) {
+        store.write(plan, to: planFile)
     }
 
     // MARK: - Maintenance

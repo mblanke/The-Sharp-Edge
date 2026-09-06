@@ -4,6 +4,7 @@ enum SidebarRoute: Hashable {
     case recipe(String)   // slug
     case library
     case shopping
+    case plan
     case ask(String?)     // optional recipe scope slug
     case glutenGuide
     case settings
@@ -64,6 +65,7 @@ struct RootView: View {
         switch route {
         case "library": selection = .library
         case "shopping": selection = .shopping
+        case "plan": selection = .plan
         case "ask": selection = .ask(nil)
         case "gluten": selection = .glutenGuide
         case "settings": selection = .settings
@@ -82,6 +84,8 @@ struct RootView: View {
             LibraryView()
         case .shopping:
             ShoppingView()
+        case .plan:
+            PlanView(onOpenShopping: { selection = .shopping })
         case let .ask(scope):
             AskView(scopeSlug: scope)
                 .id(scope ?? "all")

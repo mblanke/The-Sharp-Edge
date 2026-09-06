@@ -40,6 +40,13 @@ protocol DataSource: AnyObject {
     func removeShoppingItems(_ ids: [UUID]) async throws
     func clearShopping(checkedOnly: Bool) async throws
 
+    // Meal plan. A week is keyed by its Monday (YYYY-MM-DD); nil = this week.
+    func weekPlan(_ week: String?) async throws -> WeekPlan
+    func planUpsert(_ entry: PlanEntryCreate) async throws -> WeekPlan
+    func planRemove(_ id: UUID) async throws -> WeekPlan
+    /// Push every planned recipe at its scale into the running shopping list.
+    func planPushToShopping(week: String) async throws -> [ShoppingItem]
+
     func search(_ q: String, topK: Int, book: String?) async throws -> [ChunkOut]
     /// One page of a source book as PDF bytes. Fetched rather than linked because the
     /// route needs the bearer token — it returns actual book content (CLAUDE.md §1).

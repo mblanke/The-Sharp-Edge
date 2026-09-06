@@ -150,6 +150,27 @@ final class APIClient: DataSource {
                                       method: "DELETE", authed: true))
     }
 
+    // MARK: - Meal plan
+
+    func weekPlan(_ week: String?) async throws -> WeekPlan {
+        try await run(request(endpoints.plan(week: week)), as: WeekPlan.self)
+    }
+
+    func planUpsert(_ entry: PlanEntryCreate) async throws -> WeekPlan {
+        let body = try JSONCoding.encoder.encode(entry)
+        return try await run(request(endpoints.plan(week: nil), method: "POST", authed: true, body: body),
+                             as: WeekPlan.self)
+    }
+
+    func planRemove(_ id: UUID) async throws -> WeekPlan {
+        try await run(request(endpoints.planEntry(id), method: "DELETE", authed: true), as: WeekPlan.self)
+    }
+
+    func planPushToShopping(week: String) async throws -> [ShoppingItem] {
+        try await run(request(endpoints.planShopping(week: week), method: "POST", authed: true),
+                      as: ShoppingList.self).items
+    }
+
     // MARK: - Parse helpers (unauthenticated)
 
     func parseIngredients(_ lines: [String], lang: CaptureLanguage) async throws -> [Ingredient] {

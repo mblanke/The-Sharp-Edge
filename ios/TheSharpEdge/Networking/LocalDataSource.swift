@@ -155,6 +155,35 @@ final class LocalDataSource: DataSource {
         await store.saveShopping(basket.items)
     }
 
+    // MARK: - Meal plan
+
+    func weekPlan(_ week: String?) async throws -> WeekPlan {
+        await store.plan().week(week ?? PlanWeek.monday())
+    }
+
+    func planUpsert(_ entry: PlanEntryCreate) async throws -> WeekPlan {
+        let recipe = try await self.recipe(entry.recipeSlug)
+        var book = await store.plan()
+        book.upsert(entry, recipe: recipe)
+        await store.savePlan(book)
+        return book.week(PlanWeek.monday(of: PlanWeek.date(entry.date) ?? Date()))
+    }
+
+    func planRemove(_ id: UUID) async throws -> WeekPlan {
+        var book = await store.plan()
+        let week = book.remove(id)
+        await store.savePlan(book)
+        return book.week(week ?? PlanWeek.monday())
+    }
+
+    func planPushToShopping(week: String) async throws -> [ShoppingItem] {
+        var items: [ShoppingItem] = await store.shopping()
+        for entry in await store.plan().week(week).entries {
+            items = try await addToShopping(entry.recipeSlug, targetYield: entry.scaledYield)
+        }
+        return items
+    }
+
     // MARK: - Library and Ask
     // Absent, not merely unavailable. These read the owner's private, copyrighted
     // cookbook corpus, which is not part of what gets shared (CLAUDE.md §1).

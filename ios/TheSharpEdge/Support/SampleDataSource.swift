@@ -114,6 +114,31 @@ final class SampleDataSource: DataSource {
         Self.basket.clear(checkedOnly: checkedOnly)
     }
 
+    // MARK: - Meal plan (in memory, same arithmetic as the local notebook)
+    private static var plan = PlanBook()
+
+    func weekPlan(_ week: String?) async throws -> WeekPlan {
+        Self.plan.week(week ?? PlanWeek.monday())
+    }
+
+    func planUpsert(_ entry: PlanEntryCreate) async throws -> WeekPlan {
+        let recipe = try await self.recipe(entry.recipeSlug)
+        Self.plan.upsert(entry, recipe: recipe)
+        return Self.plan.week(PlanWeek.monday(of: PlanWeek.date(entry.date) ?? Date()))
+    }
+
+    func planRemove(_ id: UUID) async throws -> WeekPlan {
+        let week = Self.plan.remove(id)
+        return Self.plan.week(week ?? PlanWeek.monday())
+    }
+
+    func planPushToShopping(week: String) async throws -> [ShoppingItem] {
+        for entry in Self.plan.week(week).entries {
+            _ = try await addToShopping(entry.recipeSlug, targetYield: entry.scaledYield)
+        }
+        return Self.basket.items
+    }
+
     // The full parser, not an approximation — IngredientParse is fixture-pinned to
     // /parse/* case for case, so the DEBUG path behaves exactly like the server and like
     // a device-hosted notebook.
