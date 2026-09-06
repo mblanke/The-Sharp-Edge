@@ -1,6 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -51,7 +53,16 @@ class MessageOut(BaseModel):
     role: str
     content: str
     citations: list[Citation]
+    feedback: str | None = None
     created_at: datetime
+
+
+class FeedbackIn(BaseModel):
+    feedback: Literal["up", "down"] | None
+
+
+class ConversationPatch(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
 
 
 class ConversationSummary(BaseModel):

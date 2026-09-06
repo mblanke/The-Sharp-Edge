@@ -10,7 +10,16 @@ from app.config import settings
 from app.auth import require_token
 from app.db import get_session
 from app.models import Conversation
-from app.schemas.chat import BookOut, ChunkOut, ConversationFull, ConversationSummary, LibraryStatus
+from app.models.chat import Message
+from app.schemas.chat import (
+    BookOut,
+    ChunkOut,
+    ConversationFull,
+    ConversationPatch,
+    ConversationSummary,
+    FeedbackIn,
+    LibraryStatus,
+)
 from app.services.atlas_rag import atlas_rag
 from app.services.coverage import THIN_CHUNKS, describe, indexed_chunk_counts
 from app.services.shelf import resolve_path
@@ -131,6 +140,54 @@ async def get_conversation(conversation_id: UUID, session: AsyncSession = Depend
     if conversation is None:
         raise HTTPException(404, "No such conversation")
     return ConversationFull.model_validate(conversation)
+
+
+@router.patch(
+    "/conversations/{conversation_id}",
+    response_model=ConversationSummary,
+    dependencies=[Depends(require_token)],
+)
+async def rename_conversation(
+    conversation_id: UUID, payload: ConversationPatch, session: AsyncSession = Depends(get_session)
+):
+    conversation = await session.get(Conversation, conversation_id)
+    if conversation is None:
+        raise HTTPException(404, "No such conversation")
+    conversation.title = payload.title.strip()
+    await session.commit()
+    return ConversationSummary.model_validate(conversation)
+
+
+@router.delete("/conversations/{conversation_id}", status_code=204, dependencies=[Depends(require_token)])
+async def delete_conversation(conversation_id: UUID, session: AsyncSession = Depends(get_session)):
+    conversation = await session.get(Conversation, conversation_id)
+    if conversation is None:
+        raise HTTPException(404, "No such conversation")
+    await session.delete(conversation)
+    await session.commit()
+    return Response(status_code=204)
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages/{message_id}/feedback",
+    status_code=204,
+    dependencies=[Depends(require_token)],
+)
+async def message_feedback(
+    conversation_id: UUID,
+    message_id: UUID,
+    payload: FeedbackIn,
+    session: AsyncSession = Depends(get_session),
+):
+    """Thumbs up/down on an answer. Null clears it. Only assistant turns take a verdict."""
+    message = await session.get(Message, message_id)
+    if message is None or message.conversation_id != conversation_id:
+        raise HTTPException(404, "No such message")
+    if message.role != "assistant":
+        raise HTTPException(422, "Only an answer can be rated")
+    message.feedback = payload.feedback
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.get("/library/source", dependencies=[Depends(require_token)])

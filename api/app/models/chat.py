@@ -30,6 +30,8 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String, nullable=False)  # user | assistant
     content: Mapped[str] = mapped_column(Text, nullable=False)
     citations: Mapped[list] = mapped_column(JsonCol, nullable=False, default=list)
+    #: "up" | "down" | None — a one-tap verdict on an assistant answer (migration 0009)
+    feedback: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")

@@ -49,3 +49,30 @@ test('asking about an absent authority shows the shelf note', async ({ page }) =
   await expect(page.getByText(/There is no Escoffier on this shelf/)).toBeVisible();
   await expect(page.getByText(/The Professional Chef/).first()).toBeVisible();
 });
+
+test('an answer can be rated, the verdict survives a reload, and the thread can be renamed and deleted', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'ipad', 'mutates shared seeded state; run once');
+  await page.goto('/ask');
+  await expect(page.getByTestId('ask-empty')).toBeVisible();
+  await page.getByPlaceholder(/how does keller/i).fill('How do I make onion soup?');
+  await page.getByRole('button', { name: /^ask$/i }).click();
+  await expect(page.getByRole('button', { name: /\[1\] The Professional Chef/ })).toBeVisible();
+
+  // the conversation now lives in the URL; the verdict is saved on the exact answer
+  await expect(page).toHaveURL(/\?c=[0-9a-f-]{36}$/);
+  const up = page.getByTestId('thumb-up');
+  await up.click();
+  await expect(up).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.getByTestId('thumb-up')).toHaveAttribute('aria-pressed', 'true');
+
+  // rename in the list, then delete it
+  await page.getByRole('button', { name: /^Rename/ }).first().click();
+  await page.getByLabel('New title').fill('Onion soup thread');
+  await page.getByRole('button', { name: 'save' }).click();
+  await expect(page.getByRole('button', { name: 'Onion soup thread', exact: true })).toBeVisible();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: /^Delete Onion soup thread/ }).click();
+  await expect(page.getByRole('button', { name: 'Onion soup thread', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('ask-empty')).toBeVisible();
+});

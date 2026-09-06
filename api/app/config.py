@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     llm_router_url: str = "http://100.110.190.10:4000/v1"
     llm_router_key: str = ""
     chat_model_alias: str = "cluster"
+    #: Suggest three follow-up questions after each answer (a second short local call).
+    ask_followups: bool = True
 
     # Optional read-only mount of the NAS Cooking folder for the /library book list
     library_dir: str = ""

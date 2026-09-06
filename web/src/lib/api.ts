@@ -241,3 +241,35 @@ export async function updateRecipe(
   }
   return res.json() as Promise<RecipeFull>;
 }
+
+// ---------------------------------------------------------------- conversations (writes)
+
+async function authed(fetchFn: typeof fetch, method: string, path: string, body?: unknown) {
+  const res = await fetchFn(`${API_URL}/api/v1${path}`, {
+    method,
+    headers: {
+      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+      authorization: `Bearer ${env.API_TOKEN ?? ''}`
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res;
+}
+
+/** Thumbs up/down on an answer; null clears it. Feeds the retrieval golden set. */
+export const setMessageFeedback = (
+  fetchFn: typeof fetch,
+  conversationId: string,
+  messageId: string,
+  feedback: 'up' | 'down' | null
+) =>
+  authed(fetchFn, 'POST', `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/feedback`, {
+    feedback
+  });
+
+export const renameConversation = (fetchFn: typeof fetch, id: string, title: string) =>
+  authed(fetchFn, 'PATCH', `/conversations/${encodeURIComponent(id)}`, { title });
+
+export const deleteConversation = (fetchFn: typeof fetch, id: string) =>
+  authed(fetchFn, 'DELETE', `/conversations/${encodeURIComponent(id)}`);

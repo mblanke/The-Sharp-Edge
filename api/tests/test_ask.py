@@ -239,3 +239,99 @@ async def test_a_technique_question_never_triggers_a_note(client, monkeypatch):
     )
     assert "Shelf note" not in provider.calls[0]["messages"][-1]["content"]
     assert next(d for e, d in events if e == "done")["attribution"] is None
+
+
+# ---------------------------------------------------------------- feedback + follow-ups
+
+
+async def test_done_carries_the_message_id_and_feedback_persists(client, auth, monkeypatch):
+    events, _ = await ask_and_parse(client, monkeypatch, {"question": "how long for short ribs?"})
+    conversation_id = events[0][1]["conversation_id"]
+    done = next(d for e, d in events if e == "done")
+    message_id = done["message_id"]
+
+    res = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages/{message_id}/feedback",
+        json={"feedback": "up"},
+        headers=auth,
+    )
+    assert res.status_code == 204
+    conv = (await client.get(f"/api/v1/conversations/{conversation_id}")).json()
+    assert [m["feedback"] for m in conv["messages"]] == [None, "up"]
+
+    # clearing, and the user turn refusing a verdict
+    res = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages/{message_id}/feedback",
+        json={"feedback": None},
+        headers=auth,
+    )
+    assert res.status_code == 204
+    user_id = conv["messages"][0]["id"]
+    res = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages/{user_id}/feedback",
+        json={"feedback": "down"},
+        headers=auth,
+    )
+    assert res.status_code == 422
+
+
+async def test_feedback_requires_a_token(client, monkeypatch):
+    events, _ = await ask_and_parse(client, monkeypatch, {"question": "q"})
+    conversation_id = events[0][1]["conversation_id"]
+    message_id = next(d for e, d in events if e == "done")["message_id"]
+    res = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages/{message_id}/feedback",
+        json={"feedback": "up"},
+    )
+    assert res.status_code == 401
+
+
+async def test_conversations_can_be_renamed_and_deleted(client, auth, monkeypatch):
+    events, _ = await ask_and_parse(client, monkeypatch, {"question": "first"})
+    conversation_id = events[0][1]["conversation_id"]
+
+    res = await client.patch(
+        f"/api/v1/conversations/{conversation_id}", json={"title": "  Short ribs  "}, headers=auth
+    )
+    assert res.status_code == 200
+    assert res.json()["title"] == "Short ribs"
+
+    res = await client.delete(f"/api/v1/conversations/{conversation_id}", headers=auth)
+    assert res.status_code == 204
+    assert (await client.get(f"/api/v1/conversations/{conversation_id}")).status_code == 404
+    assert (await client.get("/api/v1/conversations")).json() == []
+
+
+async def test_followups_stream_after_done_and_never_block_the_answer(client, monkeypatch):
+    class Scripted(FakeProvider):
+        """Answer on the first call, suggestions on the second."""
+
+        async def stream_chat(self, messages, *, has_corpus_chunks=False):
+            self.calls.append({"messages": messages, "has_corpus_chunks": has_corpus_chunks})
+            if len(self.calls) == 1:
+                for t in ("Braise ", "48h [1]."):
+                    yield t
+            else:
+                yield "- Can I do it in the oven instead?\n2. What about lamb?\nnot a question\nHow long does it keep?\nA fourth one?"
+
+    events, provider = await ask_and_parse(client, monkeypatch, {"question": "short ribs?"}, Scripted())
+    names = [e for e, _ in events]
+    assert names.index("done") < names.index("followups")
+    followups = next(d for e, d in events if e == "followups")["questions"]
+    assert followups == ["Can I do it in the oven instead?", "What about lamb?", "How long does it keep?"]
+    # the suggestion call never carries the corpus to a cloud tier
+    assert provider.calls[1]["has_corpus_chunks"] is True
+
+
+async def test_followups_are_skipped_when_the_model_returns_nothing_usable(client, monkeypatch):
+    # FakeProvider answers every call with "ok" — not a question, so no chips
+    events, _ = await ask_and_parse(client, monkeypatch, {"question": "q"}, FakeProvider(tokens=("ok",)))
+    assert "followups" not in [e for e, _ in events]
+
+
+def test_parse_followups_is_strict():
+    from app.services.query_rewrite import parse_followups
+
+    text = "1) How hot?\n- How hot?\n• Why rest the meat?\nno\n\"Can I freeze it?\"\nOne more?\n"
+    assert parse_followups(text) == ["How hot?", "Why rest the meat?", "Can I freeze it?"]
+    assert parse_followups("") == []

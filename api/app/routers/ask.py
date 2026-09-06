@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.db import get_session, get_sessionmaker
 from app.models import Conversation, Message, Recipe
 from app.schemas.chat import AskRequest
@@ -16,7 +17,7 @@ from app.services.attribution import check as check_attribution
 from app.services.attribution import prompt_preamble
 from app.services.citations import SYSTEM_PROMPT, chunks_block, extract_citations
 from app.services.llm import get_provider
-from app.services.query_rewrite import standalone_query
+from app.services.query_rewrite import standalone_query, suggest_followups
 
 router = APIRouter(tags=["ask"])
 
@@ -174,9 +175,11 @@ async def ask(
         ungrounded = bool(chunks) and not citations
         # The request-scoped session can be torn down before the stream drains;
         # persist on a session owned by the generator itself.
+        message_id = uuid.uuid4()
         async with session_factory() as write_session:
             write_session.add(
                 Message(
+                    id=message_id,
                     conversation_id=uuid.UUID(conversation_id),
                     role="assistant",
                     content=answer,
@@ -201,6 +204,8 @@ async def ask(
         yield _sse(
             "done",
             {
+                # so the client can rate this exact answer
+                "message_id": str(message_id),
                 "citations": citations,
                 "sources": sources,
                 "ungrounded": ungrounded,
@@ -209,6 +214,12 @@ async def ask(
                 "attribution": attribution.as_dict(),
             },
         )
+        # After the answer is on screen: three things a cook might ask next. A second,
+        # short local call; the client renders them as chips and nothing waits on it.
+        if settings.ask_followups:
+            followups = await suggest_followups(payload.question, answer, provider)
+            if followups:
+                yield _sse("followups", {"questions": followups})
 
     return StreamingResponse(
         stream(),
