@@ -1,8 +1,16 @@
 <script lang="ts">
   import '../app.css';
+  import { onMount } from 'svelte';
   import { onNavigate } from '$app/navigation';
+  import { page } from '$app/state';
+  import TimerTray from '$lib/components/TimerTray.svelte';
+  import { startTicker } from '$lib/timers';
 
   let { children } = $props();
+
+  // one ticker for every cook timer in the app; cook mode renders its own strip
+  onMount(() => startTicker());
+  const inCookMode = $derived(/\/cook$/.test(page.url.pathname));
 
   // gentle page crossfade where supported (reduced-motion handled in CSS)
   onNavigate((navigation) => {
@@ -69,3 +77,7 @@
     </a>
   </footer>
 </div>
+
+{#if !inCookMode}
+  <TimerTray />
+{/if}

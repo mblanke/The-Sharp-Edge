@@ -23,9 +23,34 @@ test('cook mode walks scaled steps with per-step amounts', async ({ page }) => {
   await page.getByRole('button', { name: /back/ }).click();
   await expect(step).toContainText('1/');
 
-  // the drawer lists the full scaled ingredient set
+  // the drawer lists the full scaled ingredient set, and Escape closes it
   await page.getByRole('button', { name: 'Show all ingredients' }).click();
   await expect(page.getByText('Ingredients · 12 servings')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('Ingredients · 12 servings')).toHaveCount(0);
+});
+
+test('cook mode offers to resume where you left off, and a stray tap can be undone', async ({ page }) => {
+  await page.goto('/r/goulash/cook');
+  const step = page.getByTestId('cook-step');
+  await page.getByTestId('next-step').click();
+  await page.getByTestId('next-step').click();
+  await expect(step).toContainText('3/');
+
+  // undo the last advance within its 3 s window
+  await page.getByTestId('undo-step').click();
+  await expect(step).toContainText('2/');
+
+  // a fresh visit offers the saved position instead of silently restarting
+  await page.goto('/r/goulash/cook');
+  await expect(page.getByRole('dialog', { name: /Pick up at step/ })).toBeVisible();
+  await page.getByTestId('resume-step').click();
+  await expect(step).toContainText('2/');
+
+  // ?step= (the tray's deep link) jumps straight there
+  await page.goto('/r/goulash/cook?step=4');
+  await expect(step).toContainText('4/');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('cook mode timer counts down and finish screen appears', async ({ page, request }, testInfo) => {
@@ -48,6 +73,20 @@ test('cook mode timer counts down and finish screen appears', async ({ page, req
   await expect(timer).toContainText('0:03');
   await page.getByTestId('timer-start').click();
   await expect(timer).toContainText('0:00', { timeout: 6000 });
+
+  // the timer belongs to the app, not the step: it follows you to other pages,
+  // survives a reload, and only leaves when dismissed
+  await page.goto('/');
+  const tray = page.getByTestId('timer-tray');
+  await expect(tray).toContainText(/stir.?fry/i);
+  await expect(tray).toContainText('step 1');
+  await expect(tray).toContainText('done');
+  await page.reload();
+  await expect(page.getByTestId('timer-tray')).toContainText('done');
+  await page.getByRole('button', { name: /Dismiss/ }).click();
+  await expect(page.getByTestId('timer-tray')).toHaveCount(0);
+
+  await page.goto('/r/stirfry/cook');
 
   // ride next → … → finish
   const total = v.steps.length;
