@@ -1,3 +1,10 @@
 @import 'tailwindcss';
 @import '$lib/fonts.css';
 @import '$lib/tokens.css';
+
+/* the nav pill for the page you are on is filled, not outlined */
+nav a[aria-current='page'] {
+  background: var(--green-deep);
+  border-color: var(--green-deep) !important;
+  color: #f4f3ec !important;
+}

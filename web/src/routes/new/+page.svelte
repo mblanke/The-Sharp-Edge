@@ -116,6 +116,7 @@
     notes?: string[];
   }
   let photoBusy = $state(false);
+  let photoAbort: AbortController | null = null;
   let appliedDraft: unknown = null;
 
   function slugify(title: string): string {
@@ -173,11 +174,13 @@
       method="POST"
       action="?/photo"
       enctype="multipart/form-data"
-      use:enhance={() => {
+      use:enhance={({ controller }) => {
         photoBusy = true;
+        photoAbort = controller;
         return async ({ update }) => {
           await update({ reset: false });
           photoBusy = false;
+          photoAbort = null;
         };
       }}
     >
@@ -196,6 +199,20 @@
           onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
         />
       </label>
+      {#if photoBusy}
+        <button
+          type="button"
+          class="font-mono-label mt-2 min-h-[44px] w-full rounded-full border px-4 text-[11px] uppercase tracking-widest"
+          style="border-color: var(--line); color: var(--faint)"
+          onclick={() => {
+            photoAbort?.abort();
+            photoAbort = null;
+            photoBusy = false;
+          }}
+        >
+          cancel
+        </button>
+      {/if}
     </form>
   {/if}
 

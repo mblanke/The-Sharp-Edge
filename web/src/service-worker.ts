@@ -53,6 +53,24 @@ function cacheable(url: URL): boolean {
   return false;
 }
 
+/** Minimal, self-contained page for a route that needs the server. */
+function offlinePage(url: URL): Response {
+  const needs =
+    url.pathname.startsWith('/ask') ? 'Asking the library' :
+    url.pathname.startsWith('/plan') ? 'The meal plan' :
+    url.pathname.startsWith('/shopping') ? 'The shopping list' :
+    url.pathname.startsWith('/library') ? 'The library' : 'This page';
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Offline — The Sharp Edge</title>
+<style>body{margin:0;padding:48px 18px;font:15px system-ui,sans-serif;color:#14161C;background:#F2F3F5;text-align:center}
+h1{font-size:22px;margin:0 0 8px}p{color:#5F6570;max-width:44ch;margin:0 auto 20px}
+a{display:inline-block;min-height:44px;line-height:44px;padding:0 20px;border-radius:999px;background:#2c4f36;color:#F4F3EC;text-decoration:none;font:11px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
+@media(prefers-color-scheme:dark){body{color:#E6E9EE;background:#101319}p{color:#98A0AD}}</style>
+<h1>You're offline.</h1><p>${needs} needs the server. Recipes you have opened before still cook offline.</p>
+<a href="/">← all recipes</a>`;
+  return new Response(html, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
 sw.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
@@ -77,11 +95,9 @@ sw.addEventListener('fetch', (event) => {
       .catch(async () => {
         const hit = await caches.match(event.request);
         if (hit) return hit;
-        // offline navigation to an uncached page → home shell if we have it
-        if (event.request.mode === 'navigate') {
-          const home = await caches.match('/');
-          if (home) return home;
-        }
+        // offline navigation to an uncached page: say so, rather than serving the
+        // home shell under the wrong URL and letting the tap look like it worked
+        if (event.request.mode === 'navigate') return offlinePage(url);
         return Response.error();
       })
   );

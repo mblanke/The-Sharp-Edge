@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
   import { gfRisks } from '$lib/gf';
+  import { notify } from '$lib/toast';
+  import { guardUnsaved } from '$lib/unsaved';
   import { ALLOWED_UNITS, CATEGORY_ORDER } from '$lib/types';
   import type { Ingredient, PageRef, RecipeUpdate, Step } from '$lib/types';
 
@@ -46,6 +49,14 @@
   }
   let photoBusy = $state(false);
   let urlBusy = $state(false);
+  // a slow vision model can be abandoned: enhance hands us its AbortController
+  let importAbort: AbortController | null = null;
+  function cancelImport() {
+    importAbort?.abort();
+    importAbort = null;
+    photoBusy = false;
+    urlBusy = false;
+  }
   let translating = $state(false);
   let appliedDraft: unknown = null;
   $effect(() => {
@@ -71,6 +82,12 @@
   });
 
   let saving = $state(false);
+  let saved = false;
+  let initialJson = '';
+  onMount(() => {
+    initialJson = payloadJson;
+    return guardUnsaved(() => !saving && !saved && initialJson !== '' && payloadJson !== initialJson);
+  });
 
   // --- list helpers ---
   function move<T>(arr: T[], i: number, dir: -1 | 1) {
@@ -138,11 +155,14 @@
     action="?/photo"
     enctype="multipart/form-data"
     class="pt-7"
-    use:enhance={() => {
+    use:enhance={({ controller }) => {
       photoBusy = true;
-      return async ({ update }) => {
+      importAbort = controller;
+      return async ({ result, update }) => {
         await update({ reset: false });
         photoBusy = false;
+        importAbort = null;
+        if (result.type === 'error') notify.error('Could not read the photo — the vision model may be busy.');
       };
     }}
   >
@@ -150,7 +170,7 @@
       class="font-mono-label inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full border px-5 text-[11px] uppercase tracking-widest"
       style="border-color: var(--copper); color: var(--copper)"
     >
-      {photoBusy ? 'reading the page…' : '📷 import from photo'}
+      {photoBusy ? 'reading the page… (about 15 s)' : '📷 import from photo'}
       <input
         type="file"
         name="photo"
@@ -161,9 +181,13 @@
         onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
       />
     </label>
-    <span class="ml-2 text-[12px]" style="color: var(--faint)">
-      a page from your notebook becomes a draft — review before saving
-    </span>
+    {#if photoBusy}
+      <button type="button" class="font-mono-label ml-2 min-h-[44px] rounded-full border px-4 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--faint)" onclick={cancelImport}>cancel</button>
+    {:else}
+      <span class="ml-2 text-[12px]" style="color: var(--faint)">
+        a page from your notebook becomes a draft — review before saving
+      </span>
+    {/if}
   </form>
 {/if}
 
@@ -171,11 +195,14 @@
   method="POST"
   action="?/url"
   class="mt-3 flex gap-2"
-  use:enhance={() => {
+  use:enhance={({ controller }) => {
     urlBusy = true;
-    return async ({ update }) => {
+    importAbort = controller;
+    return async ({ result, update }) => {
       await update({ reset: false });
       urlBusy = false;
+      importAbort = null;
+      if (result.type === 'error') notify.error('Could not import that address.');
     };
   }}
 >
@@ -186,14 +213,17 @@
     class="min-h-[44px] flex-1 rounded-full border px-4 text-[14px]"
     style="border-color: var(--line); background: var(--card); color: var(--ink)"
   />
-  <button
-    type="submit"
-    disabled={urlBusy}
-    class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest disabled:opacity-60"
-    style="border-color: var(--copper); color: var(--copper)"
-  >
-    {urlBusy ? 'importing…' : 'import'}
-  </button>
+  {#if urlBusy}
+    <button type="button" class="font-mono-label min-h-[44px] rounded-full border px-4 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--faint)" onclick={cancelImport}>cancel</button>
+  {:else}
+    <button
+      type="submit"
+      class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest"
+      style="border-color: var(--copper); color: var(--copper)"
+    >
+      import
+    </button>
+  {/if}
 </form>
 {#if form && 'gfRisks' in form && Array.isArray(form.gfRisks) && form.gfRisks.length}
   <p class="mt-2 rounded-lg border px-3 py-2 text-[13px]" style="border-color: var(--copper); color: var(--copper); background: var(--warn-bg)">
@@ -207,7 +237,9 @@
   class="pt-7 pb-16"
   use:enhance={() => {
     saving = true;
-    return async ({ update }) => {
+    return async ({ result, update }) => {
+      if (result.type === 'redirect') saved = true;
+      else if (result.type === 'error') notify.error('Could not save — is the server reachable?');
       await update();
       saving = false;
     };

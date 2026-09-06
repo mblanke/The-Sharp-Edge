@@ -1,7 +1,8 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import type { PlanEntry } from '$lib/api';
+  import { notify } from '$lib/toast';
 
   let { data, form } = $props();
 
@@ -18,8 +19,12 @@
     })
   );
 
+  // local calendar date, never toISOString(): west of UTC a local midnight is the
+  // previous day in UTC, which put every dinner on the wrong weekday
   function iso(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
   }
   function dayLabel(d: Date): string {
     return d.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -27,14 +32,37 @@
   function entryFor(d: Date, meal: string): PlanEntry | undefined {
     return plan.entries.find((e) => e.date === iso(d) && e.meal === meal);
   }
-  function shiftWeek(delta: number) {
+  let shifting = $state(false);
+  async function shiftWeek(delta: number) {
     const monday = new Date(`${plan.week}T00:00:00`);
     const next = new Date(monday.getTime() + delta * 7 * DAY_MS);
-    goto(`/plan?week=${iso(next)}`, { invalidateAll: true });
+    shifting = true;
+    await goto(`/plan?week=${iso(next)}`, { invalidateAll: true });
+    shifting = false;
   }
 
-  // recipe picker state: which (date, meal) slot is open
+  // recipe picker state: which (date, meal) slot is open, plus a filter — a
+  // 200-recipe notebook does not fit in a 40vh scroll box
   let picker = $state<{ date: string; meal: string } | null>(null);
+  let pickerQuery = $state('');
+  const pickable = $derived(
+    recipes
+      .filter((r) => !r.noscale)
+      .filter((r) => !pickerQuery.trim() || r.title.toLowerCase().includes(pickerQuery.trim().toLowerCase()))
+  );
+  let pending = $state<string | null>(null); // slot or entry id with a request in flight
+
+  /** Re-add a removed entry — the undo behind the toast. */
+  async function reAdd(entry: PlanEntry) {
+    const body = new FormData();
+    body.set('date', entry.date);
+    body.set('meal', entry.meal);
+    body.set('recipe_slug', entry.recipe_slug);
+    body.set('scaled_yield', String(entry.scaled_yield));
+    const res = await fetch('?/add', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+    if (!res.ok) notify.error('Could not put it back — is the server reachable?');
+    await invalidateAll();
+  }
 
   const labelCls = 'font-mono-label text-[10.5px] uppercase tracking-widest';
 </script>
@@ -50,8 +78,8 @@
       {new Date(`${plan.week}T00:00:00`).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' })}
     </h2>
     <div class="ml-auto flex gap-1">
-      <button aria-label="Previous week" class="h-11 w-11 rounded-xl border" style="border-color: var(--line); color: var(--green-deep)" onclick={() => shiftWeek(-1)}>←</button>
-      <button aria-label="Next week" class="h-11 w-11 rounded-xl border" style="border-color: var(--line); color: var(--green-deep)" onclick={() => shiftWeek(1)}>→</button>
+      <button aria-label="Previous week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--green-deep)" disabled={shifting} onclick={() => shiftWeek(-1)}>←</button>
+      <button aria-label="Next week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--green-deep)" disabled={shifting} onclick={() => shiftWeek(1)}>→</button>
     </div>
   </div>
 
@@ -91,16 +119,47 @@
                 {#if entry.gf}
                   <span class="font-mono-label rounded-full px-2 py-0.5 text-[9.5px] uppercase" style="background: var(--green); color: #F4F3EC">GF</span>
                 {/if}
-                <form method="POST" action="?/remove" use:enhance>
+                <form
+                  method="POST"
+                  action="?/remove"
+                  use:enhance={() => {
+                    pending = entry.id;
+                    const removed = { ...entry };
+                    return async ({ result, update }) => {
+                      await update();
+                      pending = null;
+                      if (result.type === 'success') {
+                        notify.ok(`Removed ${removed.recipe_title}`, { action: { label: 'undo', run: () => reAdd(removed) } });
+                      } else {
+                        notify.error('Could not remove it — is the server reachable?');
+                      }
+                    };
+                  }}
+                >
                   <input type="hidden" name="entry_id" value={entry.id} />
-                  <button aria-label="Remove {entry.recipe_title}" class="h-9 w-9 rounded-lg" style="color: var(--copper)">✕</button>
+                  <button
+                    aria-label="Remove {entry.recipe_title}"
+                    class="h-11 w-11 rounded-lg disabled:opacity-50"
+                    style="color: var(--copper)"
+                    disabled={pending === entry.id}
+                  >
+                    ✕
+                  </button>
                 </form>
+              </div>
+            {:else if pending === `${iso(day)}:${meal}`}
+              <div class="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-1.5" style="background: var(--paper)">
+                <span class="{labelCls} w-[4.6rem] shrink-0" style="color: var(--faint)">{meal}</span>
+                <span class="text-[14.5px]" style="color: var(--faint)">adding…</span>
               </div>
             {:else if meal === 'dinner' || picker?.date === iso(day)}
               <button
                 class="font-mono-label flex min-h-[44px] items-center gap-2 rounded-xl border border-dashed px-3 text-[11px] uppercase tracking-widest"
                 style="border-color: var(--line); color: var(--faint)"
-                onclick={() => (picker = picker?.date === iso(day) && picker.meal === meal ? null : { date: iso(day), meal })}
+                onclick={() => {
+                  picker = picker?.date === iso(day) && picker.meal === meal ? null : { date: iso(day), meal };
+                  pickerQuery = '';
+                }}
               >
                 + {meal}
               </button>
@@ -110,7 +169,10 @@
             <button
               class="{labelCls} justify-self-start px-3 py-1"
               style="color: var(--faint)"
-              onclick={() => (picker = { date: iso(day), meal: 'breakfast' })}
+              onclick={() => {
+                picker = { date: iso(day), meal: 'breakfast' };
+                pickerQuery = '';
+              }}
             >
               more meals…
             </button>
@@ -122,15 +184,42 @@
             <div class="{labelCls} px-2 pb-1" style="color: var(--copper)">
               add to {picker.meal} · {dayLabel(day)}
             </div>
-            {#each recipes.filter((r) => !r.noscale) as r (r.slug)}
-              <form method="POST" action="?/add" use:enhance={() => async ({ update }) => {
-                picker = null;
-                await update();
-              }}>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              type="search"
+              bind:value={pickerQuery}
+              placeholder="find a recipe…"
+              aria-label="Find a recipe to add"
+              autofocus
+              class="mb-1 min-h-[44px] w-full rounded-lg border px-3 text-[14px]"
+              style="border-color: var(--line); background: var(--card); color: var(--ink)"
+            />
+            {#if pickable.length === 0}
+              <p class="px-2 py-3 text-[13px]" style="color: var(--faint)">No recipe matches “{pickerQuery}”.</p>
+            {/if}
+            {#each pickable as r (r.slug)}
+              {@const slot = `${picker.date}:${picker.meal}`}
+              <form
+                method="POST"
+                action="?/add"
+                use:enhance={() => {
+                  pending = slot;
+                  const chosen = picker;
+                  picker = null;
+                  return async ({ result, update }) => {
+                    await update();
+                    pending = null;
+                    if (result.type !== 'success') {
+                      picker = chosen;
+                      notify.error(`Could not add ${r.title} — is the server reachable?`);
+                    }
+                  };
+                }}
+              >
                 <input type="hidden" name="date" value={picker.date} />
                 <input type="hidden" name="meal" value={picker.meal} />
                 <input type="hidden" name="recipe_slug" value={r.slug} />
-                <button class="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-[14px] hover:bg-white">
+                <button class="flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-[14px] hover:bg-white disabled:opacity-50" disabled={pending === slot}>
                   <span class="min-w-0 flex-1 truncate">{r.title}</span>
                   {#if r.gf}
                     <span class="font-mono-label rounded-full px-2 py-0.5 text-[9.5px] uppercase" style="background: var(--green); color: #F4F3EC">GF</span>
@@ -157,14 +246,26 @@
       >
         open the list
       </a>
-      <form method="POST" action="?/generate" use:enhance>
+      <form
+        method="POST"
+        action="?/generate"
+        use:enhance={() => {
+          pending = 'generate';
+          return async ({ result, update }) => {
+            await update();
+            pending = null;
+            if (result.type === 'failure' || result.type === 'error') notify.error('Could not add the week to the list.');
+          };
+        }}
+      >
         <input type="hidden" name="week" value={plan.week} />
         <button
-          class="font-mono-label min-h-[44px] rounded-full px-5 text-[11px] uppercase tracking-widest"
+          class="font-mono-label min-h-[44px] rounded-full px-5 text-[11px] uppercase tracking-widest disabled:opacity-60"
           style="background: var(--green-deep); color: #F4F3EC"
+          disabled={pending === 'generate' || plan.entries.length === 0}
           data-testid="generate-list"
         >
-          add week to list
+          {pending === 'generate' ? 'adding…' : 'add week to list'}
         </button>
       </form>
     </div>

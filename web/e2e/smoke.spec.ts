@@ -44,3 +44,25 @@ test('home search finds recipes by ingredient', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Gluten-Free Hungarian Beef Goulash/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /Classic Fluffy Pancakes/ })).toHaveCount(0);
 });
+
+test('an unknown slug lands on the branded error page, not the framework default', async ({ page }) => {
+  await page.goto('/r/no-such-recipe');
+  await expect(page.getByTestId('error-page')).toBeVisible();
+  await expect(page.getByText('404')).toBeVisible();
+  await page.getByRole('link', { name: /all recipes/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('a search with no hits says so and can be cleared; the query survives a reload', async ({ page }) => {
+  await page.goto('/');
+  const box = page.getByRole('searchbox', { name: 'Search recipes' });
+  await box.fill('zzqx');
+  await expect(page.getByTestId('no-results')).toBeVisible();
+  await expect(page).toHaveURL(/\?q=zzqx$/);
+  await page.reload();
+  await expect(box).toHaveValue('zzqx');
+  await expect(page.getByTestId('no-results')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(page.getByTestId('no-results')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Gluten-Free Hungarian Beef Goulash/ })).toBeVisible();
+});

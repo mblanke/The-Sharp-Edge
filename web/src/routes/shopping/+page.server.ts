@@ -1,5 +1,15 @@
+import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { getShopping, getShoppingText, setChecked, clearShopping } from '$lib/api';
+import { ApiError, getShopping, getShoppingText, setChecked, clearShopping } from '$lib/api';
+
+async function guarded<T>(op: () => Promise<T>) {
+  try {
+    return await op();
+  } catch (e) {
+    if (e instanceof ApiError) return fail(e.status >= 500 ? 502 : e.status, { message: e.message });
+    return fail(502, { message: 'Could not reach the server' });
+  }
+}
 
 export const load: PageServerLoad = async ({ fetch }) => ({
   items: await getShopping(fetch),
@@ -11,12 +21,10 @@ export const load: PageServerLoad = async ({ fetch }) => ({
 export const actions: Actions = {
   toggle: async ({ fetch, request }) => {
     const data = await request.formData();
-    await setChecked(fetch, String(data.get('id')), data.get('checked') === 'true');
-    return { ok: true };
+    return guarded(() => setChecked(fetch, String(data.get('id')), data.get('checked') === 'true').then(() => ({ ok: true })));
   },
   clear: async ({ fetch, request }) => {
     const data = await request.formData();
-    await clearShopping(fetch, data.get('scope') === 'checked');
-    return { ok: true };
+    return guarded(() => clearShopping(fetch, data.get('scope') === 'checked').then(() => ({ ok: true })));
   }
 };

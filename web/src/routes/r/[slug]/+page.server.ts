@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { fail } from '@sveltejs/kit';
-import { addRecipeToShopping, getCookSessions, getRecipe, getVersions } from '$lib/api';
+import { addRecipeToShopping, ApiError, getCookSessions, getRecipe, getVersions } from '$lib/api';
 import type { Actions, PageServerLoad } from './$types';
 
 const API_URL = env.API_URL ?? 'http://localhost:8000';
@@ -64,7 +64,12 @@ export const actions: Actions = {
   addToList: async ({ fetch, params, request }) => {
     const data = await request.formData();
     const target = Number(data.get('target')) || null;
-    await addRecipeToShopping(fetch, params.slug, target);
+    try {
+      await addRecipeToShopping(fetch, params.slug, target);
+    } catch (e) {
+      if (e instanceof ApiError) return fail(e.status >= 500 ? 502 : e.status, { message: e.message });
+      return fail(502, { message: 'Could not reach the server' });
+    }
     return { added: true };
   },
 

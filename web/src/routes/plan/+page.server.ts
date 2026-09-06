@@ -43,7 +43,7 @@ export const actions: Actions = {
     const form = await request.formData();
     const week = asString(form.get('week'));
     const result = await guarded(() => planPushToShopping(fetch, week));
-    if (result && 'items' in result) throw redirect(303, '/shopping');
+    if (result && 'items' in result) throw redirect(303, '/shopping?from=plan');
     return result;
   }
 };

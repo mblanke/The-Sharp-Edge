@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
+  import { notify } from '$lib/toast';
   import { ALLOWED_UNITS, CATEGORY_ORDER } from '$lib/types';
+  import { draftStore, guardUnsaved } from '$lib/unsaved';
   import type { Ingredient, RecipeFull, RecipeUpdate, Step } from '$lib/types';
 
   /**
@@ -135,6 +138,48 @@
 
   const payloadJson = $derived(JSON.stringify(payload));
 
+  // Unsaved changes: warn before leaving, and (for a new recipe) autosave a draft
+  // so a killed tab does not lose ten minutes of typing.
+  let initialJson = '';
+  let saved = false;
+  const dirty = () => !saving && !saved && initialJson !== '' && payloadJson !== initialJson;
+  const drafts = draftStore<{ payload: RecipeUpdate & { slug?: string; label?: string }; savedAt: number }>(
+    creating ? 'new' : `edit-${recipe?.slug ?? ''}`
+  );
+  onMount(() => {
+    initialJson = payloadJson;
+    const stash = creating ? drafts.load() : null;
+    if (stash && !seed.title && stash.payload.title) {
+      const when = new Date(stash.savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      notify.ok(`Unsaved draft “${stash.payload.title}” from ${when}`, {
+        ms: 0,
+        action: {
+          label: 'restore',
+          run: () => {
+            const d = stash.payload;
+            slug = d.slug ?? slug;
+            title = d.title ?? title;
+            category = d.category ?? category;
+            meta = d.meta ?? meta;
+            base_yield = d.base_yield ?? base_yield;
+            yield_word = d.yield_word ?? yield_word;
+            gf = d.gf ?? gf;
+            noscale = d.noscale ?? noscale;
+            source = d.source ?? source;
+            ingredients = (d.ingredients ?? []).map((i) => ({ ...i }));
+            steps = (d.steps ?? []).map((st) => ({ ...st }));
+            notes = [...(d.notes ?? [])];
+          }
+        }
+      });
+    }
+    return guardUnsaved(dirty);
+  });
+  $effect(() => {
+    if (!creating) return;
+    if (dirty()) drafts.save({ payload: { ...payload, slug, label }, savedAt: Date.now() });
+  });
+
   const labelCls = 'font-mono-label text-[10.5px] uppercase tracking-widest';
   const inputCls =
     'w-full rounded-lg border bg-[var(--card)] px-3 py-2 text-[15px] outline-none focus:border-[var(--primary)]';
@@ -148,7 +193,14 @@
   class="pt-7 pb-16"
   use:enhance={() => {
     saving = true;
-    return async ({ update }) => {
+    return async ({ result, update }) => {
+      if (result.type === 'redirect') {
+        // saved: nothing to guard, nothing to restore
+        saved = true;
+        drafts.clear();
+      } else if (result.type === 'error') {
+        notify.error('Could not save — is the server reachable?');
+      }
       await update();
       saving = false;
     };

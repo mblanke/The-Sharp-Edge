@@ -1,11 +1,14 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { notify } from '$lib/toast';
   import { scaledDisplay } from '$lib/scaling';
   import type { Ingredient } from '$lib/types';
 
   let { data, form } = $props();
 
   let illuminating = $state(false);
+  let adding = $state(false);
+  let added = $state(false);
   let openNote = $state<number | null>(null); // step_index of the expanded margin note
   const notesByStep = $derived(new Map(data.annotations.map((a) => [a.step_index, a])));
 
@@ -149,10 +152,11 @@
       action="?/translate"
       use:enhance={() => {
         translating = true;
-        return async ({ update }) => {
+        return async ({ result, update }) => {
           await update();
           translating = false;
-          readEnglish = true;
+          if (result.type === 'success') readEnglish = true;
+          else notify.error('Could not translate this recipe — the model may be busy. Try again.');
         };
       }}
     >
@@ -315,9 +319,10 @@
       action="?/illuminate"
       use:enhance={() => {
         illuminating = true;
-        return async ({ update }) => {
+        return async ({ result, update }) => {
           await update();
           illuminating = false;
+          if (result.type !== 'success') notify.error('The library could not annotate this recipe right now.');
         };
       }}
     >
@@ -364,14 +369,32 @@
       </a>
     {/if}
     {#if !recipe.noscale}
-      <form method="POST" action="?/addToList" use:enhance>
+      <form
+        method="POST"
+        action="?/addToList"
+        use:enhance={() => {
+          adding = true;
+          return async ({ result, update }) => {
+            await update({ reset: false });
+            adding = false;
+            if (result.type === 'success') {
+              added = true;
+              setTimeout(() => (added = false), 4000);
+              notify.ok(`Added ×${target} to the list`, { href: { label: 'open list', url: '/shopping' } });
+            } else {
+              notify.error('Could not add to the list — is the server reachable?');
+            }
+          };
+        }}
+      >
         <input type="hidden" name="target" value={target} />
         <button
-          class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest"
+          class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest disabled:opacity-60"
           style="border-color: var(--green); color: var(--green-deep)"
+          disabled={adding}
           data-testid="add-to-list"
         >
-          {form && 'added' in form && form.added ? '✓ on the list' : '+ shopping list'}
+          {adding ? 'adding…' : added ? '✓ on the list' : '+ shopping list'}
         </button>
       </form>
     {/if}
