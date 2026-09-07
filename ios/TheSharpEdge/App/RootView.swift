@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftUI
 
 enum SidebarRoute: Hashable {
@@ -46,6 +47,13 @@ struct RootView: View {
         }
         .tint(Theme.primary)
         .onAppear(perform: applyLaunchRoute)
+        // Spotlight result or a Handoff from another device: straight to the recipe.
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            if let slug = SpotlightIndex.slug(from: activity) { selection = .recipe(slug) }
+        }
+        .onContinueUserActivity(SpotlightIndex.activityType) { activity in
+            if let slug = SpotlightIndex.slug(from: activity) { selection = .recipe(slug) }
+        }
         .fullScreenCover(isPresented: Binding(
             get: { !config.setupComplete },
             set: { _ in }          // no dismiss affordance: a choice has to be made

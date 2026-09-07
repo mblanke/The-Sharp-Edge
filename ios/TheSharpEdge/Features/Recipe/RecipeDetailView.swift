@@ -44,6 +44,17 @@ struct RecipeDetailView: View {
             }
         }
         .task(id: config.units) { store.units = config.units }
+        // Handoff: the phone can pick this recipe up from the iPad, and vice versa.
+        .userActivity(SpotlightIndex.activityType, isActive: store.recipe != nil) { activity in
+            guard let recipe = store.recipe else { return }
+            let handoff = SpotlightIndex.activity(for: recipe, webURL: env.dataSource.qrURL(recipe.slug))
+            activity.title = handoff.title
+            activity.userInfo = handoff.userInfo
+            activity.requiredUserInfoKeys = handoff.requiredUserInfoKeys
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = false
+            activity.webpageURL = handoff.webpageURL
+        }
         .task(id: env.generation) {
             await store.load(env.dataSource, slug: slug)
             #if DEBUG

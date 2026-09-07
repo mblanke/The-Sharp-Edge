@@ -14,6 +14,7 @@ final class RecipeListStore: ObservableObject {
             let cards = try await source.listRecipes()
             allCards = cards
             applyFilter(gfOnly: gfOnly)
+            SpotlightIndex.reindex(cards)
         } catch {
             self.error = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }

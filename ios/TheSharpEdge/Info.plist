@@ -63,6 +63,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.blanke.thesharpedge.recipe</string>
+	</array>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Send the shopping list to Reminders so it shows up on your phone and watch in the shop.</string>
 	<key>NSCameraUsageDescription</key>
