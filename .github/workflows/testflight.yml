@@ -11,6 +11,10 @@ name: TestFlight upload
 #
 # Shipping a build is a decision, not a consequence of committing. Run it from the
 # Actions tab, or with: gh workflow run testflight.yml
+#
+# The build number is the UTC time as yymmddHHMM — the same scheme ios/release.sh
+# uses. It was github.run_number until a local build 2608291359 made every run
+# number lower than what Apple already had, so uploads succeeded and never appeared.
 on:
   workflow_dispatch:
 
@@ -108,7 +112,7 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/TheSharpEdge.xcarchive \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CURRENT_PROJECT_VERSION=$(date -u +%y%m%d%H%M) \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
