@@ -200,6 +200,17 @@
   {/each}
 </nav>
 
+{#if data.drafts && !filtered}
+  <a
+    href="/drafts"
+    class="font-mono-label mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[11px] uppercase tracking-widest no-underline"
+    style="border-color: var(--copper); color: var(--copper); background: var(--card)"
+    data-testid="drafts-link"
+  >
+    ✎ {data.drafts} {data.drafts === 1 ? 'draft' : 'drafts'} to review
+  </a>
+{/if}
+
 {#if recent.length && !filtered}
   <nav aria-label="Recently viewed" class="pt-5" data-testid="recent">
     <span class="font-mono-label text-[11px] uppercase tracking-widest" style="color: var(--faint)">Recently viewed</span>

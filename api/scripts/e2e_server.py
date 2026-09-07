@@ -81,6 +81,28 @@ def install_rag_stubs() -> None:
 
     ask_module.atlas_rag = StubRag()
     library_module.atlas_rag = StubRag()
+
+    # batch import without the network: every link is a small canned recipe named
+    # after its path, and one path fails on purpose
+    import app.routers.imports as imports_module
+    from fastapi import HTTPException
+
+    async def stub_import(url, provider):
+        name = url.rstrip("/").rsplit("/", 1)[-1].replace("-", " ").title() or "Imported"
+        if "broken" in url:
+            raise HTTPException(422, "No recipe on that page")
+        return {
+            "draft": {
+                "title": name, "meta": "imported for review", "base_yield": 4, "yield_word": "servings",
+                "ingredients": [{"amount": 1, "unit": "cup", "name": "stock"}],
+                "steps": [{"text": "Simmer."}], "notes": [],
+            },
+            "source": "example.com",
+            "gf_risks": [],
+        }
+
+    imports_module.import_from_url = stub_import  # type: ignore[assignment]
+    imports_module.get_provider = lambda: StubProvider()  # type: ignore[assignment]
     ask_module.get_provider = lambda: StubProvider()  # type: ignore[assignment]
 
 

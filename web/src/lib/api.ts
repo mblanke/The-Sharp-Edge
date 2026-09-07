@@ -23,7 +23,28 @@ async function get<T>(fetchFn: typeof fetch, path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const listRecipes = (fetchFn: typeof fetch) => get<RecipeCard[]>(fetchFn, '/recipes');
+export const listRecipes = (fetchFn: typeof fetch, status: 'active' | 'draft' | 'all' = 'active') =>
+  get<RecipeCard[]>(fetchFn, status === 'active' ? '/recipes' : `/recipes?status=${status}`);
+
+/** Drafts awaiting review — never thrown on failure; a queue that cannot load is empty. */
+export const listDrafts = (fetchFn: typeof fetch) =>
+  listRecipes(fetchFn, 'draft').catch(() => [] as RecipeCard[]);
+
+export interface BatchResult {
+  created: { slug: string; title: string; source: string | null }[];
+  failed: { item: string; error: string }[];
+}
+
+/** Many links → drafts; each failure is reported, the rest carry on. */
+export async function batchImportUrls(fetchFn: typeof fetch, urls: string[]): Promise<BatchResult> {
+  const res = await fetchFn(`${API_URL}/api/v1/import/batch`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.API_TOKEN ?? ''}` },
+    body: JSON.stringify({ urls })
+  });
+  if (!res.ok) throw new ApiError(await problemDetail(res), res.status);
+  return res.json();
+}
 
 export const getRecipe = (fetchFn: typeof fetch, slug: string) =>
   get<RecipeFull>(fetchFn, `/recipes/${encodeURIComponent(slug)}`);

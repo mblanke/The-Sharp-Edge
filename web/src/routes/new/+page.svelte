@@ -169,6 +169,9 @@
 </svelte:head>
 
 <div class="pt-7 grid gap-2">
+  <a href="/drafts" class="font-mono-label justify-self-end text-[10.5px] uppercase tracking-widest no-underline" style="color: var(--faint)">
+    review drafts · import a list of links →
+  </a>
   {#if data.photoImport}
     <form
       method="POST"
