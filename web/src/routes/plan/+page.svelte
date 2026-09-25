@@ -78,8 +78,8 @@
       {new Date(`${plan.week}T00:00:00`).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' })}
     </h2>
     <div class="ml-auto flex gap-1">
-      <button aria-label="Previous week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--green-deep)" disabled={shifting} onclick={() => shiftWeek(-1)}>←</button>
-      <button aria-label="Next week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--green-deep)" disabled={shifting} onclick={() => shiftWeek(1)}>→</button>
+      <button aria-label="Previous week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--ink-accent)" disabled={shifting} onclick={() => shiftWeek(-1)}>←</button>
+      <button aria-label="Next week" class="h-11 w-11 rounded-xl border disabled:opacity-50" style="border-color: var(--line); color: var(--ink-accent)" disabled={shifting} onclick={() => shiftWeek(1)}>→</button>
     </div>
   </div>
 
@@ -112,7 +112,7 @@
             {#if entry}
               <div class="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-1.5" style="background: var(--paper)">
                 <span class="{labelCls} w-[4.6rem] shrink-0" style="color: var(--faint)">{meal}</span>
-                <a href="/r/{entry.recipe_slug}" class="min-w-0 flex-1 truncate text-[14.5px] no-underline" style="color: var(--green-deep)">
+                <a href="/r/{entry.recipe_slug}" class="min-w-0 flex-1 truncate text-[14.5px] no-underline" style="color: var(--ink-accent)">
                   {entry.recipe_title}
                 </a>
                 <span class="qty text-[12px]" style="color: var(--faint)">×{entry.scaled_yield}</span>
@@ -242,7 +242,7 @@
       <a
         href="/shopping"
         class="font-mono-label min-h-[44px] rounded-full border px-4 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-        style="border-color: var(--line); color: var(--green-deep)"
+        style="border-color: var(--line); color: var(--ink-accent)"
       >
         open the list
       </a>

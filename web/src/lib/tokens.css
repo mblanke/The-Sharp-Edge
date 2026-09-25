@@ -39,8 +39,18 @@
   --primary-deep: var(--green-deep);
   --accent: var(--copper);
   --accent-wash: var(--warn-bg);
-  --ink-accent: var(--green-deep);
   --off-white: #f4f3ec;
+}
+
+/* `--green-deep` is a FILL that carries off-white text; `--ink-accent` is that
+   green used AS text. They are the same colour in daylight and must diverge in
+   the evening — a `color:` never uses `--green-deep` (CLAUDE.md §7). Before this,
+   every quantity on a dark iPad was #24402c on #161a15, about 1.3:1. */
+:root {
+  --ink-accent: var(--green-deep);
+}
+:root[data-theme='dark'] {
+  --ink-accent: #8fc39e;
 }
 
 html {
@@ -79,7 +89,7 @@ body::before {
 .qty {
   font-family: 'Spline Sans Mono', monospace;
   font-weight: 500;
-  color: var(--green-deep);
+  color: var(--ink-accent);
   transition: color 0.45s ease;
 }
 

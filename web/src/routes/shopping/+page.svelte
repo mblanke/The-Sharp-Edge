@@ -88,7 +88,7 @@
       </p>
       <div class="mt-4 flex flex-wrap justify-center gap-2">
         <a href="/" class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline" style="background: var(--green-deep); color: #F4F3EC">recipes</a>
-        <a href="/plan" class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline" style="border-color: var(--line); color: var(--green-deep)">plan a week</a>
+        <a href="/plan" class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline" style="border-color: var(--line); color: var(--ink-accent)">plan a week</a>
       </div>
     </div>
   {:else}

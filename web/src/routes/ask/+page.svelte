@@ -237,7 +237,7 @@
   {#if data.recipeSlug}
     <div
       class="font-mono-label mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
-      style="border-color: var(--green); color: var(--green-deep); background: var(--card)"
+      style="border-color: var(--green); color: var(--ink-accent); background: var(--card)"
     >
       scoped to: {data.recipeTitle ?? data.recipeSlug}
       <a href="/ask" class="no-underline" style="color: var(--copper)" title="Clear scope">✕</a>
@@ -251,7 +251,7 @@
       </span>
       <select
         class="font-mono-label min-h-[44px] max-w-[70vw] rounded-full border px-4 text-[11.5px]"
-        style="border-color: {scopeBook ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--green-deep)"
+        style="border-color: {scopeBook ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--ink-accent)"
         bind:value={scopeBook}
         aria-label="Restrict answers to one book"
       >
@@ -270,7 +270,7 @@
         {#each EXAMPLES as ex (ex)}
           <button
             class="rounded-2xl border px-4 py-2.5 text-left text-[14px]"
-            style="border-color: var(--line); background: var(--card); color: var(--green-deep)"
+            style="border-color: var(--line); background: var(--card); color: var(--ink-accent)"
             onclick={() => send(ex)}
           >
             {ex}
@@ -341,7 +341,7 @@
                 {:else}
                   <button
                     class="font-mono-label min-h-[36px] rounded-full border px-3 py-1.5 text-[10.5px] tracking-wide"
-                    style="border-color: var(--green); color: var(--green-deep)"
+                    style="border-color: var(--green); color: var(--ink-accent)"
                     aria-expanded={openSource === `${i}:${c.n}`}
                     onclick={() => (openSource = openSource === `${i}:${c.n}` ? null : `${i}:${c.n}`)}
                   >
@@ -452,7 +452,7 @@
         {#each followups as f (f)}
           <button
             class="rounded-2xl border px-3.5 py-2 text-left text-[13.5px]"
-            style="border-color: var(--green); background: var(--card); color: var(--green-deep)"
+            style="border-color: var(--green); background: var(--card); color: var(--ink-accent)"
             onclick={() => send(f)}
           >
             {f} →
@@ -561,12 +561,12 @@
                 style="border-color: var(--line); background: var(--card); color: var(--ink)"
                 onkeydown={(e) => e.key === 'Escape' && (renaming = null)}
               />
-              <button class="font-mono-label min-h-[40px] rounded-full border px-3 text-[10.5px] uppercase tracking-widest" style="border-color: var(--green-deep); color: var(--green-deep)">save</button>
+              <button class="font-mono-label min-h-[40px] rounded-full border px-3 text-[10.5px] uppercase tracking-widest" style="border-color: var(--green-deep); color: var(--ink-accent)">save</button>
             </form>
           {:else}
             <button
               class="min-h-[44px] min-w-0 flex-1 truncate py-2 text-left text-[14px]"
-              style="color: {conversationId === conv.id ? 'var(--copper)' : 'var(--green-deep)'}"
+              style="color: {conversationId === conv.id ? 'var(--copper)' : 'var(--ink-accent)'}"
               aria-current={conversationId === conv.id ? 'true' : undefined}
               onclick={() => loadConversation(conv.id)}
             >
@@ -643,7 +643,7 @@
   .prose-answer :global(sup.cite) {
     font-family: 'Spline Sans Mono', ui-monospace, monospace;
     font-size: 0.7em;
-    color: var(--green-deep);
+    color: var(--ink-accent);
     margin-left: 1px;
   }
   .cursor {

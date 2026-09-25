@@ -149,7 +149,7 @@
       </span>
       <select
         class="font-mono-label min-h-[44px] max-w-[70vw] rounded-full border px-4 text-[11.5px]"
-        style="border-color: {bookFilter ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--green-deep)"
+        style="border-color: {bookFilter ? 'var(--green)' : 'var(--line)'}; background: var(--card); color: var(--ink-accent)"
         bind:value={bookFilter}
         aria-label="Restrict search to one book"
         onchange={() => searched && search()}

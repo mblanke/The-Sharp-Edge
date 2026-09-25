@@ -347,7 +347,7 @@
         {#each tags as tag, i (tag)}
           <span
             class="font-mono-label inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-widest"
-            style="border-color: var(--green); color: var(--green-deep); background: var(--card)"
+            style="border-color: var(--green); color: var(--ink-accent); background: var(--card)"
           >
             {tag}
             <button type="button" aria-label="Remove tag {tag}" style="color: var(--copper)" onclick={() => tags.splice(i, 1)}>✕</button>
@@ -584,7 +584,7 @@
     <a
       href="/r/{recipe.slug}"
       class="font-mono-label flex min-h-[48px] items-center rounded-full border px-5 text-[12px] uppercase tracking-widest no-underline"
-      style="border-color: var(--green-deep); color: var(--green-deep)"
+      style="border-color: var(--green-deep); color: var(--ink-accent)"
     >
       Cancel
     </a>

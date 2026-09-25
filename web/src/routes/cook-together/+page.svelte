@@ -54,7 +54,7 @@
   }
 
   const recipeHue: Record<string, string> = {};
-  const HUES = ['var(--green-deep)', 'var(--copper)', 'var(--green)'];
+  const HUES = ['var(--ink-accent)', 'var(--copper)', 'var(--green)'];
   $effect(() => {
     data.selected.forEach((r, i) => (recipeHue[r.slug] = HUES[i % HUES.length]));
   });

@@ -20,7 +20,7 @@
       <p class="mt-2 text-[13.5px]" style="color: var(--faint)">Audit unavailable (API or token).</p>
     {:else}
       {#if data.audit.warnings.length === 0}
-        <p class="mt-2 text-[14px]" style="color: var(--green-deep)" data-testid="gf-clean">
+        <p class="mt-2 text-[14px]" style="color: var(--ink-accent)" data-testid="gf-clean">
           ✓ No GF-flagged recipe contains a hidden-gluten risk.
         </p>
       {:else}
@@ -41,7 +41,7 @@
         <p class="mt-3 text-[13px]" style="color: var(--faint)">
           Possibly GF but unflagged:
           {#each data.audit.candidates as c, i (c.slug)}
-            {i > 0 ? ' · ' : ''}<a href="/r/{c.slug}" style="color: var(--green-deep)">{c.title}</a>
+            {i > 0 ? ' · ' : ''}<a href="/r/{c.slug}" style="color: var(--ink-accent)">{c.title}</a>
           {/each}
         </p>
       {/if}
@@ -69,7 +69,7 @@
       <a
         href="/admin/export/master.md"
         class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-        style="border-color: var(--green-deep); color: var(--green-deep)"
+        style="border-color: var(--green-deep); color: var(--ink-accent)"
         download
       >
         master.md
@@ -77,7 +77,7 @@
       <a
         href="/admin/export/cards.pdf"
         class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-        style="border-color: var(--green-deep); color: var(--green-deep)"
+        style="border-color: var(--green-deep); color: var(--ink-accent)"
         download
       >
         cards.pdf
