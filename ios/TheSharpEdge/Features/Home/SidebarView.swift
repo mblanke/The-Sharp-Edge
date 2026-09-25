@@ -32,6 +32,17 @@ struct SidebarView: View {
                     Button("Retry") { Task { await store.load(env.dataSource, gfOnly: config.gfOnly) } }
                         .font(Typography.body(14, weight: .semibold))
                 }
+            } else if store.sections.isEmpty && store.isSearching {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Nothing matches")
+                        .font(Typography.body(16, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text("No recipe title, category or note mentions “\(store.query)”.")
+                        .font(Typography.body(13))
+                        .foregroundStyle(Theme.faint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 6)
             } else if store.sections.isEmpty {
                 // A device-hosted notebook starts empty, and an empty sidebar with no
                 // explanation is exactly the poor greeting the setup screen exists to
@@ -85,6 +96,10 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("The Sharp Edge")
+        // Filters as you type; the field sits under the title like Notes and Mail,
+        // so a cook with a keyboard attached can reach a recipe without scrolling.
+        .searchable(text: $store.query, placement: .sidebar, prompt: "Find a recipe")
+        .onChange(of: store.query) { _, _ in store.applyQuery() }
         .refreshable { await store.load(env.dataSource, gfOnly: config.gfOnly) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -92,9 +107,11 @@ struct SidebarView: View {
                     Button { draft = RecipeCreate() } label: {
                         Label("Type it in", systemImage: "square.and.pencil")
                     }
+                    .keyboardShortcut("n", modifiers: .command)
                     Button { showCapture = true } label: {
                         Label("Dictate it", systemImage: "mic")
                     }
+                    .keyboardShortcut("d", modifiers: [.command, .shift])
                     // Vision runs on the server's GB10s — a device-hosted
                     // notebook has no model to read the page with.
                     if config.mode == .server {
@@ -106,6 +123,7 @@ struct SidebarView: View {
                     Button { showImportPicker = true } label: {
                         Label("Import from a file", systemImage: "square.and.arrow.down")
                     }
+                    .keyboardShortcut("i", modifiers: [.command, .shift])
                 } label: {
                     Label("Add recipe", systemImage: "plus")
                 }
