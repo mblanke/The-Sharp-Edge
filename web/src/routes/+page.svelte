@@ -113,6 +113,10 @@
   );
 
   const filtered = $derived(searchHits !== null || gfOnly || tagFilter !== null);
+  const gfCount = $derived(data.recipes.filter((r: RecipeCard) => r.gf).length);
+
+  // card entrance order runs across the whole page, not per category
+  const orderOf = $derived(new Map(visible.map((r: RecipeCard, i: number) => [r.slug, i])));
 </script>
 
 <svelte:head>
@@ -121,7 +125,16 @@
 
 <svelte:window onkeydown={onKey} />
 
-<search class="relative pt-5">
+<div class="home-head">
+  <h2 class="home-title">Recipes</h2>
+  {#if data.recipes.length}
+    <p class="qty pb-1 text-[11.5px]" style="color: var(--faint)" data-testid="notebook-count">
+      {data.recipes.length} in the notebook{gfCount ? ` · ${gfCount} GF` : ''}
+    </p>
+  {/if}
+</div>
+
+<search class="relative pt-4">
   <input
     type="search"
     bind:value={search}
@@ -135,7 +148,7 @@
   />
   {#if search}
     <button
-      class="absolute top-5 right-1 grid h-[48px] w-[44px] place-items-center rounded-full text-[15px]"
+      class="absolute top-4 right-1 grid h-[48px] w-[44px] place-items-center rounded-full text-[15px]"
       style="color: var(--faint)"
       aria-label="Clear search"
       onclick={clearSearch}
@@ -161,7 +174,7 @@
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
       style:background={gfOnly ? 'transparent' : 'var(--green-deep)'}
-      style:color={gfOnly ? 'var(--green-deep)' : '#F4F3EC'}
+      style:color={gfOnly ? 'var(--ink-accent)' : '#F4F3EC'}
       aria-pressed={!gfOnly}
       onclick={() => (gfOnly = false)}
     >
@@ -170,7 +183,7 @@
     <button
       class="min-h-[44px] px-5 text-sm font-medium"
       style:background={gfOnly ? 'var(--green-deep)' : 'transparent'}
-      style:color={gfOnly ? '#F4F3EC' : 'var(--green-deep)'}
+      style:color={gfOnly ? '#F4F3EC' : 'var(--ink-accent)'}
       aria-pressed={gfOnly}
       onclick={() => (gfOnly = true)}
     >
@@ -193,7 +206,7 @@
     <a
       href="#cat-{cat}"
       class="font-mono-label rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--line); color: var(--green-deep); background: var(--card)"
+      style="border-color: var(--line); color: var(--ink-accent); background: var(--card)"
     >
       {cat}
     </a>
@@ -237,7 +250,7 @@
       </p>
       <button
         class="font-mono-label mt-4 min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest"
-        style="border-color: var(--line); color: var(--green-deep)"
+        style="border-color: var(--line); color: var(--ink-accent)"
         onclick={() => location.reload()}
       >
         try again
@@ -265,68 +278,69 @@
       </p>
       <div class="mt-4 flex flex-wrap justify-center gap-2">
         {#if searchHits !== null}
-          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--green-deep)" onclick={clearSearch}>clear search</button>
+          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--ink-accent)" onclick={clearSearch}>clear search</button>
         {/if}
         {#if gfOnly}
-          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--green-deep)" onclick={() => (gfOnly = false)}>show all</button>
+          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--ink-accent)" onclick={() => (gfOnly = false)}>show all</button>
         {/if}
         {#if tagFilter}
-          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--green-deep)" onclick={() => (tagFilter = null)}>drop tag</button>
+          <button class="font-mono-label min-h-[44px] rounded-full border px-5 text-[11px] uppercase tracking-widest" style="border-color: var(--line); color: var(--ink-accent)" onclick={() => (tagFilter = null)}>drop tag</button>
         {/if}
       </div>
     </div>
   {/if}
 
   {#each categories as cat (cat)}
-    <section
-      id="cat-{cat}"
-      class="mt-9 scroll-mt-4 border-l-2 pl-3"
-      style="border-color: var(--green)"
-    >
+    <section id="cat-{cat}" class="mt-9 scroll-mt-4">
       <h2
-        class="font-mono-label sticky top-0 z-10 border-b pb-1 pt-1 text-[11px] uppercase tracking-widest"
+        class="cat-head font-mono-label sticky top-0 z-10 flex items-baseline gap-2 border-b pt-1 pb-1 text-[11px] uppercase tracking-widest"
         style="border-color: var(--line); color: var(--green); background: var(--paper)"
       >
         {cat}
+        <span class="qty text-[10px] normal-case tracking-normal" style="color: var(--faint)">
+          {byCategory.get(cat)?.length ?? 0}
+        </span>
       </h2>
-      <ul class="mt-2 list-none p-0">
+      <ul class="recipe-grid">
         {#each byCategory.get(cat) ?? [] as r (r.slug)}
-          <li
-            class="lift flex min-h-[52px] flex-wrap items-center gap-x-3 border-b border-dashed"
-            style="border-color: var(--line)"
-          >
-            <a href="/r/{r.slug}" class="min-w-0 flex-1 py-3 no-underline">
-              <span class="font-display text-lg leading-tight" style="color: var(--ink)">{r.title}</span>
+          <li class="rcard" style="--i: {orderOf.get(r.slug) ?? 0}" data-testid="recipe-card">
+            <a href="/r/{r.slug}" class="rcard-link">
+              <span class="rcard-title">{r.title}</span>
               {#if r.meta}
-                <span class="block text-[13px]" style="color: var(--faint)">{r.meta}</span>
+                <span class="rcard-meta">{r.meta}</span>
               {/if}
             </a>
-            <span class="flex shrink-0 items-center gap-2">
-              {#each r.tags ?? [] as tag (tag)}
-                <button
-                  class="font-mono-label hidden min-h-[32px] rounded-full border px-2.5 py-1 text-[10.5px] uppercase tracking-widest sm:inline-block"
-                  style="border-color: {tagFilter === tag ? 'var(--copper)' : 'var(--line)'}; color: {tagFilter === tag ? 'var(--copper)' : 'var(--faint)'}"
-                  aria-pressed={tagFilter === tag}
-                  onclick={() => (tagFilter = tagFilter === tag ? null : tag)}
-                >
-                  {tag}
-                </button>
-              {/each}
-              {#if r.gf}
-                <span
-                  class="font-mono-label rounded-full px-2.5 py-1 text-[10.5px] uppercase tracking-widest"
-                  style="background: var(--green); color: #F4F3EC"
-                >
-                  GF
-                </span>
-              {/if}
+            <span class="rcard-badges">
+              <span class="rcard-yield">
+                {r.noscale ? 'reference' : `${r.base_yield} ${r.yield_word}`}
+              </span>
+              <span class="flex items-center gap-2">
+                {#each r.tags ?? [] as tag (tag)}
+                  <button
+                    class="font-mono-label press hidden min-h-[32px] rounded-full border px-2.5 py-1 text-[10.5px] uppercase tracking-widest sm:inline-block"
+                    style="border-color: {tagFilter === tag ? 'var(--copper)' : 'var(--line)'}; color: {tagFilter === tag ? 'var(--copper)' : 'var(--faint)'}"
+                    aria-pressed={tagFilter === tag}
+                    onclick={() => (tagFilter = tagFilter === tag ? null : tag)}
+                  >
+                    {tag}
+                  </button>
+                {/each}
+                {#if r.gf}
+                  <span
+                    class="font-mono-label rounded-full px-2.5 py-1 text-[10.5px] uppercase tracking-widest"
+                    style="background: var(--green); color: #F4F3EC"
+                  >
+                    GF
+                  </span>
+                {/if}
+              </span>
             </span>
             {#if r.tags?.length}
               <!-- tags are reachable on a phone too: a row under the title, tap to filter -->
-              <span class="flex basis-full flex-wrap gap-1.5 pb-2 sm:hidden">
+              <span class="rcard-tags sm:hidden">
                 {#each r.tags.slice(0, 3) as tag (tag)}
                   <button
-                    class="font-mono-label min-h-[32px] rounded-full border px-2.5 text-[10px] uppercase tracking-widest"
+                    class="font-mono-label press min-h-[32px] rounded-full border px-2.5 text-[10px] uppercase tracking-widest"
                     style="border-color: {tagFilter === tag ? 'var(--copper)' : 'var(--line)'}; color: {tagFilter === tag ? 'var(--copper)' : 'var(--faint)'}"
                     aria-pressed={tagFilter === tag}
                     onclick={() => (tagFilter = tagFilter === tag ? null : tag)}

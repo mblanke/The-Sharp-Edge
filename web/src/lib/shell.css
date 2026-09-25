@@ -1,0 +1,612 @@
+/* App shell — one layout that is a phone app below 768px, an icon rail on an
+   iPad in portrait or Split View, and a full sidebar on an iPad in landscape or
+   a desktop. Everything here is layout; colours come from tokens.css. */
+
+:root {
+  --rail-w: 236px;
+  --rail-w-narrow: 84px;
+  --tabbar-h: 60px;
+  --topbar-h: 56px;
+  /* space fixed elements (timer tray, toast) must leave at the bottom */
+  --bottom-inset: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  --content-max: 720px;
+  --content-max-wide: 1120px;
+  --content-x: clamp(18px, 4vw, 48px);
+}
+
+html,
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button,
+a[href],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* ---------- frame ---------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100dvh;
+}
+
+.shell-content {
+  min-width: 0;
+  padding-bottom: calc(var(--bottom-inset) + 32px);
+}
+
+.shell-page {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--content-x);
+}
+.shell-page.wide {
+  max-width: var(--content-max-wide);
+}
+
+/* ---------- top bar (phone) ---------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--topbar-h);
+  padding: env(safe-area-inset-top, 0px) var(--content-x) 0;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+}
+.topbar-brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+.topbar-brand span {
+  font-family: 'Fraunces', serif;
+  font-weight: 650;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- icon buttons (top bar + rail foot) ---------- */
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--faint);
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+.icon-btn svg {
+  width: 21px;
+  height: 21px;
+}
+.icon-btn[aria-current='page'] {
+  color: var(--green-deep);
+  background: var(--card);
+  border-color: var(--line);
+}
+.icon-btn.primary {
+  background: var(--green-deep);
+  color: #f4f3ec;
+}
+
+/* ---------- bottom tab bar (phone) ---------- */
+
+.tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  backdrop-filter: saturate(160%) blur(16px);
+  border-top: 1px solid var(--line);
+}
+.tabbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: var(--tabbar-h);
+  text-decoration: none;
+  color: var(--faint);
+  font-family: 'Spline Sans Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+.tabbar a svg {
+  width: 23px;
+  height: 23px;
+  transition: transform 0.15s ease;
+}
+.tabbar a[aria-current='page'] {
+  color: var(--green-deep);
+}
+.tabbar a[aria-current='page'] svg {
+  transform: translateY(-1px);
+}
+.tabbar a:active svg {
+  transform: scale(0.9);
+}
+
+/* ---------- rail (tablet / desktop) ---------- */
+
+.rail {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --bottom-inset: 0px;
+  }
+  .shell {
+    grid-template-columns: var(--rail-w-narrow) minmax(0, 1fr);
+  }
+  .topbar,
+  .tabbar {
+    display: none;
+  }
+  .rail {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 10px calc(env(safe-area-inset-bottom, 0px) + 12px)
+      calc(env(safe-area-inset-left, 0px) + 10px);
+    border-right: 1px solid var(--line);
+    background: color-mix(in srgb, var(--card) 70%, var(--paper));
+  }
+  .rail-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--ink);
+    padding: 4px 4px 14px;
+  }
+  .rail-brand img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(32, 36, 30, 0.12);
+  }
+  .rail-brand span {
+    display: none;
+    font-family: 'Fraunces', serif;
+    font-weight: 650;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .rail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .rail-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 6px 4px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: var(--faint);
+    font-family: 'Spline Sans Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .rail-nav a svg {
+    width: 22px;
+    height: 22px;
+  }
+  .rail-nav a[aria-current='page'] {
+    background: var(--green-deep);
+    color: #f4f3ec;
+  }
+  .rail-foot {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .rail-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    width: 44px;
+    border-radius: 999px;
+    background: var(--copper);
+    color: #fff;
+    text-decoration: none;
+    font-family: 'Spline Sans Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(200, 122, 46, 0.35);
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.15s ease;
+  }
+  .rail-add svg {
+    width: 20px;
+    height: 20px;
+  }
+  .rail-add span {
+    display: none;
+  }
+  .shell-content {
+    padding-bottom: 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  }
+  .rail {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
+    padding-right: 16px;
+  }
+  .rail-brand {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 6px 8px 18px;
+  }
+  .rail-brand span {
+    display: block;
+  }
+  .rail-nav a {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .rail-nav a svg {
+    width: 20px;
+    height: 20px;
+  }
+  .rail-foot {
+    align-items: stretch;
+  }
+  .rail-add {
+    width: auto;
+    padding: 0 16px;
+  }
+  .rail-add span {
+    display: inline;
+  }
+  .rail-foot-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+  }
+}
+
+/* hover only where there is a pointer that hovers — an iPad finger never hovers,
+   and a stuck hover state after a tap is exactly the kind of jank we want gone */
+@media (hover: hover) {
+  .rail-nav a:not([aria-current='page']):hover,
+  .icon-btn:not(.primary):hover {
+    background: var(--card);
+    color: var(--green-deep);
+  }
+  .rail-add:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(200, 122, 46, 0.4);
+  }
+}
+.rail-add:active,
+.icon-btn:active {
+  transform: scale(0.96);
+}
+
+/* ---------- press feedback for every pill button ---------- */
+
+.press {
+  transition: transform 0.1s ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* ---------- home: card grid on a tablet ---------- */
+
+.home-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 28px;
+}
+.home-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 650;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.recipe-grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.rcard {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px dashed var(--line);
+  animation: card-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(min(var(--i, 0), 14) * 28ms);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.rcard-link {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  text-decoration: none;
+}
+.rcard-title {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-weight: 650;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.rcard-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--faint);
+}
+.rcard-badges {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+.rcard-tags {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+.rcard-yield {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .rcard {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 132px;
+    padding: 16px 16px 14px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(32, 36, 30, 0.04);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .rcard::before {
+    /* the notebook's coloured tab, one per card */
+    content: '';
+    position: absolute;
+    top: 16px;
+    bottom: 16px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--green);
+    opacity: 0.7;
+  }
+  .rcard-link {
+    padding: 0;
+    flex: 1;
+  }
+  .rcard-link::after {
+    /* the whole card is the tap target; badges stay clickable above it */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+  }
+  .rcard-title {
+    font-size: 20px;
+  }
+  .rcard-badges {
+    position: relative;
+    z-index: 1;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+  .rcard-tags {
+    flex-basis: auto;
+    padding-bottom: 0;
+  }
+  .rcard-yield {
+    display: inline;
+    font-family: 'Spline Sans Mono', monospace;
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .rcard:active {
+    transform: scale(0.985);
+  }
+}
+@media (hover: hover) and (min-width: 768px) {
+  .rcard:hover {
+    transform: translateY(-2px);
+    border-color: var(--green);
+    box-shadow: 0 6px 18px rgba(32, 36, 30, 0.1);
+  }
+}
+
+/* sticky category headings only make sense in the single-column list */
+@media (min-width: 768px) {
+  .cat-head {
+    position: static !important;
+  }
+}
+
+/* ---------- recipe page: two columns on a landscape iPad ---------- */
+
+@media (min-width: 1024px) {
+  .recipe-cols {
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    column-gap: clamp(32px, 4vw, 64px);
+    align-items: start;
+  }
+  .recipe-side {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-right: 4px;
+  }
+  .recipe-main {
+    min-width: 0;
+  }
+}
+
+/* ---------- cook mode: mise en place at the side on a wide screen ---------- */
+
+.cook-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+.cook-side {
+  display: none;
+}
+@media (min-width: 1024px) and (min-height: 480px) {
+  .cook-side {
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    flex-shrink: 0;
+    margin: 0 20px 16px 0;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--card);
+    overflow: hidden;
+  }
+  .cook-side ul {
+    overflow-y: auto;
+    padding: 4px 16px 12px;
+    margin: 0;
+    list-style: none;
+  }
+  .cook-side li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 8px;
+    margin: 0 -8px;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: background 0.2s ease;
+  }
+  .cook-side li.now {
+    background: var(--warn-bg);
+  }
+  .cook-side li.now .qty {
+    color: var(--copper);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rcard {
+    animation: none;
+  }
+  .rcard:hover,
+  .rcard:active,
+  .press:active,
+  .rail-add:active,
+  .icon-btn:active {
+    transform: none;
+  }
+}

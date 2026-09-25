@@ -6,18 +6,33 @@
   import OfflineBanner from '$lib/components/OfflineBanner.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import TimerTray from '$lib/components/TimerTray.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import { startTicker } from '$lib/timers';
-  import { applyTheme } from '$lib/prefs';
+  import { applyTheme, readTheme, syncThemeColor } from '$lib/prefs';
 
   let { children } = $props();
 
   // one ticker for every cook timer in the app; cook mode renders its own strip
   onMount(() => startTicker());
-  const inCookMode = $derived(/\/cook$/.test(page.url.pathname));
+  const path = $derived(page.url.pathname);
+  const inCookMode = $derived(/\/cook$/.test(path));
+
+  // Pages that earn the full width of an iPad: the card grid, the two-column
+  // recipe, the week grid. Everything else is prose and stays at reading width.
+  const wide = $derived(path === '/' || /^\/r\/[^/]+$/.test(path) || path.startsWith('/plan'));
+
+  const NAV = [
+    { href: '/', label: 'Recipes', icon: 'book', match: (p: string) => p === '/' || p.startsWith('/r/') },
+    { href: '/library', label: 'Library', icon: 'shelf', match: (p: string) => p.startsWith('/library') },
+    { href: '/ask', label: 'Ask', icon: 'chat', match: (p: string) => p.startsWith('/ask') },
+    { href: '/plan', label: 'Plan', icon: 'calendar', match: (p: string) => p.startsWith('/plan') },
+    { href: '/shopping', label: 'List', icon: 'basket', match: (p: string) => p.startsWith('/shopping') }
+  ] as const;
+  const current = (match: (p: string) => boolean) => (match(path) ? 'page' : undefined);
 
   // ⌘K / Ctrl+K from any page: the home search box (home handles it locally)
   function onKey(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && page.url.pathname !== '/') {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && path !== '/') {
       e.preventDefault();
       goto('/?focus=1');
     }
@@ -35,10 +50,23 @@
     });
   });
 
-  // evening kitchen mode — explicit choice persisted per device
+  // evening kitchen mode — explicit choice persisted per device; with no choice
+  // the app follows the iPad, including when the iPad flips at sunset
   let dark = $state(false);
   $effect(() => {
     dark = document.documentElement.dataset.theme === 'dark';
+  });
+  onMount(() => {
+    syncThemeColor();
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const follow = () => {
+      if (readTheme() === 'system') {
+        applyTheme('system');
+        dark = document.documentElement.dataset.theme === 'dark';
+      }
+    };
+    mq.addEventListener('change', follow);
+    return () => mq.removeEventListener('change', follow);
   });
   function toggleTheme() {
     dark = !dark;
@@ -51,50 +79,91 @@
 <a
   href="#main"
   class="font-mono-label sr-only rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[80]"
-  style="background: var(--card); border-color: var(--line); color: var(--green-deep)"
+  style="background: var(--card); border-color: var(--line); color: var(--ink-accent)"
 >
   skip to content
 </a>
-<div class="mx-auto max-w-[680px] px-[18px] pb-20">
-  <header id="top" class="border-b-2 py-6 text-center" style="border-color: var(--ink)">
-    <a href="/" class="inline-block">
-      <img src="/logo.jpg" alt="The Sharp Edge — chef's recipe notebook" class="mx-auto w-40 rounded-xl" width="160" height="160" decoding="async" />
+
+<div class="shell">
+  <!-- rail: tablet + desktop -->
+  <aside class="rail" data-testid="rail">
+    <a href="/" class="rail-brand" aria-label="The Sharp Edge — home">
+      <img src="/logo.jpg" alt="" width="44" height="44" decoding="async" />
+      <span>The Sharp Edge</span>
     </a>
-    <h1 class="sr-only">The Sharp Edge</h1>
-    <p class="mx-auto mt-2 max-w-[44ch] text-sm" style="color: var(--faint)">
-      Scan a card, land on its recipe, rescale the servings.
-    </p>
-    <nav class="font-mono-label mt-3 flex justify-center gap-2 text-[11px] uppercase tracking-widest">
-      <a href="/" aria-current={page.url.pathname === '/' ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Recipes</a>
-      <a href="/library" aria-current={page.url.pathname.startsWith('/library') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Library</a>
-      <a href="/ask" aria-current={page.url.pathname.startsWith('/ask') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Ask</a>
-      <a href="/plan" aria-current={page.url.pathname.startsWith('/plan') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Plan</a>
-      <a href="/shopping" aria-current={page.url.pathname.startsWith('/shopping') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">List</a>
-      <a href="/new" aria-current={page.url.pathname.startsWith('/new') ? 'page' : undefined} class="rounded-full border px-4 py-2 no-underline" style="border-color: var(--line); color: var(--green-deep)">Add</a>
-      <a href="/settings" aria-label="Settings" aria-current={page.url.pathname.startsWith('/settings') ? 'page' : undefined} class="rounded-full border px-3 py-2 no-underline" style="border-color: var(--line); color: var(--faint)">⚙</a>
+    <nav class="rail-nav" aria-label="Primary">
+      {#each NAV as item (item.href)}
+        <a href={item.href} aria-current={current(item.match)}>
+          <Icon name={item.icon} />
+          <span>{item.label}</span>
+        </a>
+      {/each}
+    </nav>
+    <div class="rail-foot">
+      <a href="/new" class="rail-add" aria-current={current((p) => p.startsWith('/new'))}>
+        <Icon name="plus" />
+        <span>Add recipe</span>
+      </a>
+      <div class="rail-foot-row">
+        <a href="/settings" class="icon-btn" aria-label="Settings" aria-current={current((p) => p.startsWith('/settings'))}>
+          <Icon name="gear" />
+        </a>
+        <button
+          class="icon-btn"
+          aria-label={dark ? 'Switch to daylight' : 'Switch to evening kitchen mode'}
+          onclick={toggleTheme}
+        >
+          <Icon name={dark ? 'sun' : 'moon'} />
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="shell-content">
+    <!-- top bar: phone -->
+    <header class="topbar" data-testid="topbar">
+      <a href="/" class="topbar-brand">
+        <img src="/logo.jpg" alt="" width="34" height="34" decoding="async" />
+        <span>The Sharp Edge</span>
+      </a>
+      <a href="/new" class="icon-btn primary" aria-label="Add recipe" aria-current={current((p) => p.startsWith('/new'))}>
+        <Icon name="plus" />
+      </a>
+      <a href="/settings" class="icon-btn" aria-label="Settings" aria-current={current((p) => p.startsWith('/settings'))}>
+        <Icon name="gear" />
+      </a>
       <button
+        class="icon-btn"
         aria-label={dark ? 'Switch to daylight' : 'Switch to evening kitchen mode'}
-        class="rounded-full border px-3 py-2"
-        style="border-color: var(--line); color: var(--faint)"
         onclick={toggleTheme}
       >
-        {dark ? '☀' : '☾'}
+        <Icon name={dark ? 'sun' : 'moon'} />
       </button>
-    </nav>
-    <OfflineBanner />
-  </header>
+    </header>
 
-  <div id="main">
-    {@render children()}
+    <div class="shell-page" class:wide>
+      <h1 class="sr-only">The Sharp Edge</h1>
+      <OfflineBanner />
+      <div id="main">
+        {@render children()}
+      </div>
+      <footer class="mt-16 border-t pt-4 text-[12.5px]" style="border-color: var(--line); color: var(--faint)">
+        Quantities scale from each recipe's base yield · dashes mark to-taste amounts
+      </footer>
+    </div>
   </div>
 
-  <footer class="mt-16 border-t-2 pt-4 text-[12.5px]" style="border-color: var(--ink); color: var(--faint)">
-    Quantities scale from each recipe's base yield · dashes mark to-taste amounts
-    <br />
-    <a href="#top" class="font-mono-label mt-2 inline-block text-[11px] uppercase tracking-widest" style="color: var(--green-deep)">
-      ↑ back to top
-    </a>
-  </footer>
+  <!-- tab bar: phone. Not while cooking — that screen owns the bottom edge. -->
+  {#if !inCookMode}
+    <nav class="tabbar" aria-label="Sections" data-testid="tabbar">
+      {#each NAV as item (item.href)}
+        <a href={item.href} aria-current={current(item.match)}>
+          <Icon name={item.icon} />
+          <span>{item.label}</span>
+        </a>
+      {/each}
+    </nav>
+  {/if}
 </div>
 
 {#if !inCookMode}

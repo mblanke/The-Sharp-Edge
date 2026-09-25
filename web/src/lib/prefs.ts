@@ -46,6 +46,22 @@ export function applyTheme(theme: Theme): void {
     write(KEYS.theme, theme);
     document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : '';
   }
+  syncThemeColor();
+}
+
+/** The browser chrome (iPad status bar, PWA title bar) takes the page's paper
+ *  colour, whichever scheme is showing — read from the live token so the CSS
+ *  stays the one place a colour is defined. */
+export function syncThemeColor(): void {
+  try {
+    const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+    if (!paper) return;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = paper;
+    }
+  } catch {
+    // no DOM
+  }
 }
 
 export function readUnits(): UnitSystem {

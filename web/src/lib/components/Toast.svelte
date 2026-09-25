@@ -7,7 +7,8 @@
 
 {#each $toastStore as t (t.id)}
   <div
-    class="fixed inset-x-0 bottom-[max(env(safe-area-inset-bottom),12px)] z-[70] flex justify-center px-4"
+    class="fixed inset-x-0 z-[70] flex justify-center px-4"
+    style="bottom: max(calc(var(--bottom-inset, 0px) + 12px), env(safe-area-inset-bottom))"
     role={t.kind === 'error' ? 'alert' : 'status'}
     aria-live={t.kind === 'error' ? 'assertive' : 'polite'}
     data-testid="toast"
@@ -20,7 +21,7 @@
       {#if t.action}
         <button
           class="font-mono-label min-h-[40px] shrink-0 rounded-full border px-3 text-[10.5px] uppercase tracking-widest"
-          style="border-color: var(--line); color: var(--green-deep)"
+          style="border-color: var(--line); color: var(--ink-accent)"
           onclick={async () => {
             const id = t.id;
             await t.action?.run();
@@ -34,7 +35,7 @@
         <a
           href={t.href.url}
           class="font-mono-label min-h-[40px] shrink-0 rounded-full border px-3 text-[10.5px] uppercase tracking-widest no-underline leading-[40px]"
-          style="border-color: var(--line); color: var(--green-deep)"
+          style="border-color: var(--line); color: var(--ink-accent)"
           onclick={() => dismiss(t.id)}
         >
           {t.href.label}

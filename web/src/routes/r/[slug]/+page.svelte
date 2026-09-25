@@ -311,9 +311,13 @@
     {/if}
   {/if}
 
+  <!-- On a landscape iPad the scaler and the ingredients pin to the left while
+       the method scrolls on the right; below that width it is one column. -->
+  <div class="recipe-cols">
+  <aside class="recipe-side" aria-label="Scale and ingredients">
   {#if !recipe.noscale}
     <div
-      class="mt-4 flex items-center gap-3 rounded-2xl px-4 py-3"
+      class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-3"
       style="background: var(--green-deep); color: #F4F3EC"
     >
       <span class="font-mono-label text-[11px] uppercase tracking-widest opacity-80">Scale</span>
@@ -482,6 +486,8 @@
       {/each}
     </ul>
   {/if}
+  </aside>
+  <div class="recipe-main">
 
   <h3
     class="font-mono-label mt-6 border-b pb-1 text-xs uppercase tracking-widest"
@@ -572,8 +578,8 @@
     {#if !recipe.noscale}
       <a
         href="/r/{recipe.slug}/cook{target !== recipe.base_yield ? `?yield=${target}` : ''}"
-        class="font-mono-label inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-        style="background: var(--copper); color: #FFF"
+        class="font-mono-label press inline-block min-h-[44px] rounded-full px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
+        style="background: var(--copper); color: #FFF; box-shadow: 0 2px 8px rgba(200,122,46,.3)"
         data-testid="start-cooking"
       >
         ▶ Cook
@@ -601,7 +607,7 @@
         <input type="hidden" name="target" value={target} />
         <button
           class="font-mono-label min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest disabled:opacity-60"
-          style="border-color: var(--green); color: var(--green-deep)"
+          style="border-color: var(--green); color: var(--ink-accent)"
           disabled={adding}
           data-testid="add-to-list"
         >
@@ -641,9 +647,11 @@
     <a
       href="/"
       class="font-mono-label inline-block min-h-[44px] rounded-full border px-5 py-2.5 text-[11px] uppercase tracking-widest no-underline"
-      style="border-color: var(--green-deep); color: var(--green-deep)"
+      style="border-color: var(--green-deep); color: var(--ink-accent)"
     >
       ← all recipes
     </a>
+  </div>
+  </div>
   </div>
 </article>

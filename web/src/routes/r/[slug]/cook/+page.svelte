@@ -390,7 +390,7 @@
       aria-haspopup="dialog"
       aria-expanded={drawerOpen}
       class="font-mono-label min-h-[44px] rounded-full border px-3.5 text-[11px] uppercase tracking-widest"
-      style="border-color: var(--green); color: var(--green-deep)"
+      style="border-color: var(--green); color: var(--ink-accent)"
       onclick={() => (drawerOpen = !drawerOpen)}
     >
       list
@@ -452,11 +452,26 @@
     {/each}
   </div>
 
+  <div class="cook-body relative">
+  <!-- first-run hint for the tap zones; inside the body so it never sits on the side panel -->
+  {#if showHint && !finished && resumeOffer === null}
+    <div
+      class="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-4"
+      aria-hidden="true"
+    >
+      <span class="font-mono-label rounded-full px-3 py-2 text-[10.5px] uppercase tracking-widest" style="background: var(--card); color: var(--faint); border: 1px solid var(--line)">← tap</span>
+    </div>
+  {/if}
   <!-- step: `my-auto` centres when short and scrolls when tall (landscape phones) -->
-  <main class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-4">
+  <main class="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-4">
+    {#if showHint && !finished && resumeOffer === null}
+      <div class="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-4" aria-hidden="true">
+        <span class="font-mono-label rounded-full px-3 py-2 text-[10.5px] uppercase tracking-widest" style="background: var(--card); color: var(--faint); border: 1px solid var(--line)">tap →</span>
+      </div>
+    {/if}
     {#if finished}
       <div class="my-auto text-center">
-        <div class="font-display text-[clamp(34px,7vw,52px)]" style="color: var(--green-deep)">
+        <div class="font-display text-[clamp(34px,7vw,52px)]" style="color: var(--ink-accent)">
           Done.
         </div>
         <p class="mt-2 text-[15px]" style="color: var(--faint)">Every step cooked. Knives down.</p>
@@ -510,7 +525,7 @@
           >
             <span
               class="qty text-[clamp(30px,6vw,44px)]"
-              style="color: {currentDone ? 'var(--copper)' : 'var(--green-deep)'}"
+              style="color: {currentDone ? 'var(--copper)' : 'var(--ink-accent)'}"
               aria-live={currentDone ? 'assertive' : 'off'}
             >
               {formatDuration(currentRemaining)}
@@ -519,7 +534,7 @@
               {#if currentRunning}
                 <button
                   class="font-mono-label min-h-[48px] rounded-full border px-5 text-[11px] uppercase tracking-widest"
-                  style="border-color: var(--green-deep); color: var(--green-deep)"
+                  style="border-color: var(--green-deep); color: var(--ink-accent)"
                   onclick={() => pauseTimer()}
                 >
                   pause
@@ -552,7 +567,7 @@
                 class="flex items-baseline gap-3 py-1.5"
                 style="font-size: calc(17px * var(--cook-scale))"
               >
-                <span class="qty min-w-[6ch] shrink-0" style="color: var(--green-deep)">{ing.display}</span>
+                <span class="qty min-w-[6ch] shrink-0" style="color: var(--ink-accent)">{ing.display}</span>
                 <span style="color: var(--faint)">{ing.name}</span>
               </li>
             {/each}
@@ -562,12 +577,34 @@
     {/if}
   </main>
 
+  <!-- mise en place: on a landscape iPad the whole list stays beside the step,
+       with this step's ingredients lit — the drawer stays for smaller screens -->
+  {#if !finished}
+    <aside class="cook-side" aria-label="Mise en place" data-no-tap data-testid="cook-side">
+      <h3
+        class="font-mono-label border-b px-4 pt-4 pb-2 text-xs uppercase tracking-widest"
+        style="border-color: var(--line); color: var(--green)"
+      >
+        Mise en place · <span class="qty">{data.target}</span> {recipe.yield_word}
+      </h3>
+      <ul>
+        {#each scaled as ing (ing.name)}
+          <li class:now={stepIngredients.includes(ing)}>
+            <span class="qty min-w-[6ch] shrink-0" style="color: var(--ink-accent)">{ing.display}</span>
+            <span style="color: var(--ink)">{ing.name}</span>
+          </li>
+        {/each}
+      </ul>
+    </aside>
+  {/if}
+  </div>
+
   <!-- undo a stray tap -->
   {#if undo}
     <div class="pointer-events-none flex justify-center pb-2">
       <button
         class="font-mono-label pointer-events-auto min-h-[40px] rounded-full border px-4 text-[10.5px] uppercase tracking-widest"
-        style="background: var(--card); border-color: var(--line); color: var(--green-deep)"
+        style="background: var(--card); border-color: var(--line); color: var(--ink-accent)"
         onclick={undoGo}
         data-testid="undo-step"
       >
@@ -596,17 +633,6 @@
         {stepIndex === steps.length - 1 ? 'finish' : 'next →'}
       </button>
     </footer>
-  {/if}
-
-  <!-- first-run hint for the tap zones -->
-  {#if showHint && !finished && resumeOffer === null}
-    <div
-      class="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-4"
-      aria-hidden="true"
-    >
-      <span class="font-mono-label rounded-full px-3 py-2 text-[10.5px] uppercase tracking-widest" style="background: var(--card); color: var(--faint); border: 1px solid var(--line)">← tap</span>
-      <span class="font-mono-label rounded-full px-3 py-2 text-[10.5px] uppercase tracking-widest" style="background: var(--card); color: var(--faint); border: 1px solid var(--line)">tap →</span>
-    </div>
   {/if}
 
   <!-- resume where you left off -->

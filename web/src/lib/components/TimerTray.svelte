@@ -20,8 +20,8 @@
   <div
     class={compact
       ? 'mx-5 mb-1 flex flex-col gap-1'
-      : 'fixed inset-x-0 bottom-0 z-[60] flex flex-col gap-1 border-t px-3 pt-2 pb-[max(env(safe-area-inset-bottom),8px)]'}
-    style={compact ? '' : 'background: var(--card); border-color: var(--line)'}
+      : 'fixed inset-x-0 z-[60] flex flex-col gap-1 border-t px-3 pt-2 pb-2 md:pb-[max(env(safe-area-inset-bottom),8px)]'}
+    style={compact ? '' : 'background: var(--card); border-color: var(--line); bottom: var(--bottom-inset, 0px)'}
     role="region"
     aria-label="Running timers"
     data-testid="timer-tray"
@@ -42,7 +42,7 @@
         </a>
         <span
           class="qty text-[17px]"
-          style="color: {done ? 'var(--copper)' : 'var(--green-deep)'}"
+          style="color: {done ? 'var(--copper)' : 'var(--ink-accent)'}"
           aria-live={done ? 'assertive' : 'off'}
         >
           {done ? 'done' : formatDuration(remaining(t, $now))}
@@ -50,7 +50,7 @@
         {#if !done}
           <button
             class="font-mono-label min-h-[40px] rounded-full border px-3 text-[10.5px] uppercase tracking-widest"
-            style="border-color: var(--line); color: var(--green-deep)"
+            style="border-color: var(--line); color: var(--ink-accent)"
             onclick={() => (isRunning(t) ? timerStore.pause(t.id) : timerStore.start(t.id))}
             aria-label={isRunning(t) ? `Pause ${label(t)}` : `Resume ${label(t)}`}
           >
