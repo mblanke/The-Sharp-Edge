@@ -166,6 +166,9 @@
     <p class="mt-3 text-[13.5px]" style="color: var(--accent)">{errorMsg}</p>
   {/if}
 
+  <!-- on a landscape iPad the shelf stands beside the results instead of under them -->
+  <div class="library-cols">
+  <div class="library-main">
   {#if searching}
     <div class="mt-5 grid gap-2" aria-hidden="true">
       <div class="skeleton h-5 w-2/5"></div>
@@ -239,7 +242,9 @@
       </section>
     {/each}
   {/if}
+  </div>
 
+  <aside class="library-shelf" aria-label="On the shelf">
   <h3
     class="font-mono-label mt-8 border-b pb-1 text-xs uppercase tracking-widest"
     style="border-color: var(--line); color: var(--primary)"
@@ -281,4 +286,6 @@
       The search above works regardless — it queries the index directly.
     </p>
   {/if}
+  </aside>
+  </div>
 </section>

@@ -43,6 +43,16 @@ test('cook mode owns the bottom edge and, on an iPad, shows the mise en place', 
   }
 });
 
+test('a phone gets a way back from a recipe; home has none', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone', 'the back button lives in the phone top bar');
+  await page.goto('/');
+  await expect(page.getByTestId('back')).toHaveCount(0);
+  await page.getByRole('link', { name: /Classic Fluffy Pancakes/ }).click();
+  await expect(page).toHaveURL(/\/r\/pancakes$/);
+  await page.getByTestId('back').click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test('quantities keep their contrast in evening mode', async ({ page }) => {
   await page.goto('/r/goulash');
   await page.getByRole('button', { name: /evening kitchen/ }).click();

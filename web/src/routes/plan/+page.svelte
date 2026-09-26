@@ -89,8 +89,8 @@
     </p>
   {/if}
 
-  <!-- week grid -->
-  <div class="mt-5 grid gap-2">
+  <!-- week grid: one column on a phone, two across an iPad, three on a wide desk -->
+  <div class="mt-5 grid gap-2 md:grid-cols-2 md:gap-3 2xl:grid-cols-3">
     {#each days as day (iso(day))}
       {@const dayEntries = plan.entries.filter((e) => e.date === iso(day))}
       <div class="rounded-2xl border p-3" style="border-color: var(--line); background: var(--card)">
@@ -106,11 +106,13 @@
             </a>
           {/if}
         </div>
-        <div class="mt-1.5 grid gap-1.5">
+        <!-- minmax(0,1fr): an auto column sizes to the longest title and pushes the
+             remove button out of the card once cards share a row -->
+        <div class="mt-1.5 grid grid-cols-[minmax(0,1fr)] gap-1.5">
           {#each MEALS as meal (meal)}
             {@const entry = entryFor(day, meal)}
             {#if entry}
-              <div class="flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-1.5" style="background: var(--paper)">
+              <div class="flex min-h-[44px] min-w-0 items-center gap-2 rounded-xl px-3 py-1.5" style="background: var(--paper)">
                 <span class="{labelCls} w-[4.6rem] shrink-0" style="color: var(--faint)">{meal}</span>
                 <a href="/r/{entry.recipe_slug}" class="min-w-0 flex-1 truncate text-[14.5px] no-underline" style="color: var(--ink-accent)">
                   {entry.recipe_title}

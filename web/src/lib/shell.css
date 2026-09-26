@@ -91,6 +91,11 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* with a back button on the left there is no room for the wordmark on a
+   phone; the mark alone still links home */
+.topbar.sub .topbar-brand span {
+  display: none;
+}
 
 /* ---------- icon buttons (top bar + rail foot) ---------- */
 
@@ -522,7 +527,11 @@ textarea {
   }
 }
 
-/* sticky category headings only make sense in the single-column list */
+/* sticky category headings only make sense in the single-column list, and
+   there they sit under the top bar rather than sliding beneath it */
+.cat-head {
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+}
 @media (min-width: 768px) {
   .cat-head {
     position: static !important;
@@ -549,6 +558,86 @@ textarea {
   }
   .recipe-main {
     min-width: 0;
+  }
+}
+
+/* ---------- library: results beside the shelf on a landscape iPad ---------- */
+
+@media (min-width: 1024px) {
+  .library-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    column-gap: clamp(28px, 3vw, 48px);
+    align-items: start;
+  }
+  .library-shelf {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .library-shelf h3 {
+    margin-top: 32px;
+  }
+}
+
+/* ---------- ask: the thread list beside the conversation on a landscape iPad ---------- */
+
+@media (min-width: 1024px) {
+  .ask-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    column-gap: clamp(28px, 3vw, 48px);
+    align-items: start;
+  }
+  .ask-threads {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .ask-threads h3 {
+    margin-top: 32px;
+  }
+}
+
+/* ---------- navigation progress: a hairline that says the tap landed ---------- */
+
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  height: 2px;
+  width: 0;
+  background: var(--copper);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.nav-progress.on {
+  opacity: 1;
+  animation: nav-progress 6s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+@keyframes nav-progress {
+  0% {
+    width: 0;
+  }
+  15% {
+    width: 40%;
+  }
+  100% {
+    width: 92%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress.on {
+    animation: none;
+    width: 100%;
   }
 }
 

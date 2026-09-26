@@ -234,6 +234,9 @@
     Answers come from the cookbooks on the shelf, cited by source and page. Local models only.
   </p>
 
+  <!-- on a landscape iPad the thread list stands beside the conversation -->
+  <div class="ask-cols">
+  <div class="ask-main">
   {#if data.recipeSlug}
     <div
       class="font-mono-label mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] uppercase tracking-widest"
@@ -477,8 +480,8 @@
   {/if}
 
   <form
-    class="sticky bottom-[max(env(safe-area-inset-bottom),8px)] mt-5 flex gap-2 rounded-full"
-    style="background: var(--paper)"
+    class="sticky mt-5 flex gap-2 rounded-full"
+    style="background: var(--paper); bottom: max(calc(var(--bottom-inset, 0px) + 8px), env(safe-area-inset-bottom))"
     onsubmit={(e) => {
       e.preventDefault();
       send();
@@ -524,7 +527,9 @@
       new conversation
     </button>
   {/if}
+  </div>
 
+  <aside class="ask-threads" aria-label="Recent conversations">
   {#if data.conversations.length}
     <h3
       class="font-mono-label mt-8 border-b pb-1 text-xs uppercase tracking-widest"
@@ -616,6 +621,8 @@
       {/each}
     </ul>
   {/if}
+  </aside>
+  </div>
 </section>
 
 <style>

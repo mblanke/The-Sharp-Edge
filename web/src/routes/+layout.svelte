@@ -2,7 +2,7 @@
   import '../app.css';
   import { onMount } from 'svelte';
   import { goto, onNavigate } from '$app/navigation';
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import OfflineBanner from '$lib/components/OfflineBanner.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import TimerTray from '$lib/components/TimerTray.svelte';
@@ -18,8 +18,15 @@
   const inCookMode = $derived(/\/cook$/.test(path));
 
   // Pages that earn the full width of an iPad: the card grid, the two-column
-  // recipe, the week grid. Everything else is prose and stays at reading width.
-  const wide = $derived(path === '/' || /^\/r\/[^/]+$/.test(path) || path.startsWith('/plan'));
+  // recipe, the week grid, the shelf and the thread list. Everything else is
+  // prose and stays at reading width.
+  const wide = $derived(
+    path === '/' ||
+      /^\/r\/[^/]+$/.test(path) ||
+      path.startsWith('/plan') ||
+      path.startsWith('/library') ||
+      path.startsWith('/ask')
+  );
 
   const NAV = [
     { href: '/', label: 'Recipes', icon: 'book', match: (p: string) => p === '/' || p.startsWith('/r/') },
@@ -29,6 +36,17 @@
     { href: '/shopping', label: 'List', icon: 'basket', match: (p: string) => p.startsWith('/shopping') }
   ] as const;
   const current = (match: (p: string) => boolean) => (match(path) ? 'page' : undefined);
+
+  // A home-screen app has no browser chrome, so a phone needs its own way back
+  // from a recipe. In-app history wins; a cold start from a QR code goes home.
+  let canGoBack = $state(false);
+  onMount(() => {
+    canGoBack = history.length > 1;
+  });
+  function back() {
+    if (canGoBack) history.back();
+    else goto('/');
+  }
 
   // ⌘K / Ctrl+K from any page: the home search box (home handles it locally)
   function onKey(e: KeyboardEvent) {
@@ -48,6 +66,20 @@
         await navigation.complete;
       });
     });
+  });
+
+  // A tap over Tailscale can take a second before anything changes on screen;
+  // the hairline says it landed. Only shown for navigations that take a moment.
+  let slow = $state(false);
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    clearTimeout(slowTimer);
+    if (navigating.to) {
+      slowTimer = setTimeout(() => (slow = true), 150);
+    } else {
+      slow = false;
+    }
+    return () => clearTimeout(slowTimer);
   });
 
   // evening kitchen mode — explicit choice persisted per device; with no choice
@@ -83,6 +115,8 @@
 >
   skip to content
 </a>
+
+<div class="nav-progress" class:on={slow} aria-hidden="true"></div>
 
 <div class="shell">
   <!-- rail: tablet + desktop -->
@@ -121,7 +155,12 @@
 
   <div class="shell-content">
     <!-- top bar: phone -->
-    <header class="topbar" data-testid="topbar">
+    <header class="topbar" class:sub={path !== '/'} data-testid="topbar">
+      {#if path !== '/'}
+        <button class="icon-btn -ml-2" aria-label="Back" onclick={back} data-testid="back">
+          <Icon name="back" />
+        </button>
+      {/if}
       <a href="/" class="topbar-brand">
         <img src="/logo.jpg" alt="" width="34" height="34" decoding="async" />
         <span>The Sharp Edge</span>
