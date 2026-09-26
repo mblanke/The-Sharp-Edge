@@ -167,7 +167,7 @@ Conventions: Pydantic schemas for every request/response; errors as RFC-7807 pro
 
 ## 7. Frontend requirements
 
-**Design tokens ("C · Faïence" — blue-and-white kitchen tile, ochre accent)** — in `tokens.css`, used everywhere:
+**Design tokens** — in `tokens.css`, used everywhere. Two palettes ship, deliberately (DECISIONS 2026-08-24): the **web** is *washi & bottle green* (`--paper #f2f1ec --ink #20241e --faint #6b6f63 --green #3e6b4a --green-deep #2c4f36 --copper #c87a2e --line #d9d7cc --card #fafaf6`), with the Faïence names below resolving to it through aliases so either vocabulary works in a page; the **iOS app** (`Theme.swift`) is *C · Faïence* — blue-and-white kitchen tile, ochre accent:
 ```
 --paper #F2F3F5   --ink #14161C    --faint #5F6570
 --primary #1F4A8F --primary-deep #14315F
@@ -175,7 +175,9 @@ Conventions: Pydantic schemas for every request/response; errors as RFC-7807 pro
 --off-white #F7F8FA  --btn-ghost rgba(255,255,255,.14)
 --btn-outline rgba(255,255,255,.4)  --accent-wash #F4EFE6
 ```
-Both schemes ship and follow the OS; there is no in-app toggle. `--primary-deep` is a *fill* carrying `--off-white` text, `--ink-accent` is that same blue used *as* text — they are identical in light and diverge in dark, so a `color:` must never use `--primary-deep`. Dark: `--paper #101319 --card #171B22 --line #2A2F39 --ink #E6E9EE --faint #98A0AD --primary #7BA6E2 --primary-deep #2F5F9E --ink-accent #8FB6EE --accent #D9A441 --accent-wash #2A2113`. The light ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses. `Theme.swift` mirrors these names exactly.
+Both schemes ship on both platforms. iOS follows the OS; the web follows the OS until the cook picks one (header toggle, and Settings offers "system" again). `--primary-deep` / `--green-deep` is a *fill* carrying `--off-white` text, `--ink-accent` is that same hue used *as* text — they are identical in light and diverge in dark, so a `color:` must never use the deep fill (web dark `--ink-accent #8fc39e`; the 2026-09-25 entry records what happened when it did). iOS dark: `--paper #101319 --card #171B22 --line #2A2F39 --ink #E6E9EE --faint #98A0AD --primary #7BA6E2 --primary-deep #2F5F9E --ink-accent #8FB6EE --accent #D9A441 --accent-wash #2A2113`. The light ground is a cool porcelain, not a warm off-white — a warm ground reads yellow next to the iPad's own grey sidebar, and ochre should be the only warm thing on screen. The accent is darker than a decorative ochre because the lighter version fails WCAG AA at the 10–11px label sizes this app uses.
+
+**Shell (web, `shell.css`):** one layout — below 768px a top bar and bottom tab bar (safe-area aware); 768–1023 an icon rail; 1024+ a full sidebar. Pages that earn the width (home grid, recipe two-column, plan, library) opt in via the layout's `wide` rule; prose pages stay at 720px.
 
 Type: **Fraunces** (display 650), **Work Sans** (body), **Spline Sans Mono** (all quantities + labels). Quantities are always mono — the app's signature. Scale changes flash quantities accent (~450 ms).
 
