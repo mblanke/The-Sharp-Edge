@@ -118,7 +118,7 @@ textarea {
   height: 21px;
 }
 .icon-btn[aria-current='page'] {
-  color: var(--green-deep);
+  color: var(--ink-accent);
   background: var(--card);
   border-color: var(--line);
 }
@@ -165,7 +165,7 @@ textarea {
   transition: transform 0.15s ease;
 }
 .tabbar a[aria-current='page'] {
-  color: var(--green-deep);
+  color: var(--ink-accent);
 }
 .tabbar a[aria-current='page'] svg {
   transform: translateY(-1px);
@@ -354,7 +354,7 @@ textarea {
   .rail-nav a:not([aria-current='page']):hover,
   .icon-btn:not(.primary):hover {
     background: var(--card);
-    color: var(--green-deep);
+    color: var(--ink-accent);
   }
   .rail-add:hover {
     transform: translateY(-1px);
@@ -602,6 +602,96 @@ textarea {
   }
   .ask-threads h3 {
     margin-top: 32px;
+  }
+}
+
+/* ---------- shopping: aisles in two columns on a landscape iPad ---------- */
+
+.aisle {
+  break-inside: avoid;
+}
+@media (min-width: 1024px) {
+  .aisle-cols {
+    columns: 2;
+    column-gap: clamp(28px, 4vw, 56px);
+  }
+  /* the first heading in each column would otherwise start lower than its neighbour */
+  .aisle > h3 {
+    margin-top: 0;
+    padding-top: 28px;
+  }
+}
+
+/* ---------- keyboard shortcuts sheet ---------- */
+
+.keys-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 22, 18, 0.45);
+  animation: keys-fade 0.15s ease both;
+}
+.keys-sheet {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 18px 48px rgba(20, 22, 18, 0.25);
+  padding: 22px 24px 18px;
+  animation: keys-rise 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.keys-sheet dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  align-items: baseline;
+  margin: 10px 0 0;
+}
+.keys-sheet dt {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.keys-sheet dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink-accent);
+  font-family: 'Spline Sans Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+@keyframes keys-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes keys-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .keys-backdrop,
+  .keys-sheet {
+    animation: none;
   }
 }
 

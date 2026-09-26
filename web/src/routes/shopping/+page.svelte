@@ -163,13 +163,35 @@
       </div>
     {/if}
 
+    <!-- how far through the shop: fills as lines are ticked -->
+    <div
+      class="mt-4 h-1.5 overflow-hidden rounded-full"
+      style="background: var(--line)"
+      role="progressbar"
+      aria-label="Ticked off"
+      aria-valuemin={0}
+      aria-valuemax={items.length}
+      aria-valuenow={ticked}
+    >
+      <div
+        class="h-full rounded-full transition-[width] duration-300"
+        style="width: {items.length ? (ticked / items.length) * 100 : 0}%; background: var(--green)"
+      ></div>
+    </div>
+
+    <!-- aisles flow into two columns on a landscape iPad; an aisle never splits -->
+    <div class="aisle-cols">
     {#each groups as group (group.aisle)}
-      <h3 class="font-mono-label mt-7 text-[11px] uppercase tracking-widest" style="color: var(--accent)">
+      <div class="aisle" data-testid="aisle">
+      <h3 class="font-mono-label mt-7 flex items-baseline gap-2 text-[11px] uppercase tracking-widest" style="color: var(--accent)">
         {group.aisle}
+        <span class="qty text-[10px] normal-case tracking-normal" style="color: var(--faint)">
+          {group.items.filter((i) => !i.checked).length}/{group.items.length}
+        </span>
       </h3>
-      <ul class="mt-2 divide-y" style="border-color: var(--line)">
+      <ul class="mt-2">
         {#each group.items as item (item.id)}
-          <li class="flex items-start gap-3 py-2">
+          <li class="flex items-start gap-3 border-b border-dashed py-2 last:border-b-0" style="border-color: var(--line)">
             <form
               method="POST"
               action="?/toggle"
@@ -202,9 +224,9 @@
               </button>
             </form>
             <div class="min-w-0 flex-1 pt-2" style="opacity: {item.checked ? 0.45 : 1}">
-              <div class="flex flex-wrap items-baseline gap-2">
-                <span class="font-mono-label text-[14px]" style="color: var(--ink)">{item.display}</span>
-                <span class="text-[15px]" style="color: var(--ink); text-decoration: {item.checked ? 'line-through' : 'none'}">
+              <div class="flex items-baseline gap-2">
+                <span class="qty shrink-0 text-[14px]">{item.display}</span>
+                <span class="min-w-0 text-[15px]" style="color: var(--ink); text-decoration: {item.checked ? 'line-through' : 'none'}">
                   {item.name}
                 </span>
               </div>
@@ -222,6 +244,8 @@
           </li>
         {/each}
       </ul>
+      </div>
     {/each}
+    </div>
   {/if}
 </section>

@@ -111,8 +111,12 @@ test('settings persist units and theme on this device, and home remembers what y
 
   // ⌘K from another page lands in the search box
   await page.goto('/shopping');
-  await page.keyboard.press('ControlOrMeta+k');
-  await expect(page).toHaveURL(/\/$/);
+  // the handler exists once the page hydrates; a press before that is lost, so
+  // retry the press rather than guess a delay
+  await expect(async () => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(page).toHaveURL(/\/$/, { timeout: 1000 });
+  }).toPass();
   await expect(page.getByRole('searchbox', { name: 'Search recipes' })).toBeFocused();
 
   await page.goto('/settings');

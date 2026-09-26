@@ -168,5 +168,7 @@
     <li class="py-1"><span class="qty" style="color: var(--ink)">← → space</span> · move between steps in cook mode</li>
     <li class="py-1"><span class="qty" style="color: var(--ink)">T</span> · start or pause the step timer · <span class="qty" style="color: var(--ink)">I</span> · ingredients · <span class="qty" style="color: var(--ink)">Esc</span> · exit</li>
     <li class="py-1"><span class="qty" style="color: var(--ink)">⌘Z</span> · undo a stray step</li>
+    <li class="py-1"><span class="qty" style="color: var(--ink)">g</span> then <span class="qty" style="color: var(--ink)">r l a p s n</span> · jump to recipes, library, ask, plan, list, add</li>
+    <li class="py-1"><span class="qty" style="color: var(--ink)">?</span> · every shortcut, on any page</li>
   </ul>
 </section>

@@ -7,6 +7,7 @@
   import Toast from '$lib/components/Toast.svelte';
   import TimerTray from '$lib/components/TimerTray.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import ShortcutsSheet from '$lib/components/ShortcutsSheet.svelte';
   import { startTicker } from '$lib/timers';
   import { applyTheme, readTheme, syncThemeColor } from '$lib/prefs';
 
@@ -25,7 +26,8 @@
       /^\/r\/[^/]+$/.test(path) ||
       path.startsWith('/plan') ||
       path.startsWith('/library') ||
-      path.startsWith('/ask')
+      path.startsWith('/ask') ||
+      path.startsWith('/shopping')
   );
 
   const NAV = [
@@ -209,3 +211,4 @@
   <TimerTray />
 {/if}
 <Toast />
+<ShortcutsSheet {inCookMode} />

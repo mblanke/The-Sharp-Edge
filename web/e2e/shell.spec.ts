@@ -60,5 +60,11 @@ test('quantities keep their contrast in evening mode', async ({ page }) => {
   // #8fc39e — the ink accent, never the #24402c fill; polled because the colour
   // eases over 450 ms
   await expect.poll(() => qty.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(143, 195, 158)');
+  // the current section in whichever nav is showing uses it too — it used to
+  // be the fill, which left the active phone tab almost invisible at night
+  const currentNav = page.locator('nav a[aria-current="page"]:visible').first();
+  await expect
+    .poll(() => currentNav.evaluate((el) => getComputedStyle(el).color))
+    .not.toBe('rgb(36, 64, 44)');
   await page.getByRole('button', { name: /daylight/ }).click();
 });
