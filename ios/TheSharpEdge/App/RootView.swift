@@ -102,26 +102,132 @@ struct RootView: View {
         case .settings:
             SettingsView()
         case .none:
-            WelcomeDetail(local: config.mode == .local)
+            NotebookHome(local: config.mode == .local) { slug in selection = .recipe(slug) }
         }
     }
 }
 
-private struct WelcomeDetail: View {
+/// What the detail pane shows before a recipe is picked: the notebook as a grid of
+/// cards by category. It used to be two lines of text beside a sidebar holding the
+/// same recipes, which on a landscape iPad was most of the screen doing nothing.
+/// Follows the sidebar's GF toggle and search, since it reads the same sections.
+private struct NotebookHome: View {
     /// A device-hosted notebook has no printed cards to scan, so the standard line
     /// would be describing a thing this iPad cannot do.
     var local = false
+    var onOpen: (String) -> Void
+    @EnvironmentObject private var store: RecipeListStore
+
+    private let columns = [GridItem(.adaptive(minimum: 240, maximum: 360), spacing: Theme.Space.m)]
 
     var body: some View {
-        VStack(spacing: 14) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                header
+                if store.sections.isEmpty {
+                    Text(store.isSearching ? "Nothing in the notebook matches “\(store.query)”."
+                                           : "Recipes appear here as the notebook fills.")
+                        .font(Typography.body(16))
+                        .foregroundStyle(Theme.faint)
+                }
+                ForEach(store.sections) { section in
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Eyebrow(text: section.name)
+                            Text("\(section.recipes.count)")
+                                .font(Typography.mono(12)).foregroundStyle(Theme.faint)
+                        }
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Space.m) {
+                            ForEach(section.recipes) { recipe in
+                                Button { onOpen(recipe.slug) } label: { RecipeTile(recipe: recipe) }
+                                    .buttonStyle(TileButtonStyle())
+                                    .hoverEffect(.lift)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(Theme.Space.xxl)
+            .frame(maxWidth: 1180, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Theme.paper.ignoresSafeArea())
+        .animation(.easeOut(duration: 0.2), value: store.sections.map(\.id))
+    }
+
+    private var header: some View {
+        let all = store.allCards
+        let gf = all.filter(\.gf).count
+        return VStack(alignment: .leading, spacing: 6) {
             Text("The Sharp Edge")
                 .font(Typography.display(40))
                 .foregroundStyle(Theme.ink)
-            Text(local ? "Your recipes, on this iPad." : "Scan a card, scale the dish, cook.")
-                .font(Typography.body(17))
-                .foregroundStyle(Theme.faint)
+            HStack(spacing: 10) {
+                Text(local ? "Your recipes, on this iPad." : "Scan a card, scale the dish, cook.")
+                    .font(Typography.body(17))
+                    .foregroundStyle(Theme.faint)
+                if !all.isEmpty {
+                    Text("\(all.count) recipes · \(gf) GF")
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Theme.faint)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .overlay(Capsule().stroke(Theme.line, lineWidth: 1))
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.paper.ignoresSafeArea())
+    }
+}
+
+private struct RecipeTile: View {
+    var recipe: RecipeCard
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(recipe.title)
+                .font(Typography.display(20))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            if let meta = recipe.meta, !meta.isEmpty {
+                Text(meta)
+                    .font(Typography.body(13))
+                    .foregroundStyle(Theme.faint)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: Theme.Space.s)
+            HStack {
+                Text(recipe.noscale ? "reference" : "\(recipe.baseYield) \(recipe.yieldWord)")
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Theme.faint)
+                Spacer()
+                GFBadge(gf: recipe.gf)
+            }
+        }
+        .padding(Theme.Space.l)
+        .padding(.leading, 4)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(alignment: .leading) {
+            // the notebook's coloured tab
+            Capsule().fill(Theme.primary.opacity(0.7)).frame(width: 3).padding(.vertical, Theme.Space.l)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .stroke(Theme.line, lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens the recipe")
+    }
+}
+
+/// A tile gives under the finger rather than just flashing.
+private struct TileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

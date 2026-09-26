@@ -101,46 +101,98 @@ struct RecipeDetailView: View {
         }
     }
 
+    /// Below this width (iPhone, iPad portrait with the sidebar showing, Split View)
+    /// the recipe is one column; above it, a landscape iPad keeps the scaler and the
+    /// ingredients beside the method so neither scrolls the other off screen.
+    private static let twoColumnWidth: CGFloat = 820
+
     @ViewBuilder
     private func content(_ recipe: RecipeFull) -> some View {
+        GeometryReader { geo in
+            if geo.size.width >= Self.twoColumnWidth {
+                wideLayout(recipe)
+            } else {
+                narrowLayout(recipe)
+            }
+        }
+    }
+
+    private func narrowLayout(_ recipe: RecipeFull) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 header(recipe)
-
-                if !recipe.noscale {
-                    CardSurface {
-                        VStack(spacing: Theme.Space.m) {
-                            ScaleStepper(
-                                value: Binding(get: { store.target }, set: { store.setTarget($0) }),
-                                unitWord: recipe.yieldWord,
-                                minValue: 1, maxValue: store.maxYield, baseValue: recipe.baseYield,
-                                onChange: {}
-                            )
-                            if store.target != recipe.baseYield {
-                                Text("scaled from \(recipe.baseYield)")
-                                    .font(Typography.mono(12)).foregroundStyle(Theme.faint)
-                            }
-                            Picker("Units", selection: Binding(
-                                get: { config.units }, set: { config.units = $0 })) {
-                                ForEach(UnitSystem.allCases) { Text($0.label).tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(maxWidth: 360)
-                            .accessibilityLabel("Show amounts as written, metric, or imperial")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-
+                if !recipe.noscale { scaleCard(recipe) }
                 ingredients
-                steps(recipe)
-                if !recipe.currentVersion.notes.isEmpty { notes(recipe) }
-                if store.versions.count > 1 { VersionSwitcher(versions: store.versions) { showHistory = true } }
-                actions(recipe)
+                methodColumn(recipe)
             }
             .padding(Theme.Space.xl)
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func wideLayout(_ recipe: RecipeFull) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header(recipe)
+                .padding(.horizontal, Theme.Space.xxl)
+                .padding(.top, Theme.Space.xl)
+                .padding(.bottom, Theme.Space.l)
+            Divider().overlay(Theme.line)
+            HStack(alignment: .top, spacing: 0) {
+                // Each column scrolls on its own: the list you're measuring from
+                // stays put while you read ahead in the method.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                        if !recipe.noscale { scaleCard(recipe) }
+                        ingredients
+                    }
+                    .padding(Theme.Space.xl)
+                }
+                .frame(width: 380)
+                .background(Theme.card.opacity(0.5))
+                Divider().overlay(Theme.line)
+                ScrollView {
+                    methodColumn(recipe)
+                        .padding(Theme.Space.xl)
+                        .padding(.horizontal, Theme.Space.s)
+                        .frame(maxWidth: 720, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private func scaleCard(_ recipe: RecipeFull) -> some View {
+        CardSurface {
+            VStack(spacing: Theme.Space.m) {
+                ScaleStepper(
+                    value: Binding(get: { store.target }, set: { store.setTarget($0) }),
+                    unitWord: recipe.yieldWord,
+                    minValue: 1, maxValue: store.maxYield, baseValue: recipe.baseYield,
+                    onChange: {}
+                )
+                if store.target != recipe.baseYield {
+                    Text("scaled from \(recipe.baseYield)")
+                        .font(Typography.mono(12)).foregroundStyle(Theme.faint)
+                }
+                Picker("Units", selection: Binding(
+                    get: { config.units }, set: { config.units = $0 })) {
+                    ForEach(UnitSystem.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+                .accessibilityLabel("Show amounts as written, metric, or imperial")
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func methodColumn(_ recipe: RecipeFull) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            steps(recipe)
+            if !recipe.currentVersion.notes.isEmpty { notes(recipe) }
+            if store.versions.count > 1 { VersionSwitcher(versions: store.versions) { showHistory = true } }
+            actions(recipe)
         }
     }
 
@@ -166,7 +218,21 @@ struct RecipeDetailView: View {
 
     private var ingredients: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Ingredients").font(Typography.display(22)).foregroundStyle(Theme.ink)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Ingredients").font(Typography.display(22)).foregroundStyle(Theme.ink)
+                Spacer()
+                if !checked.isEmpty {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { checked.removeAll() }
+                    } label: {
+                        Text("\(checked.count) in · clear")
+                            .font(Typography.mono(12, weight: .semibold))
+                            .foregroundStyle(Theme.faint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear \(checked.count) ticked ingredients")
+                }
+            }
             ForEach(store.sections) { section in
                 if let name = section.name {
                     SectionHeaderLabel(text: name).padding(.top, 4)
@@ -181,11 +247,19 @@ struct RecipeDetailView: View {
     private func ingredientRow(_ row: ScaledRow) -> some View {
         let isChecked = checked.contains(row.id)
         return Button {
-            if isChecked { checked.remove(row.id) } else { checked.insert(row.id) }
+            withAnimation(.easeOut(duration: 0.15)) {
+                if isChecked { checked.remove(row.id) } else { checked.insert(row.id) }
+            }
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                // the tick was always there; now it can be seen
+                Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(isChecked ? Theme.inkAccent : Theme.faint.opacity(0.5))
+                    .accessibilityHidden(true)
                 MonoQuantity(text: row.display, flashing: store.flashing)
                     .frame(minWidth: 74, alignment: .leading)
+                    .opacity(isChecked ? 0.45 : 1)
                 Text(store.displayName(row.name))
                     .font(Typography.body(16))
                     .foregroundStyle(Theme.ink)
@@ -198,6 +272,9 @@ struct RecipeDetailView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
+        .accessibilityAddTraits(isChecked ? .isSelected : [])
+        .sensoryFeedback(.selection, trigger: isChecked)
     }
 
     /// Read a recipe kept in another language. Nothing here edits the recipe —
@@ -212,7 +289,7 @@ struct RecipeDetailView: View {
                     .font(Typography.mono(12))
             }
             .buttonStyle(.bordered)
-            .tint(store.readEnglish ? Theme.primaryDeep : Theme.faint)
+            .tint(store.readEnglish ? Theme.inkAccent : Theme.faint)
         } else if store.translating {
             HStack(spacing: 8) {
                 ProgressView()
@@ -239,7 +316,9 @@ struct RecipeDetailView: View {
                         .font(Typography.mono(15, weight: .semibold))
                         .foregroundStyle(Theme.offWhite)
                         .frame(width: 28, height: 28)
-                        .background(Theme.primary, in: Circle())
+                        // primaryDeep: the dark-mode `primary` is a light blue, and
+                        // white digits on it were barely there
+                        .background(Theme.primaryDeep, in: Circle())
                     VStack(alignment: .leading, spacing: 6) {
                         Text(StepText.attributed(store.displayStep(idx, fallback: step.text)))
                             .font(Typography.body(17))

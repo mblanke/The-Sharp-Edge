@@ -36,13 +36,25 @@ struct CookModeView: View {
                 }
                 if let from = resumedFrom { resumeBanner(from) }
                 if voiceOn { voiceStatus }
-                TabView(selection: $index) {
-                    ForEach(Array(steps.enumerated()), id: \.offset) { idx, step in
-                        stepPage(idx: idx, step: step).tag(idx)
+                GeometryReader { geo in
+                    HStack(alignment: .top, spacing: 0) {
+                        TabView(selection: $index) {
+                            ForEach(Array(steps.enumerated()), id: \.offset) { idx, step in
+                                stepPage(idx: idx, step: step).tag(idx)
+                            }
+                        }
+                        .tabViewStyle(.page(indexDisplayMode: .never))
+                        .overlay(alignment: .bottom) { pageDots }
+                        // A landscape iPad has room for the whole mise en place beside
+                        // the step; the list button's sheet stays for smaller screens.
+                        if geo.size.width >= Self.sidePanelWidth {
+                            miseEnPlace
+                                .frame(width: 330)
+                                .padding(.trailing, Theme.Space.l)
+                                .padding(.bottom, Theme.Space.l)
+                        }
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .overlay(alignment: .bottom) { pageDots }
             }
             keyboardShortcuts
         }
@@ -202,12 +214,66 @@ struct CookModeView: View {
     private var pageDots: some View {
         HStack(spacing: 6) {
             ForEach(0..<steps.count, id: \.self) { i in
-                Circle().fill(i == index ? Theme.primary : Theme.line)
-                    .frame(width: 7, height: 7)
+                Capsule().fill(i == index ? Theme.accent : i < index ? Theme.primary : Theme.line)
+                    .frame(width: i == index ? 18 : 7, height: 7)
             }
         }
         .padding(.bottom, 10)
+        .animation(.easeOut(duration: 0.2), value: index)
         .accessibilityHidden(true)
+    }
+
+    private static let sidePanelWidth: CGFloat = 980
+
+    /// Indices into `scaledRows` the current step mentions.
+    private var currentStepRows: Set<Int> {
+        guard steps.indices.contains(index) else { return [] }
+        return Set(StepIngredients.match(step: steps[index].text, names: scaledRows.map(\.name)))
+    }
+
+    private var miseEnPlace: some View {
+        let lit = currentStepRows
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("MISE EN PLACE")
+                    .font(Typography.mono(12, weight: .semibold)).tracking(1.2)
+                    .foregroundStyle(Theme.accent)
+                Spacer()
+                Text("\(target) \(recipe.yieldWord)")
+                    .font(Typography.mono(12)).foregroundStyle(Theme.faint)
+            }
+            .padding(Theme.Space.l)
+            Divider().overlay(Theme.line)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(scaledRows.enumerated()), id: \.offset) { i, row in
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                            Text(row.display)
+                                .font(Typography.mono(15, weight: .semibold))
+                                .foregroundStyle(lit.contains(i) ? Theme.accent : Theme.inkAccent)
+                                .monospacedDigit()
+                                .frame(minWidth: 64, alignment: .leading)
+                            Text(row.name)
+                                .font(Typography.body(15))
+                                .foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.horizontal, Theme.Space.m)
+                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(lit.contains(i) ? Theme.accentWash : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                        .accessibilityAddTraits(lit.contains(i) ? .isSelected : [])
+                    }
+                }
+                .padding(Theme.Space.s)
+                .animation(.easeOut(duration: 0.25), value: index)
+            }
+        }
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).stroke(Theme.line, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Mise en place")
     }
 
     private var ingredientSheet: some View {

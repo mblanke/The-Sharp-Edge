@@ -53,7 +53,9 @@ struct MonoQuantity: View {
     var body: some View {
         Text(text)
             .font(Typography.mono(size, weight: .semibold))
-            .foregroundStyle(flashing ? Theme.accent : Theme.primaryDeep)
+            // inkAccent, never primaryDeep: that is a fill, and as text on the dark
+            // paper it was the dimmest thing on screen — every amount in the app.
+            .foregroundStyle(flashing ? Theme.accent : Theme.inkAccent)
             .animation(.easeOut(duration: 0.45), value: flashing)
             .monospacedDigit()
     }

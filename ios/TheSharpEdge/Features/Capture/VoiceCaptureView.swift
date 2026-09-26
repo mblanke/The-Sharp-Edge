@@ -116,7 +116,7 @@ struct VoiceCaptureView: View {
                         .padding(.horizontal, 12)
                         .frame(minHeight: 36)
                         .background(selected ? Theme.primaryDeep : Color.clear)
-                        .foregroundStyle(selected ? Theme.offWhite : Theme.primaryDeep)
+                        .foregroundStyle(selected ? Theme.offWhite : Theme.inkAccent)
                         .clipShape(Capsule())
                         .overlay(Capsule().stroke(Theme.line, lineWidth: selected ? 0 : 1))
                 }
