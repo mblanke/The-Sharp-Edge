@@ -42,7 +42,8 @@ final class RecipeListStore: ObservableObject {
     /// Pure: the cards a query keeps, diacritic- and case-insensitive so "gurken"
     /// finds Gurkensalat and "visinata" finds vișinată. Every word must match
     /// somewhere in the title, category or meta line.
-    static func filter(_ cards: [RecipeCard], gfOnly: Bool, query: String) -> [RecipeCard] {
+    /// `nonisolated`: pure over its arguments, so tests and any thread may call it.
+    nonisolated static func filter(_ cards: [RecipeCard], gfOnly: Bool, query: String) -> [RecipeCard] {
         let base = gfOnly ? cards.filter { $0.gf } : cards
         let words = TextFold.fold(query).split(separator: " ").map(String.init)
         guard !words.isEmpty else { return base }
